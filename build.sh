@@ -33,7 +33,7 @@ STREAM_NAME=${STREAM_NAME:-"fineo-staged-records"}
 MALFORMED_STREAM_NAME=${MALFORMED_STREAM_NAME:-"fineo-malformed-records"}
 
 
-while getopts ":f:s:e:" OPT; do
+while getopts ":f:s:e:h" OPT; do
   case $OPT in
     f)
       FIREHOSE_URL=${OPT}
@@ -44,6 +44,10 @@ while getopts ":f:s:e:" OPT; do
     e)
       MALFORMED_STREAM_NAME=${OPT}
     ;;
+    h)
+      help
+      exit 0
+      ;;
     \?)
       echo "Invalid option: -$OPTARG" >&2
       help
