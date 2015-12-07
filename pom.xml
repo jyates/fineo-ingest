@@ -13,13 +13,20 @@
     <fineo-schema-mgmt.version>1.0-SNAPSHOT</fineo-schema-mgmt.version>
     <aws-lambda-java-core.version>1.1.0</aws-lambda-java-core.version>
     <amazon-kinesis-client.version>1.5.1</amazon-kinesis-client.version>
+    <jackson-jr.version>2.6.3</jackson-jr.version>
 
+    <!-- Test dependencies -->
     <junit.version>4.12</junit.version>
     <surefire.version>2.19</surefire.version>
 
+    <!-- Test properties -->
     <test.output.to.file>true</test.output.to.file>
     <test.exclude.pattern></test.exclude.pattern>
-    <jackson-jr.version>2.6.3</jackson-jr.version>
+
+    <!-- Build properties -->
+    <app.main.class>io.fineo.lambda.avro.KinesisToFirehoseAvroWriter</app.main.class>
+    <maven.compile.version>1.8</maven.compile.version>
+    <aws-lambda-java-log4j.version>1.0.0</aws-lambda-java-log4j.version>
   </properties>
 
   <dependencies>
@@ -27,6 +34,7 @@
       <groupId>com.amazonaws</groupId>
       <artifactId>aws-java-sdk</artifactId>
       <version>${aws-java-sdk.version}</version>
+      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>com.amazonaws</groupId>
@@ -37,6 +45,11 @@
       <groupId>com.amazonaws</groupId>
       <artifactId>aws-lambda-java-events</artifactId>
       <version>${aws-lambda-java-core.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.amazonaws</groupId>
+      <artifactId>aws-lambda-java-log4j</artifactId>
+      <version>${aws-lambda-java-log4j.version}</version>
     </dependency>
     <dependency>
       <groupId>io.fineo.schema</groupId>
@@ -67,8 +80,8 @@
           <artifactId>maven-compiler-plugin</artifactId>
           <version>3.3</version>
           <configuration>
-            <source>1.8</source>
-            <target>1.8</target>
+            <source>${maven.compile.version}</source>
+            <target>${maven.compile.version}</target>
           </configuration>
         </plugin>
         <plugin>
@@ -90,25 +103,64 @@
         </plugin>
       </plugins>
     </pluginManagement>
-    <plugins>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-shade-plugin</artifactId>
-        <version>2.3</version>
-        <configuration>
-          <createDependencyReducedPom>false</createDependencyReducedPom>
-        </configuration>
-        <executions>
-          <execution>
-            <phase>package</phase>
-            <goals>
-              <goal>shade</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
-    </plugins>
   </build>
 
-
+  <profiles>
+    <profile>
+      <id>deploy</id>
+      <activation>
+        <property>
+          <name>deploy</name>
+        </property>
+      </activation>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-shade-plugin</artifactId>
+            <version>2.3</version>
+            <configuration>
+              <createDependencyReducedPom>false</createDependencyReducedPom>
+            </configuration>
+            <executions>
+              <execution>
+                <phase>package</phase>
+                <goals>
+                  <goal>shade</goal>
+                </goals>
+                <configuration>
+                  <minimizeJar>true</minimizeJar>
+                  <filters>
+                    <filter>
+                      <artifact>*:*</artifact>
+                      <excludes>
+                        <exclude>META-INF/*.SF</exclude>
+                        <exclude>META-INF/*.DSA</exclude>
+                        <exclude>META-INF/*.RSA</exclude>
+                      </excludes>
+                    </filter>
+                  </filters>
+                  <transformers>
+                    <transformer
+                       implementation="org.apache.maven.plugins.shade.resource.IncludeResourceTransformer">
+                      <resource>fineo-kinesis-firehose.properties</resource>
+                      <file>config/fineo-kinesis-firehose.properties</file>
+                    </transformer>
+                    <transformer
+                       implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                      <manifestEntries>
+                        <Main-Class>${app.main.class}</Main-Class>
+                        <X-Compile-Source-JDK>${maven.compile.version}</X-Compile-Source-JDK>
+                        <X-Compile-Target-JDK>${maven.compile.version}</X-Compile-Target-JDK>
+                      </manifestEntries>
+                    </transformer>
+                  </transformers>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>

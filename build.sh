@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Build the lambda file with some environment variables
+set -x
 set -e
 
 this="${BASH_SOURCE-$0}"
@@ -15,7 +16,7 @@ done
 
 # convert relative path to absolute path
 home=`dirname "$this"`
-home=`cd "home">/dev/null; pwd`
+home=`cd "$home">/dev/null; pwd`
 
 CONFIG_DIR=${CONFIG_DIR:-"${home}/config"}
 CONFIG_FILE=${CONFIG_FILE:-"${CONFIG_DIR}/fineo-kinesis-firehose.properties"}
@@ -68,7 +69,7 @@ echo "Wrote config file:"
 cat ${CONFIG_FILE}
 
 # run the maven build
-mvn clean package
+mvn clean package -Ddeploy
 
 file=`ls ${home}/target/fineo-lambda-*.jar`
 echo "Upload ${home}/target/$file} to AWS"

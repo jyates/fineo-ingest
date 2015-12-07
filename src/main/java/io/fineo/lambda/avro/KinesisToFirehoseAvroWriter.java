@@ -4,10 +4,7 @@ import com.amazonaws.services.kinesisfirehose.AmazonKinesisFirehoseClient;
 import com.amazonaws.services.kinesisfirehose.model.DescribeDeliveryStreamRequest;
 import com.amazonaws.services.kinesisfirehose.model.DescribeDeliveryStreamResult;
 import com.amazonaws.services.kinesisfirehose.model.PutRecordBatchRequest;
-import com.amazonaws.services.kinesisfirehose.model.PutRecordRequest;
 import com.amazonaws.services.kinesisfirehose.model.Record;
-import com.amazonaws.services.lambda.runtime.Context;
-import com.amazonaws.services.lambda.runtime.LambdaLogger;
 import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
 import com.fasterxml.jackson.databind.util.ByteBufferBackedInputStream;
 import com.fasterxml.jackson.jr.ob.JSON;
@@ -20,14 +17,13 @@ import io.fineo.schema.store.SchemaBuilder;
 import io.fineo.schema.store.SchemaStore;
 import org.apache.avro.file.CodecFactory;
 import org.apache.avro.generic.GenericData;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.Map;
-import java.util.function.Function;
 import java.util.function.Supplier;
-import java.util.function.UnaryOperator;
 import java.util.zip.Deflater;
 
 
@@ -36,26 +32,26 @@ import java.util.zip.Deflater;
  */
 public class KinesisToFirehoseAvroWriter {
 
-  private LambdaLogger logger;
+  private static final Log LOG = LogFactory.getLog(KinesisToFirehoseAvroWriter.class);
   private AmazonKinesisFirehoseClient firehoseClient;
   private FirehoseClientProperties props;
   private SchemaStore store;
 
-  public void handler(KinesisEvent event, Context context) throws IOException {
-    setup(context);
+  public void handler(KinesisEvent event) throws IOException {
+    setup();
     try {
-      handleEvent(event, context);
+      handleEvent(event);
     } catch (Exception e) {
       malformedEvent(event);
     }
   }
 
   @VisibleForTesting
-  void handleEvent(KinesisEvent event, Context context) throws IOException {
+  void handleEvent(KinesisEvent event) throws IOException {
     PutRecordBatchRequest batch = null;
     PutRecordBatchRequest malformedBatch = null;
     for (KinesisEvent.KinesisEventRecord rec : event.getRecords()) {
-      logger.log("Got message ");
+      LOG.trace("Got message");
       ByteBuffer data = rec.getKinesis().getData();
       data.mark();
       // parse out the json
@@ -84,11 +80,11 @@ public class KinesisToFirehoseAvroWriter {
       batch = addCorrectlyFormedRecord(batch, writer.write(outRecord));
     }
 
-    logger.log("write out the correct (" + batch.getRecords().size() + ") and malformed "
-               + "(" + malformedBatch.getRecords().size() + ") records");
+    LOG.debug("write out the correct (" + batch.getRecords().size() + ") and malformed "
+              + "(" + malformedBatch.getRecords().size() + ") records");
     firehoseClient.putRecordBatch(batch);
     firehoseClient.putRecordBatch(malformedBatch);
-    logger.log("Finished writing record batches");
+    LOG.debug("Finished writing record batches");
   }
 
   private void malformedEvent(KinesisEvent event) {
@@ -96,9 +92,9 @@ public class KinesisToFirehoseAvroWriter {
     for (KinesisEvent.KinesisEventRecord record : event.getRecords()) {
       malformedBatch = addMalformedRecord(malformedBatch, record.getKinesis().getData());
     }
-    logger.log("Putting message to firehose");
+    LOG.trace("Putting message to firehose");
     firehoseClient.putRecordBatch(malformedBatch);
-    logger.log("Successfully put message to firehose");
+    LOG.trace("Successfully put message to firehose");
   }
 
   private PutRecordBatchRequest addCorrectlyFormedRecord(PutRecordBatchRequest batch, ByteBuffer
@@ -121,13 +117,8 @@ public class KinesisToFirehoseAvroWriter {
     return batch;
   }
 
-  private void setup(Context context) throws IOException {
+  private void setup() throws IOException {
     props = FirehoseClientProperties.load();
-    logger = context.getLogger();
-    if (logger == null) {
-      logger = s -> System.err.println(s);
-    }
-
     this.store = props.createSchemaStore();
 
     firehoseClient = new AmazonKinesisFirehoseClient();
@@ -146,15 +137,14 @@ public class KinesisToFirehoseAvroWriter {
       status = describeHoseResult.getDeliveryStreamDescription().getDeliveryStreamStatus();
     } catch (Exception e) {
       System.out.println(e.getLocalizedMessage());
-      logger.log("Firehose Not Existent - " + e.getLocalizedMessage() + ", \n stack trace:\n" +
-                 Arrays.toString(e.getStackTrace()));
+      LOG.error("Firehose " + deliveryStreamName + " Not Existent", e);
       throw new RuntimeException(e);
     }
     if (status.equalsIgnoreCase("ACTIVE")) {
-      logger.log("Firehose ACTIVE " + deliveryStreamName);
+      LOG.debug("Firehose ACTIVE " + deliveryStreamName);
       //return;
     } else if (status.equalsIgnoreCase("CREATING")) {
-      logger.log("Firehose CREATING " + deliveryStreamName);
+      LOG.debug("Firehose CREATING " + deliveryStreamName);
       try {
         Thread.sleep(5000);
       } catch (InterruptedException e) {
@@ -162,7 +152,7 @@ public class KinesisToFirehoseAvroWriter {
       }
       checkHoseStatus(deliveryStreamName);
     } else {
-      logger.log("Status = " + status);
+      LOG.debug("Status = " + status);
     }
   }
 }
