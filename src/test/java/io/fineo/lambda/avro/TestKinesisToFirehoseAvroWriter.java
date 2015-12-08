@@ -2,6 +2,7 @@ package io.fineo.lambda.avro;
 
 import com.amazonaws.services.kinesisfirehose.AmazonKinesisFirehoseClient;
 import com.amazonaws.services.kinesisfirehose.model.PutRecordBatchRequest;
+import com.amazonaws.services.kinesisfirehose.model.PutRecordBatchResponseEntry;
 import com.amazonaws.services.kinesisfirehose.model.PutRecordBatchResult;
 import com.amazonaws.services.kinesisfirehose.model.Record;
 import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
@@ -19,6 +20,7 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.junit.Test;
+import org.mockito.Mock;
 import org.mockito.Mockito;
 
 import java.io.ByteArrayOutputStream;
@@ -146,7 +148,7 @@ public class TestKinesisToFirehoseAvroWriter {
 
     List<PutRecordBatchRequest> requests = doSetupAndWrite(props, client, store, result, event);
     assertEquals(2, requests.size());
-    assertEquals(recordCount-10, requests.get(0).getRecords().size());
+    assertEquals(recordCount - 10, requests.get(0).getRecords().size());
     assertEquals(10, requests.get(1).getRecords().size());
     verifyRecords(requests, records);
 
@@ -159,7 +161,64 @@ public class TestKinesisToFirehoseAvroWriter {
 
   @Test
   public void testRetryFailedRequests() throws Exception {
+    int recordCount = 5;
+    int failureCount = 2;
+    Map<String, Object>[] records = createRecords(recordCount);
 
+    // setup the mocks/fakes
+    FirehoseClientProperties props = getBasicProperties();
+    AmazonKinesisFirehoseClient client = Mockito.mock(AmazonKinesisFirehoseClient.class);
+
+    // setup the responses as 2 failures and then all success
+    PutRecordBatchResult result = new PutRecordBatchResult();
+    PutRecordBatchResponseEntry success = new PutRecordBatchResponseEntry()
+      .withRecordId("written-id");
+    PutRecordBatchResponseEntry failure =
+      new PutRecordBatchResponseEntry().withErrorCode("1").withErrorMessage("Some error");
+    result.withRequestResponses(success, failure, success, success, failure);
+    result.setFailedPutCount(failureCount);
+
+    PutRecordBatchResult secondResult = new PutRecordBatchResult();
+    secondResult.withRequestResponses(success, success);
+    secondResult.setFailedPutCount(0);
+
+    List<PutRecordBatchResult> results = Lists.newArrayList(result, secondResult);
+    List<Pair<PutRecordBatchRequest, List<Record>>> requests = new ArrayList<>();
+    Mockito.when(client.putRecordBatch(Mockito.any(PutRecordBatchRequest.class)))
+           .then(invocation -> {
+             PutRecordBatchRequest request = (PutRecordBatchRequest) invocation.getArguments()[0];
+             List<Record> records1 = Lists.newArrayList(request.getRecords());
+             requests.add(new Pair<>(request, records1));
+             return results.remove(0);
+           });
+
+    Pair<KinesisEvent, SchemaStore> created = createStoreAndSingleEvent(records);
+    KinesisEvent event = created.getKey();
+    SchemaStore store = created.getValue();
+
+    // update the writer with the test properties
+    KinesisToFirehoseAvroWriter writer = new KinesisToFirehoseAvroWriter();
+    writer.setupForTesting(props, client, store);
+
+    // actually run the test
+    writer.handleEvent(event);
+
+    assertEquals(2, requests.size());
+    assertTrue("Didn't reuse batch request for second write",
+      requests.get(0).getKey() == requests.get(1).getKey());
+    assertEquals(recordCount, requests.get(0).getValue().size());
+    assertEquals(failureCount, requests.get(1).getValue().size());
+    // verify the records we wrote
+    PutRecordBatchRequest copyRequest =
+      new PutRecordBatchRequest().withRecords(requests.get(0).getValue());
+    verifyRecords(Lists.newArrayList(copyRequest), records);
+    // failed records are the only ones retained
+    Map<String, Object>[] retried = new Map[]{records[1], records[4]};
+    verifyRecords(Lists.newArrayList(requests.get(1).getKey()),retried);
+
+    // verify the mocks
+    Mockito.verify(client, Mockito.times(2))
+           .putRecordBatch(Mockito.any(PutRecordBatchRequest.class));
   }
 
   private void verifyRecords(List<PutRecordBatchRequest> requests, Map<String, Object>[] records)
@@ -167,7 +226,7 @@ public class TestKinesisToFirehoseAvroWriter {
     byte[] data = combineRecords(requests);
     FirehoseReader<GenericRecord> reader = new FirehoseReader<>(new SeekableByteArrayInput(data));
     for (int i = 0; i < records.length; i++) {
-      LOG.info("Reading and verifying record: "+i);
+      LOG.info("Reading and verifying record: " + i);
       // verify that we read the next record in order of it being written
       GenericRecord avro = reader.next();
       String orgId = (String) records[i].get(SchemaBuilder.ORG_ID_KEY);
