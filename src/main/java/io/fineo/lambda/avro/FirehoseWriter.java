@@ -4,6 +4,8 @@ import org.apache.avro.file.CodecFactory;
 import org.apache.avro.file.DataFileWriter;
 import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
@@ -17,6 +19,7 @@ import java.nio.ByteBuffer;
  */
 public class FirehoseWriter {
 
+  private static final Log LOG = LogFactory.getLog(FirehoseWriter.class);
   private static final byte[] intSpace = new byte[]{0, 0, 0, 0};
   private CodecFactory codec;
 

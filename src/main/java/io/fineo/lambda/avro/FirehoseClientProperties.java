@@ -1,5 +1,6 @@
 package io.fineo.lambda.avro;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import io.fineo.schema.store.SchemaStore;
 
@@ -8,19 +9,19 @@ import java.io.InputStream;
 import java.util.Properties;
 
 /**
- *
+ * Simple wrapper around java properties
  */
 public class FirehoseClientProperties {
 
   private static final String PROP_FILE_NAME = "fineo-kinesis-firehose.properties";
-  private static final String FIREHOSE_URL = "fineo.firehose.url";
-  private static final String FIREHOSE_STREAM_NAME = "fineo.firehose.stream.name";
-  private static final java.lang.String FIREHOSE_MALFORMED_STREAM_NAME =
-    "fineo.firehose.stream.malformed";
+  static final String FIREHOSE_URL = "fineo.firehose.url";
+  static final String FIREHOSE_STREAM_NAME = "fineo.firehose.stream.name";
+  static final java.lang.String FIREHOSE_MALFORMED_STREAM_NAME = "fineo.firehose.stream.malformed";
+
   private final Properties props;
 
-
-  public FirehoseClientProperties(Properties props) {
+  @VisibleForTesting
+  FirehoseClientProperties(Properties props) {
     this.props = props;
   }
 

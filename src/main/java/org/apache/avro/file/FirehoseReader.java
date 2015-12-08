@@ -35,13 +35,13 @@ public class FirehoseReader<D> {
       }
       datum.setExpected(null);
       // seek out the next length into a byte array
-      this.translated.moveForward(OFFSET_COUNT_LENGTH);
+      this.translated.nextBlock(OFFSET_COUNT_LENGTH);
       byte[] bytes = new byte[OFFSET_COUNT_LENGTH];
       translated.read(bytes, 0, bytes.length);
       // bytebuffer is better than DataInputStream here b/c DIS chokes on some lengths when reading
       // back 4 bytes...yeah, I dunno.
       int recordLength = readInt(bytes);
-      translated.moveForward(recordLength);
+      translated.nextBlock(recordLength);
       reader = new DataFileReader<D>(translated, datum);
       return next(reuse);
     }

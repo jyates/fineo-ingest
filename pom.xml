@@ -16,8 +16,9 @@
     <jackson-jr.version>2.6.3</jackson-jr.version>
 
     <!-- Test dependencies -->
-    <junit.version>4.12</junit.version>
     <surefire.version>2.19</surefire.version>
+    <junit.version>4.12</junit.version>
+    <mockito.version>1.10.19</mockito.version>
 
     <!-- Test properties -->
     <test.output.to.file>true</test.output.to.file>
@@ -27,6 +28,7 @@
     <app.main.class>io.fineo.lambda.avro.KinesisToFirehoseAvroWriter</app.main.class>
     <maven.compile.version>1.8</maven.compile.version>
     <aws-lambda-java-log4j.version>1.0.0</aws-lambda-java-log4j.version>
+
   </properties>
 
   <dependencies>
@@ -51,6 +53,12 @@
       <artifactId>aws-lambda-java-log4j</artifactId>
       <version>${aws-lambda-java-log4j.version}</version>
     </dependency>
+    <!-- Handle logging warning for local logs -->
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-log4j12</artifactId>
+      <version>1.7.13</version>
+    </dependency>
     <dependency>
       <groupId>io.fineo.schema</groupId>
       <artifactId>schema-mgmt</artifactId>
@@ -68,6 +76,18 @@
       <artifactId>junit</artifactId>
       <version>${junit.version}</version>
       <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-all</artifactId>
+      <version>${mockito.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.fineo.schema</groupId>
+      <artifactId>schema-mgmt</artifactId>
+      <version>${fineo-schema-mgmt.version}</version>
+      <scope>test</scope>
+      <classifier>tests</classifier>
     </dependency>
   </dependencies>
 
