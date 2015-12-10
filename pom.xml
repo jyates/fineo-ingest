@@ -259,9 +259,13 @@
                   <goal>shade</goal>
                 </goals>
                 <configuration>
-                  <!--<minimizeJar>true</minimizeJar>-->
+                  <minimizeJar>true</minimizeJar>
                   <artifactSet>
                     <excludes>
+                      <!-- logging jars -->
+                      <exclude>log4j:log4j</exclude>
+                      <exclude>org.slf4j:slf4j-log4j12</exclude>
+                      <!-- Test jars -->
                       <exclude>junit:junit</exclude>
                       <exclude>com.amazonaws:DynamoDBLocal</exclude>
                       <exclude>io.fineo.aws:aws-common</exclude>
@@ -276,14 +280,17 @@
                         <exclude>META-INF/*.SF</exclude>
                         <exclude>META-INF/*.DSA</exclude>
                         <exclude>META-INF/*.RSA</exclude>
+                        <exclude>.gitkeep</exclude>
+                        <!-- Executable producer - huge!... not needed since we use the java api -->
+                        <exclude>amazon-kinesis-producer-native-binaries/**</exclude>
                       </excludes>
                     </filter>
                   </filters>
                   <transformers>
                     <transformer
                        implementation="org.apache.maven.plugins.shade.resource.IncludeResourceTransformer">
-                      <resource>fineo-kinesis-firehose.properties</resource>
-                      <file>config/fineo-kinesis-firehose.properties</file>
+                      <resource>fineo-lambda.properties</resource>
+                      <file>config/fineo-lambda.properties</file>
                     </transformer>
                     <transformer
                        implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
