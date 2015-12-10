@@ -1,8 +1,14 @@
 package io.fineo.lambda.avro;
 
+import com.amazonaws.auth.AWSCredentialsProvider;
+import com.amazonaws.auth.AWSCredentialsProviderChain;
+import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
+import io.fineo.schema.aws.dynamodb.DynamoDBRepository;
 import io.fineo.schema.store.SchemaStore;
+import org.schemarepo.ValidatorFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -14,11 +20,16 @@ import java.util.Properties;
 public class FirehoseClientProperties {
 
   private static final String PROP_FILE_NAME = "fineo-lambda.properties";
+
   private final java.lang.String KINESIS_URL = "fineo.kinesis.url";
   static final String PARSED_STREAM_NAME = "fineo.kinesis.parsed";
 
   static final String FIREHOSE_URL = "fineo.firehose.url";
   static final java.lang.String FIREHOSE_MALFORMED_STREAM_NAME = "fineo.firehose.malformed";
+
+  static final String DYNAMO_ENDPOINT = "fineo.dynamo.url";
+  static final String DYNAMO_SCHEMA_STORE_TABLE = "fineo.dynamo.schema-store.table";
+  private AWSCredentialsProvider provider;
 
   private final Properties props;
 
@@ -36,11 +47,18 @@ public class FirehoseClientProperties {
     Preconditions.checkArgument(input != null, "Could not load properties file: " + input);
     Properties props = new Properties();
     props.load(input);
-    return new FirehoseClientProperties(props);
+    FirehoseClientProperties fProps = new FirehoseClientProperties(props);
+    fProps.provider = new DefaultAWSCredentialsProviderChain();
+    return fProps;
   }
 
   public SchemaStore createSchemaStore() {
-    return null;
+    AmazonDynamoDBClient client = new AmazonDynamoDBClient(provider);
+    client.setEndpoint(props.getProperty(DYNAMO_ENDPOINT));
+    DynamoDBRepository repo = new DynamoDBRepository(client, props.getProperty
+      (DYNAMO_SCHEMA_STORE_TABLE),
+      new ValidatorFactory.Builder().build());
+    return new SchemaStore(repo);
   }
 
   public String getKinesisEndpoint() {
@@ -58,5 +76,22 @@ public class FirehoseClientProperties {
 
   public String getFirehoseMalformedStreamName() {
     return props.getProperty(FIREHOSE_MALFORMED_STREAM_NAME);
+  }
+
+  @VisibleForTesting
+  public void setAwsCredentialProviderForTesting(AWSCredentialsProvider provider) throws Exception {
+    this.provider = provider;
+  }
+
+  public static FirehoseClientProperties createForTesting(Properties props,
+    SchemaStore schemaStore) {
+    FirehoseClientProperties client = new FirehoseClientProperties(props) {
+      @Override
+      public SchemaStore createSchemaStore() {
+        return schemaStore;
+      }
+    };
+
+    return client;
   }
 }
