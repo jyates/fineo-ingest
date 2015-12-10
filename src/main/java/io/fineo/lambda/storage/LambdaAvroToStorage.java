@@ -2,11 +2,15 @@ package io.fineo.lambda.storage;
 
 import com.amazonaws.services.kinesisfirehose.AmazonKinesisFirehoseClient;
 import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
+import io.fineo.lambda.avro.FirehoseBatchWriter;
 import io.fineo.lambda.avro.FirehoseClientProperties;
-import io.fineo.lambda.avro.FirehoseUtils;
 import org.apache.avro.file.FirehoseRecordReader;
+import org.apache.avro.file.SeekableByteArrayInput;
+import org.apache.avro.file.TranslatedSeekableInput;
+import org.apache.avro.generic.GenericRecord;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 /**
  * Writes avro encoded files into the correct storage locations.
@@ -25,10 +29,9 @@ import java.io.IOException;
  * </p>
  */
 public class LambdaAvroToStorage {
-
-  private AmazonKinesisFirehoseClient firehoseClient;
+  
   private FirehoseClientProperties props;
-  private AmazonKinesisFirehoseClient firehose;
+  private FirehoseBatchWriter firehose;
   private AvroToDynamoWriter dynamo;
 
   public void handler(KinesisEvent event) throws IOException {
@@ -37,14 +40,30 @@ public class LambdaAvroToStorage {
   }
 
   private void handleEvent(KinesisEvent event) throws IOException {
-    //
+
+    for (KinesisEvent.KinesisEventRecord record : event.getRecords()) {
+      ByteBuffer data = record.getKinesis().getData();
+      this.firehose.addToBatch(data);
+
+      // convert the raw bytes to a GenericRecord and let the writer deal with writing it
+      FirehoseRecordReader<GenericRecord> recordReader = new FirehoseRecordReader<>(
+        new TranslatedSeekableInput(data.arrayOffset(), data.limit(),
+          new SeekableByteArrayInput(data.array())));
+      GenericRecord reuse = recordReader.next();
+      while (reuse != null) {
+        this.dynamo.write(reuse);
+        reuse = recordReader.next(reuse);
+      }
+    }
+    this.firehose.flush();
+    this.dynamo.flush();
   }
 
   private void setup() throws IOException {
     props = FirehoseClientProperties.load();
 
-    this.firehose = FirehoseUtils.createFirehoseAndCheck(props,
-      props.getFirehoseStagedStreamName());
+    this.firehose = new FirehoseBatchWriter(props, ByteBuffer::duplicate, props
+      .getFirehoseStagedStreamName());
 
     this.dynamo = AvroToDynamoWriter.create(props);
   }

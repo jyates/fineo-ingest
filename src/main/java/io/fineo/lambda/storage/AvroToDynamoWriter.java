@@ -3,6 +3,7 @@ package io.fineo.lambda.storage;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
 import com.amazonaws.services.dynamodbv2.document.DynamoDB;
 import io.fineo.lambda.avro.FirehoseClientProperties;
+import org.apache.avro.generic.GenericRecord;
 
 /**
  * Write avro encoded records into dynamo
@@ -34,5 +35,13 @@ public class AvroToDynamoWriter {
   public static AvroToDynamoWriter create(FirehoseClientProperties props) {
     AmazonDynamoDBClient client = props.getDynamo();
     return new AvroToDynamoWriter(client, props.getDynamoIngestTablePrefix());
+  }
+
+  public void write(GenericRecord reuse) {
+
+  }
+
+  public void flush() {
+
   }
 }
