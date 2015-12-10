@@ -13,7 +13,7 @@ Standard maven stuff here. Requirements:
 A deployable package can be built with:
 
 ```
- $ ./build.sh <options>
+ $ ./build.rb <options>
 ```
 
 It's a light wrapper around maven to add a properties file we can use to set connection information.
