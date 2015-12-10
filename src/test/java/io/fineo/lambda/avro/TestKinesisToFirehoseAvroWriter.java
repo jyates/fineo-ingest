@@ -8,6 +8,7 @@ import com.amazonaws.services.kinesisfirehose.model.Record;
 import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
 import com.fasterxml.jackson.jr.ob.JSON;
 import com.google.common.collect.Lists;
+import io.fineo.internal.customer.Malformed;
 import io.fineo.schema.OldSchemaException;
 import io.fineo.schema.avro.SchemaTestUtils;
 import io.fineo.schema.avro.SchemaUtils;
@@ -20,18 +21,19 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.junit.Test;
-import org.mockito.Mock;
 import org.mockito.Mockito;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -214,11 +216,59 @@ public class TestKinesisToFirehoseAvroWriter {
     verifyRecords(Lists.newArrayList(copyRequest), records);
     // failed records are the only ones retained
     Map<String, Object>[] retried = new Map[]{records[1], records[4]};
-    verifyRecords(Lists.newArrayList(requests.get(1).getKey()),retried);
+    verifyRecords(Lists.newArrayList(requests.get(1).getKey()), retried);
 
     // verify the mocks
     Mockito.verify(client, Mockito.times(2))
            .putRecordBatch(Mockito.any(PutRecordBatchRequest.class));
+  }
+
+  @Test
+  public void testMalformedEvents() throws Exception {
+    // setup the broken events
+    List<Map<String, Object>> records = new ArrayList<>();
+    Map<String, Object> missingMetric = new HashMap<>();
+    missingMetric.put("field1", "v1");
+    missingMetric.put(SchemaBuilder.ORG_ID_KEY, "orgid");
+    records.add(missingMetric);
+    Map<String, Object> missingOrg = new HashMap<>();
+    missingMetric.put("field1", "v1");
+    missingMetric.put(SchemaBuilder.ORG_METRIC_TYPE_KEY, "metricid");
+    records.add(missingOrg);
+    Map<String, Object> correctlyFormedWrongOrg = createRecords(1)[0];
+    records.add(correctlyFormedWrongOrg);
+
+    Map<String, Object>[] otherOrgs = createRecords(1);
+    Pair<KinesisEvent, SchemaStore> created = createStoreAndSingleEvent(otherOrgs);
+    SchemaStore store = created.getValue();
+    KinesisEvent event =
+      (KinesisEvent) createStoreAndSingleEvent(records.toArray(new Map[0])).getKey();
+
+    // setup the mocks/fakes
+    FirehoseClientProperties props = getBasicProperties();
+    AmazonKinesisFirehoseClient client = Mockito.mock(AmazonKinesisFirehoseClient.class);
+    PutRecordBatchResult result = Mockito.mock(PutRecordBatchResult.class);
+
+    // do a basic write, but it should cause two malformed records, rather than a regular record
+    List<PutRecordBatchRequest> requests = doSetupAndWrite(props, client, store, result, event);
+    assertEquals(1, requests.size());
+    PutRecordBatchRequest request = requests.get(0);
+    assertEquals(3, request.getRecords().size());
+
+    // verify the mocks
+    Mockito.verify(client, Mockito.times(1))
+           .putRecordBatch(Mockito.any(PutRecordBatchRequest.class));
+
+    // verify the data
+    byte[] data = combineRecords(requests);
+    FirehoseReader<Malformed> reader =
+      new FirehoseReader<>(new SeekableByteArrayInput(data), Malformed.class);
+    List<KinesisEvent.KinesisEventRecord> sent = event.getRecords();
+    for (int i = 0; i < sent.size(); i++) {
+      Malformed record = reader.next();
+      ByteBuffer bytes = record.getRecordContent();
+      assertEquals(sent.get(i).getKinesis().getData(), bytes);
+    }
   }
 
   private void verifyRecords(List<PutRecordBatchRequest> requests, Map<String, Object>[] records)
@@ -238,8 +288,8 @@ public class TestKinesisToFirehoseAvroWriter {
   }
 
   private List<PutRecordBatchRequest> doSetupAndWrite(FirehoseClientProperties props,
-    AmazonKinesisFirehoseClient
-      client, SchemaStore store, PutRecordBatchResult result, KinesisEvent... events)
+    AmazonKinesisFirehoseClient client, SchemaStore store, PutRecordBatchResult result,
+    KinesisEvent... events)
     throws IOException {
     KinesisToFirehoseAvroWriter writer = new KinesisToFirehoseAvroWriter();
     // update the writer with the test properties
@@ -287,6 +337,9 @@ public class TestKinesisToFirehoseAvroWriter {
     throws IOException, OldSchemaException {
     String orgId = (String) event.get(SchemaBuilder.ORG_ID_KEY);
     String metricType = (String) event.get(SchemaBuilder.ORG_METRIC_TYPE_KEY);
+    if (orgId == null || metricType == null) {
+      return null;
+    }
     if (store == null) {
       return SchemaTestUtils.createStoreWithBooleanFields(orgId, metricType);
     }

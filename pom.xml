@@ -123,6 +123,26 @@
         </plugin>
       </plugins>
     </pluginManagement>
+    <plugins>
+      <!-- Process the 'static' schema files in src/main/resources/avro -->
+      <plugin>
+        <groupId>org.apache.avro</groupId>
+        <artifactId>avro-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>schema</goal>
+              <goal>idl-protocol</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <sourceDirectory>src/main/resources/avro</sourceDirectory>
+          <stringType>String</stringType>
+        </configuration>
+      </plugin>
+    </plugins>
   </build>
 
   <profiles>

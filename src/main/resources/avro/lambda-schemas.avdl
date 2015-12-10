@@ -1,0 +1,14 @@
+// Schemas for managing lambda flows
+//
+// The top level protocol is merely a wrapper to use the IDL.
+// The parts we care about are the actual record instances
+
+
+@namespace("io.fineo.internal.customer")
+protocol Lambda{
+
+  // A malformed record instance
+  record Malformed {
+    bytes recordContent;
+  }
+}

@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.util.ByteBufferBackedInputStream;
 import com.fasterxml.jackson.jr.ob.JSON;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
+import io.fineo.internal.customer.Malformed;
 import io.fineo.schema.MapRecord;
 import io.fineo.schema.avro.AvroSchemaBridge;
 import io.fineo.schema.store.SchemaStore;
@@ -131,7 +132,7 @@ public class KinesisToFirehoseAvroWriter {
     writeBatch(batch);
   }
 
-  private void malformedEvent(KinesisEvent event) {
+  private void malformedEvent(KinesisEvent event) throws IOException {
     PutRecordBatchRequest malformedBatch = null;
     for (KinesisEvent.KinesisEventRecord record : event.getRecords()) {
       malformedBatch = addMalformedRecord(malformedBatch, record.getKinesis().getData());
@@ -146,8 +147,14 @@ public class KinesisToFirehoseAvroWriter {
     return addRecordToBatch(batch, props::getFirehoseStreamName, data);
   }
 
-  private PutRecordBatchRequest addMalformedRecord(PutRecordBatchRequest batch, ByteBuffer data) {
-    return addRecordToBatch(batch, props::getFirehoseMalformedStreamName, data);
+  private PutRecordBatchRequest addMalformedRecord(PutRecordBatchRequest batch, ByteBuffer data)
+    throws IOException {
+    // convert the data into a malformed record
+    Malformed mal = Malformed.newBuilder().setRecordContent(data).build();
+    // write it out into a new bytebuffer that we can read
+    FirehoseWriter writer = new FirehoseWriter();
+    ByteBuffer encoded = writer.write(mal);
+    return addRecordToBatch(batch, props::getFirehoseMalformedStreamName, encoded);
   }
 
   public PutRecordBatchRequest addRecordToBatch(PutRecordBatchRequest batch,
