@@ -7,31 +7,54 @@ debug = ENV["DEBUG"] || "t"
 
 require 'optparse'
 
+# Value, file key suffix
+#
+# Pair values are the suffix and map to the names that the FirehoseClientProperties uses to parse
+# information from the properties file. They will all be prefixed with 'fineo.' on write
 Pair = Struct.new(:one, :two)
+
+# Populate the options with default values and the correct key suffix
 opts = {
+
   :kinesis => Pair.new("kinesis.us-east-1.amazonaws.com", "kinesis.url"),
   :parsed => Pair.new("fineo-parsed-records", "kinesis.parsed"),
 
   :firehose => Pair.new("https://firehose.us-east-1.amazonaws.com", "firehose.url"),
-  :malformed => Pair.new("fineo-malformed-records", "firehose.malformed")
+  :malformed => Pair.new("fineo-malformed-records", "firehose.malformed"),
+
+  :dynamo => Pair.new("https://dynamodb.us-east-1.amazonaws.com", "dynamo.url"),
+  :schema_table => Pair.new("customer-schema", "dynamo.schema-store.table")
 }
+
+# set pair value at option[ref]
+def set(options, ref, value)
+  options[ref].one = value
+end
 
 file = File.basename(__FILE__)
 parser = OptionParser.new do|opts|
   opts.banner = "Usage: #{file} [options]"
   opts.on('-k', '--kinesis-url kinesis-url', 'Kinesis address - not a URL') do |url|
-    options[:kinesis].one = url;
+    set(options, :kinesis, url)
   end
   opts.on('-p', '--parsed-stream stream name', 'Parsed Avro record Kinesis stream name') do |name|
-    options[:parsed].one = name;
+    set options, :parsed, name
   end
 
   opts.on('-f', '--firehose-url firehose-url', 'Firehose Url') do |url|
-    options[:firehose].one = url;
+    set options, :firehose, url
   end
   opts.on('-m', '--malformed-stream stream name', 'Malformed event Kinesis Firehose stream name') do |name|
-    options[:malformed].one = name;
+    set options, :malformed, name
   end
+
+  opts.on('d', '--dynamo-url dynamo-url', 'DynamoDB Endpoint Url') do |url|
+    set options, :dynamo, url
+  end
+  opts.on('s', '--dynamo-schema-table table-name', 'DynamoDB schema repository table name') do |name|
+    set options, :schema_table, name
+  end
+
   opts.on('-h', '--help', 'Displays Help') do
     puts opts
     exit
@@ -44,7 +67,7 @@ parser.parse!
 Dir.mkdir(confDir) unless Dir.exists? confDir
 
 def add_opt(file, pair)
-  file.puts "#{pair.two}=#{pair.one}"
+  file.puts "fineo.#{pair.two}=#{pair.one}"
 end
 
 

@@ -259,7 +259,16 @@
                   <goal>shade</goal>
                 </goals>
                 <configuration>
-                  <minimizeJar>true</minimizeJar>
+                  <!--<minimizeJar>true</minimizeJar>-->
+                  <artifactSet>
+                    <excludes>
+                      <exclude>junit:junit</exclude>
+                      <exclude>com.amazonaws:DynamoDBLocal</exclude>
+                      <exclude>io.fineo.aws:aws-common</exclude>
+                      <exclude>io.fineo.schema:schema-mgmt:tests</exclude>
+                      <exclude>org.mockito:mockito-all</exclude>
+                    </excludes>
+                  </artifactSet>
                   <filters>
                     <filter>
                       <artifact>*:*</artifact>

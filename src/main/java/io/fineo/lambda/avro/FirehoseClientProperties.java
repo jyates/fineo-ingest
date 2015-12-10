@@ -55,9 +55,9 @@ public class FirehoseClientProperties {
   public SchemaStore createSchemaStore() {
     AmazonDynamoDBClient client = new AmazonDynamoDBClient(provider);
     client.setEndpoint(props.getProperty(DYNAMO_ENDPOINT));
-    DynamoDBRepository repo = new DynamoDBRepository(client, props.getProperty
-      (DYNAMO_SCHEMA_STORE_TABLE),
-      new ValidatorFactory.Builder().build());
+    DynamoDBRepository repo =
+      new DynamoDBRepository(client, props.getProperty(DYNAMO_SCHEMA_STORE_TABLE),
+        new ValidatorFactory.Builder().build());
     return new SchemaStore(repo);
   }
 
