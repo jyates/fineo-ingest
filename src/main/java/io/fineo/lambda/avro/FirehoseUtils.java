@@ -1,5 +1,6 @@
 package io.fineo.lambda.avro;
 
+import com.amazonaws.services.kinesisfirehose.AmazonKinesisFirehoseAsyncClient;
 import com.amazonaws.services.kinesisfirehose.AmazonKinesisFirehoseClient;
 import com.amazonaws.services.kinesisfirehose.model.DescribeDeliveryStreamRequest;
 import com.amazonaws.services.kinesisfirehose.model.DescribeDeliveryStreamResult;
@@ -18,16 +19,18 @@ public class FirehoseUtils {
     // private ctor for utils
   }
 
-  public static AmazonKinesisFirehoseClient createFirehoseAndCheck(FirehoseClientProperties props,
-    String... names) {
-    AmazonKinesisFirehoseClient firehoseClient = createFireHose(props);
-    checkHoseStatus(firehoseClient, props.getFirehoseMalformedStreamName());
+  public static AmazonKinesisFirehoseAsyncClient createFirehoseAndCheck(
+    FirehoseClientProperties props, String... names) {
+    AmazonKinesisFirehoseAsyncClient firehoseClient = createFireHose(props);
+    for (String name : names) {
+      checkHoseStatus(firehoseClient, name);
+    }
 
     return firehoseClient;
   }
 
-  public static AmazonKinesisFirehoseClient createFireHose(FirehoseClientProperties props){
-    AmazonKinesisFirehoseClient firehoseClient = new AmazonKinesisFirehoseClient();
+  public static AmazonKinesisFirehoseAsyncClient createFireHose(FirehoseClientProperties props) {
+    AmazonKinesisFirehoseAsyncClient firehoseClient = new AmazonKinesisFirehoseAsyncClient();
     firehoseClient.setEndpoint(props.getFirehoseUrl());
     return firehoseClient;
   }

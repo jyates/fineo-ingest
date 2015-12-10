@@ -40,8 +40,9 @@ public class FirehoseBatchWriter {
     this.streamName = name;
   }
 
-  public FirehoseBatchWriter(Function<ByteBuffer, ByteBuffer> recordToOutputConverter, String
-    streamName, FirehoseClientProperties props) {
+  public FirehoseBatchWriter(FirehoseClientProperties props,
+    Function<ByteBuffer, ByteBuffer> recordToOutputConverter, String
+    streamName) {
     this(recordToOutputConverter, FirehoseUtils.createFireHose(props), streamName);
     FirehoseUtils.checkHoseStatus(client, streamName);
   }

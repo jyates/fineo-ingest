@@ -3,15 +3,10 @@ package io.fineo.lambda.avro;
 import com.amazonaws.services.kinesis.producer.KinesisProducer;
 import com.amazonaws.services.kinesis.producer.KinesisProducerConfiguration;
 import com.amazonaws.services.kinesisfirehose.AmazonKinesisFirehoseClient;
-import com.amazonaws.services.kinesisfirehose.model.PutRecordBatchRequest;
-import com.amazonaws.services.kinesisfirehose.model.PutRecordBatchResponseEntry;
-import com.amazonaws.services.kinesisfirehose.model.PutRecordBatchResult;
-import com.amazonaws.services.kinesisfirehose.model.Record;
 import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
 import com.fasterxml.jackson.databind.util.ByteBufferBackedInputStream;
 import com.fasterxml.jackson.jr.ob.JSON;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.Lists;
 import io.fineo.internal.customer.Malformed;
 import io.fineo.schema.MapRecord;
 import io.fineo.schema.avro.AvroSchemaBridge;
@@ -25,11 +20,8 @@ import org.apache.commons.logging.LogFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
-import java.util.function.Supplier;
 import java.util.zip.Deflater;
 
 
@@ -129,8 +121,8 @@ public class KinesisRecordToAvro {
       .setCustomEndpoint(props.getKinesisEndpoint());
     this.kinesis = new KinesisProducer(conf);
 
-    firehoseClient = new FirehoseBatchWriter(transform, props
-      .getFirehoseMalformedStreamName(), props);
+    firehoseClient = new FirehoseBatchWriter(props, transform, props
+      .getFirehoseMalformedStreamName());
   }
 
   @VisibleForTesting
