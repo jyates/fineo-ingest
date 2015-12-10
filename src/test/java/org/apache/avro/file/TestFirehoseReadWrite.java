@@ -1,7 +1,6 @@
 package org.apache.avro.file;
 
 import com.google.common.collect.Lists;
-import io.fineo.lambda.avro.FirehoseWriter;
 import io.fineo.schema.avro.AvroSchemaInstanceBuilder;
 import io.fineo.schema.store.SchemaBuilder;
 import org.apache.avro.Schema;
@@ -39,10 +38,10 @@ public class TestFirehoseReadWrite {
 
   private void writeAndVerifyRecordsAndCodec(GenericRecord... records)
     throws IOException {
-    FirehoseWriter writer = new FirehoseWriter();
+    FirehoseRecordWriter writer = new FirehoseRecordWriter();
     writeAndVerifyRecords(writer, records);
 
-    writer = new FirehoseWriter();
+    writer = new FirehoseRecordWriter();
     writer.setCodec(CodecFactory.bzip2Codec());
     writeAndVerifyRecords(writer, records);
   }
@@ -54,7 +53,7 @@ public class TestFirehoseReadWrite {
    * @param records
    * @throws IOException
    */
-  private void writeAndVerifyRecords(FirehoseWriter writer, GenericRecord... records)
+  private void writeAndVerifyRecords(FirehoseRecordWriter writer, GenericRecord... records)
     throws IOException {
     ByteArrayOutputStream out = new ByteArrayOutputStream();
     for (GenericRecord record : records) {
@@ -67,7 +66,7 @@ public class TestFirehoseReadWrite {
     byte[] raw = out.toByteArray();
     // read back in the record
     SeekableByteArrayInput is = new SeekableByteArrayInput(raw);
-    FirehoseReader<GenericRecord> reader = new FirehoseReader<>(is);
+    FirehoseRecordReader<GenericRecord> reader = new FirehoseRecordReader<>(is);
     List<GenericRecord> recordList = Lists.newArrayList(records);
     LOG.info("Starting with expected records: " + recordList);
     for (int i = 0; i < records.length; i++) {

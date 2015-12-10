@@ -310,6 +310,18 @@
 
     <!-- Setup the different test phases -->
     <profile>
+      <id>allTests</id>
+      <activation>
+        <property>
+          <name>allTests</name>
+        </property>
+      </activation>
+      <properties>
+        <surefire.skipAwsLocalTests>false</surefire.skipAwsLocalTests>
+        <surefire.skipSimpleTests>false</surefire.skipSimpleTests>
+      </properties>
+    </profile>
+    <profile>
       <id>awsLocalTests</id>
       <activation>
         <property>
@@ -318,6 +330,7 @@
       </activation>
       <properties>
         <surefire.skipAwsLocalTests>false</surefire.skipAwsLocalTests>
+        <surefire.skipSimpleTests>true</surefire.skipSimpleTests>
       </properties>
     </profile>
     <profile>

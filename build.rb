@@ -21,9 +21,11 @@ opts = {
 
   :firehose => Pair.new("https://firehose.us-east-1.amazonaws.com", "firehose.url"),
   :malformed => Pair.new("fineo-malformed-records", "firehose.malformed"),
+  :staged => Pair.new("fineo-staged-recods", "firehose.staged"),
 
   :dynamo => Pair.new("https://dynamodb.us-east-1.amazonaws.com", "dynamo.url"),
-  :schema_table => Pair.new("customer-schema", "dynamo.schema-store.table")
+  :schema_table => Pair.new("customer-schema", "dynamo.schema-store"),
+  :ingest_prefix => Pair.new("customer-ingest", "dynamo.ingest.prefix")
 }
 
 # set pair value at option[ref]
@@ -44,8 +46,12 @@ parser = OptionParser.new do|opts|
   opts.on('-f', '--firehose-url firehose-url', 'Firehose Url') do |url|
     set options, :firehose, url
   end
-  opts.on('-m', '--malformed-stream stream name', 'Malformed event Kinesis Firehose stream name') do |name|
+  opts.on('-m', '--malformed-stream stream-name', 'Malformed event Kinesis Firehose stream name')
+   do |name|
     set options, :malformed, name
+  end
+  opts.on('-t, '--staged-stream stream-name', 'Staged avro event Kinesis Firehose stream name')  do |name|
+    set options, :staged, name
   end
 
   opts.on('d', '--dynamo-url dynamo-url', 'DynamoDB Endpoint Url') do |url|
@@ -53,6 +59,9 @@ parser = OptionParser.new do|opts|
   end
   opts.on('s', '--dynamo-schema-table table-name', 'DynamoDB schema repository table name') do |name|
     set options, :schema_table, name
+  end
+  opts.on('i', '--dynamo-ingest-prefix table-prefix', 'DynamoDB ingest table name prefix') do |name|
+    set options, :ingest_prefix, name
   end
 
   opts.on('-h', '--help', 'Displays Help') do

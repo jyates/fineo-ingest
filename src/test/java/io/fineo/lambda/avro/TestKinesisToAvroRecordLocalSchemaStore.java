@@ -16,7 +16,7 @@ import io.fineo.schema.avro.SchemaUtils;
 import io.fineo.schema.store.SchemaBuilder;
 import io.fineo.schema.store.SchemaStore;
 import javafx.util.Pair;
-import org.apache.avro.file.FirehoseReader;
+import org.apache.avro.file.FirehoseRecordReader;
 import org.apache.avro.file.SeekableByteArrayInput;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.logging.Log;
@@ -256,7 +256,7 @@ public class TestKinesisToAvroRecordLocalSchemaStore {
     throws IOException {
     byte[] data = combineRecords(requests.stream().map(request -> request.buff));
 
-    FirehoseReader<GenericRecord> reader = new FirehoseReader<>(new SeekableByteArrayInput(data));
+    FirehoseRecordReader<GenericRecord> reader = new FirehoseRecordReader<>(new SeekableByteArrayInput(data));
     for (int i = 0; i < records.length; i++) {
       LOG.info("Reading and verifying record: " + i);
       // verify that we read the next record in order of it being written
@@ -278,7 +278,7 @@ public class TestKinesisToAvroRecordLocalSchemaStore {
           request.getRecords().stream())
         .map(Record::getData));
 
-    FirehoseReader<Malformed> reader = new FirehoseReader<>(new SeekableByteArrayInput
+    FirehoseRecordReader<Malformed> reader = new FirehoseRecordReader<>(new SeekableByteArrayInput
       (data), Malformed.class);
     List<KinesisEvent.KinesisEventRecord> sent = event.getRecords();
     for (KinesisEvent.KinesisEventRecord aSent : sent) {

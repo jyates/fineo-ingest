@@ -25,10 +25,12 @@ public class FirehoseClientProperties {
   static final String PARSED_STREAM_NAME = "fineo.kinesis.parsed";
 
   static final String FIREHOSE_URL = "fineo.firehose.url";
-  static final java.lang.String FIREHOSE_MALFORMED_STREAM_NAME = "fineo.firehose.malformed";
+  static final String FIREHOSE_MALFORMED_STREAM_NAME = "fineo.firehose.malformed";
+  static final String FIREHOSE_STAGED_STREAM_NAME = "fineo.firehose.staged";
 
   static final String DYNAMO_ENDPOINT = "fineo.dynamo.url";
-  static final String DYNAMO_SCHEMA_STORE_TABLE = "fineo.dynamo.schema-store.table";
+  static final String DYNAMO_SCHEMA_STORE_TABLE = "fineo.dynamo.schema-store";
+  private static final String DYNAMO_INGEST_TABLE_PREFIX = "fineo.dynamo.ingest.prefix";
   private AWSCredentialsProvider provider;
 
   private final Properties props;
@@ -52,9 +54,14 @@ public class FirehoseClientProperties {
     return fProps;
   }
 
-  public SchemaStore createSchemaStore() {
+  public AmazonDynamoDBClient getDynamo(){
     AmazonDynamoDBClient client = new AmazonDynamoDBClient(provider);
     client.setEndpoint(props.getProperty(DYNAMO_ENDPOINT));
+    return client;
+  }
+
+  public SchemaStore createSchemaStore() {
+    AmazonDynamoDBClient client = getDynamo();
     DynamoDBRepository repo =
       new DynamoDBRepository(client, props.getProperty(DYNAMO_SCHEMA_STORE_TABLE),
         new ValidatorFactory.Builder().build());
@@ -93,5 +100,13 @@ public class FirehoseClientProperties {
     };
 
     return client;
+  }
+
+  public String getFirehoseStagedStreamName() {
+    return props.getProperty(FIREHOSE_STAGED_STREAM_NAME);
+  }
+
+  public String getDynamoIngestTablePrefix() {
+    return props.getProperty(DYNAMO_INGEST_TABLE_PREFIX);
   }
 }

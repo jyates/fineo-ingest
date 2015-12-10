@@ -1,7 +1,5 @@
-package io.fineo.lambda.avro;
+package org.apache.avro.file;
 
-import org.apache.avro.file.CodecFactory;
-import org.apache.avro.file.DataFileWriter;
 import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.logging.Log;
@@ -17,16 +15,16 @@ import java.nio.ByteBuffer;
  * Writes an Avro {@link org.apache.avro.generic.GenericRecord} to a format that we can read back
  * from the firehose
  */
-public class FirehoseWriter {
+public class FirehoseRecordWriter {
 
-  private static final Log LOG = LogFactory.getLog(FirehoseWriter.class);
+  private static final Log LOG = LogFactory.getLog(FirehoseRecordWriter.class);
   private static final byte[] intSpace = new byte[]{0, 0, 0, 0};
   private CodecFactory codec;
 
-  public FirehoseWriter() {
+  public FirehoseRecordWriter() {
   }
 
-  public FirehoseWriter setCodec(CodecFactory factory) {
+  public FirehoseRecordWriter setCodec(CodecFactory factory) {
     this.codec = factory;
     return this;
   }

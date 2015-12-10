@@ -5,12 +5,11 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.specific.SpecificDatumReader;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 /**
  * Reader of a firehose written file. Records are assumed to have been written
  */
-public class FirehoseReader<D> {
+public class FirehoseRecordReader<D> {
 
   public static final int OFFSET_COUNT_LENGTH = 4;
   private final GenericDatumReader<D> datum;
@@ -19,7 +18,7 @@ public class FirehoseReader<D> {
   private DataFileReader<D> reader;
   private int recordOffset = 0;
 
-  private FirehoseReader(SeekableInput input, GenericDatumReader<D> reader) throws IOException {
+  private FirehoseRecordReader(SeekableInput input, GenericDatumReader<D> reader) throws IOException {
     this.input = input;
     this.datum = reader;
     this.translated = new TranslatedSeekableInput(recordOffset, 0, input);
@@ -30,7 +29,7 @@ public class FirehoseReader<D> {
    * @param input stream to read from
    * @throws IOException if the stream cannot be prepared for reading
    */
-  public FirehoseReader(SeekableInput input) throws IOException {
+  public FirehoseRecordReader(SeekableInput input) throws IOException {
     this(input, new GenericDatumReader<D>());
   }
 
@@ -40,7 +39,7 @@ public class FirehoseReader<D> {
    * @param clazz avro class to parse
    * @throws IOException if the stream cannot be prepared for reading
    */
-  public FirehoseReader(SeekableInput input, Class<D> clazz) throws IOException {
+  public FirehoseRecordReader(SeekableInput input, Class<D> clazz) throws IOException {
     this(input, new SpecificDatumReader<D>(clazz));
   }
 
