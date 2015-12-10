@@ -3,6 +3,7 @@ package io.fineo.lambda.avro;
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.AWSCredentialsProviderChain;
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
@@ -27,13 +28,17 @@ public class FirehoseClientProperties {
   static final String FIREHOSE_URL = "fineo.firehose.url";
   static final String FIREHOSE_MALFORMED_STREAM_NAME = "fineo.firehose.malformed";
   static final String FIREHOSE_STAGED_STREAM_NAME = "fineo.firehose.staged";
+  static final String FIREHOSE_STAGED_DYANMO_ERROR_STREAM_NAME ="firehose.staged.error.dynamo";
 
   static final String DYNAMO_ENDPOINT = "fineo.dynamo.url";
   static final String DYNAMO_SCHEMA_STORE_TABLE = "fineo.dynamo.schema-store";
   private static final String DYNAMO_INGEST_TABLE_PREFIX = "fineo.dynamo.ingest.prefix";
+  private static final String DYNAMO_READ_LIMIT = "fineo.dynamo.limit.read";
+  private static final String DYNAMO_WRITE_LIMIT = "fineo.dynamo.limit.write";
   private AWSCredentialsProvider provider;
 
   private final Properties props;
+  private long dynamoWriteMax;
 
   @VisibleForTesting
   FirehoseClientProperties(Properties props) {
@@ -54,8 +59,8 @@ public class FirehoseClientProperties {
     return fProps;
   }
 
-  public AmazonDynamoDBClient getDynamo(){
-    AmazonDynamoDBClient client = new AmazonDynamoDBClient(provider);
+  public AmazonDynamoDBAsyncClient getDynamo(){
+    AmazonDynamoDBAsyncClient client = new AmazonDynamoDBAsyncClient(provider);
     client.setEndpoint(props.getProperty(DYNAMO_ENDPOINT));
     return client;
   }
@@ -108,5 +113,17 @@ public class FirehoseClientProperties {
 
   public String getDynamoIngestTablePrefix() {
     return props.getProperty(DYNAMO_INGEST_TABLE_PREFIX);
+  }
+
+  public String getFirehoseStagedDyanmoErrorsName() {
+    return props.getProperty(FIREHOSE_STAGED_DYANMO_ERROR_STREAM_NAME);
+  }
+
+  public Long getDynamoWriteMax() {
+    return Long.valueOf(props.getProperty(DYNAMO_WRITE_LIMIT));
+  }
+
+  public Long getDynamoReadMax() {
+    return Long.valueOf(props.getProperty(DYNAMO_READ_LIMIT));
   }
 }

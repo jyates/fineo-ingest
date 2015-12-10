@@ -11,8 +11,8 @@ import com.fasterxml.jackson.jr.ob.JSON;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.Futures;
 import io.fineo.internal.customer.Malformed;
+import io.fineo.schema.avro.SchemaNameUtils;
 import io.fineo.schema.avro.SchemaTestUtils;
-import io.fineo.schema.avro.SchemaUtils;
 import io.fineo.schema.store.SchemaBuilder;
 import io.fineo.schema.store.SchemaStore;
 import javafx.util.Pair;
@@ -262,7 +262,7 @@ public class TestKinesisToAvroRecordLocalSchemaStore {
       // verify that we read the next record in order of it being written
       GenericRecord avro = reader.next();
       String orgId = (String) records[i].get(SchemaBuilder.ORG_ID_KEY);
-      String expectedPrefix = SchemaUtils.getCustomerNamespace(orgId);
+      String expectedPrefix = SchemaNameUtils.getCustomerNamespace(orgId);
       String fullName = avro.getSchema().getFullName();
       assertTrue("Expected schema full name (" + fullName + ") to start with " + expectedPrefix,
         fullName.startsWith(expectedPrefix));

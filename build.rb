@@ -15,17 +15,19 @@ Pair = Struct.new(:one, :two)
 
 # Populate the options with default values and the correct key suffix
 opts = {
-
   :kinesis => Pair.new("kinesis.us-east-1.amazonaws.com", "kinesis.url"),
   :parsed => Pair.new("fineo-parsed-records", "kinesis.parsed"),
 
   :firehose => Pair.new("https://firehose.us-east-1.amazonaws.com", "firehose.url"),
   :malformed => Pair.new("fineo-malformed-records", "firehose.malformed"),
   :staged => Pair.new("fineo-staged-recods", "firehose.staged"),
+  :staged_dynamo_error => Pair.new("fineo-staged-error-recods", "firehose.staged.error.dynamo"),
 
   :dynamo => Pair.new("https://dynamodb.us-east-1.amazonaws.com", "dynamo.url"),
   :schema_table => Pair.new("customer-schema", "dynamo.schema-store"),
   :ingest_prefix => Pair.new("customer-ingest", "dynamo.ingest.prefix")
+  :write_max => Pair.new("100", "dynamo.limit.write")
+  :read_max => Pair.new("1000", "dynamo.limit.read")
 }
 
 # set pair value at option[ref]
@@ -53,6 +55,10 @@ parser = OptionParser.new do|opts|
   opts.on('-t, '--staged-stream stream-name', 'Staged avro event Kinesis Firehose stream name')  do |name|
     set options, :staged, name
   end
+  opts.on('-e, '--staged-dynamo-error-stream stream-name', 'Kinesis Firehose stream' +
+    'name for messages that could not be written dynamo')  do |name|
+    set options, :staged_dynamo_error, name
+  end
 
   opts.on('d', '--dynamo-url dynamo-url', 'DynamoDB Endpoint Url') do |url|
     set options, :dynamo, url
@@ -61,6 +67,14 @@ parser = OptionParser.new do|opts|
     set options, :schema_table, name
   end
   opts.on('i', '--dynamo-ingest-prefix table-prefix', 'DynamoDB ingest table name prefix') do |name|
+    set options, :ingest_prefix, name
+  end
+  opts.on('r', '--dynamo-read-limit limit', 'Max amount of read units to allocate to a single table')
+   do |name|
+    set options, :ingest_prefix, name
+  end
+  opts.on('w', '--dynamo-write-limit limt', 'Max amount of write units to allocate to a single table')
+    do |name|
     set options, :ingest_prefix, name
   end
 

@@ -33,29 +33,17 @@ import static org.junit.Assert.assertNotNull;
 public class TestKinesisRecordToAvroWithDynamoStore
   extends TestKinesisToAvroRecordLocalSchemaStore {
 
+  private static LocalDynamoTestUtil dynamo;
   private String testTableName;
   private static AmazonDynamoDBClient dynamodb;
-  private static DynamoDBProxyServer server;
 
   @ClassRule
   public static AwsCredentialResource credentials = new AwsCredentialResource();
-  private static int port;
-  private static String url;
 
   @BeforeClass
   public static void setupDb() throws Exception {
-    // create a local database instance with an local server url on an open port
-    ServerSocket socket = new ServerSocket(0);
-    port = socket.getLocalPort();
-    socket.close();
-
-    final String[] localArgs = {"-inMemory", "-port", String.valueOf(port)};
-    server = ServerRunner.createServerFromCommandLineArgs(localArgs);
-    server.start();
-    url = "http://localhost:" + port;
-
-    dynamodb = new AmazonDynamoDBClient(credentials.getFakeProvider());
-    dynamodb.setEndpoint("http://localhost:" + port);
+    dynamo = new LocalDynamoTestUtil(credentials);
+    dynamodb = dynamo.start();
   }
 
   @Before
@@ -87,8 +75,7 @@ public class TestKinesisRecordToAvroWithDynamoStore
 
   @AfterClass
   public static void shutdown() throws Exception {
-    server.stop();
-    dynamodb.shutdown();
+    dynamo.stop();
   }
 
   @Override

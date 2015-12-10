@@ -29,9 +29,10 @@ import java.nio.ByteBuffer;
  * </p>
  */
 public class LambdaAvroToStorage {
-  
+
   private FirehoseClientProperties props;
   private FirehoseBatchWriter firehose;
+  private FirehoseBatchWriter dynamoErrors;
   private AvroToDynamoWriter dynamo;
 
   public void handler(KinesisEvent event) throws IOException {
@@ -40,7 +41,6 @@ public class LambdaAvroToStorage {
   }
 
   private void handleEvent(KinesisEvent event) throws IOException {
-
     for (KinesisEvent.KinesisEventRecord record : event.getRecords()) {
       ByteBuffer data = record.getKinesis().getData();
       this.firehose.addToBatch(data);
@@ -51,7 +51,12 @@ public class LambdaAvroToStorage {
           new SeekableByteArrayInput(data.array())));
       GenericRecord reuse = recordReader.next();
       while (reuse != null) {
-        this.dynamo.write(reuse);
+        try {
+          this.dynamo.write(reuse);
+          dynamoErrors.addToBatch(data);
+        } catch (Exception e) {
+
+        }
         reuse = recordReader.next(reuse);
       }
     }
@@ -62,9 +67,13 @@ public class LambdaAvroToStorage {
   private void setup() throws IOException {
     props = FirehoseClientProperties.load();
 
-    this.firehose = new FirehoseBatchWriter(props, ByteBuffer::duplicate, props
-      .getFirehoseStagedStreamName());
+    this.firehose = getFirehose(props.getFirehoseStagedStreamName());
+    this.dynamoErrors = getFirehose(props.getFirehoseStagedDyanmoErrorsName());
 
     this.dynamo = AvroToDynamoWriter.create(props);
+  }
+
+  private FirehoseBatchWriter getFirehose(String name) {
+    return new FirehoseBatchWriter(props, ByteBuffer::duplicate, name);
   }
 }
