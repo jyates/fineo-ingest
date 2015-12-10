@@ -1,5 +1,7 @@
 package io.fineo.lambda.avro;
 
+import com.amazonaws.services.kinesis.producer.KinesisProducer;
+import com.amazonaws.services.kinesis.producer.KinesisProducerConfiguration;
 import com.amazonaws.services.kinesisfirehose.AmazonKinesisFirehoseClient;
 import com.amazonaws.services.kinesisfirehose.model.DescribeDeliveryStreamRequest;
 import com.amazonaws.services.kinesisfirehose.model.DescribeDeliveryStreamResult;
@@ -15,6 +17,7 @@ import com.google.common.collect.Lists;
 import io.fineo.internal.customer.Malformed;
 import io.fineo.schema.MapRecord;
 import io.fineo.schema.avro.AvroSchemaBridge;
+import io.fineo.schema.store.SchemaBuilder;
 import io.fineo.schema.store.SchemaStore;
 import org.apache.avro.file.CodecFactory;
 import org.apache.avro.generic.GenericData;
@@ -31,17 +34,30 @@ import java.util.zip.Deflater;
 
 
 /**
- * Lamba function to transform a raw record to an avro schema and attach it to the firehose
+ * Lamba function to transform a raw record to an avro schema.
+ * <p>
+ * Records that are parseable are sent to the Kinesis 'parsed' stream. There may be multiple
+ * different types of records in the same event, but they will all be based on the {@link io
+ * .fineo.internal.customer .BaseRecord}, allowing access to standard and new fields + mapping.
+ * Each record can then be deserialized via the usual {@link org.apache.avro.file.DataFileReader}.
+ * </p>
+ * <p>
+ * Records that are not parsable via the usual schema mechanisms are sent to the 'malformed
+ * records' Firehose Kinesis stream.
+ * </p>
  */
-public class KinesisToFirehoseAvroWriter {
+public class KinesisRecordToAvro {
 
-  private static final Log LOG = LogFactory.getLog(KinesisToFirehoseAvroWriter.class);
-  /** 10 less than the 'max' just to ensure we don't write over */
+  private static final Log LOG = LogFactory.getLog(KinesisRecordToAvro.class);
+  /**
+   * 10 less than the 'max' just to ensure we don't write over
+   */
   public static final int MAX_BATCH_THRESHOLD = 490;
   private static final long FIREHOSE_CREATING_WAIT_MS = 500;
   private AmazonKinesisFirehoseClient firehoseClient;
   private FirehoseClientProperties props;
   private SchemaStore store;
+  private KinesisProducer kinesis;
 
   public void handler(KinesisEvent event) throws IOException {
     setup();
@@ -54,10 +70,9 @@ public class KinesisToFirehoseAvroWriter {
 
   @VisibleForTesting
   void handleEvent(KinesisEvent event) throws IOException {
-    PutRecordBatchRequest batch = null;
     PutRecordBatchRequest malformedBatch = null;
     for (KinesisEvent.KinesisEventRecord rec : event.getRecords()) {
-      batch = flushIfNecessary(batch);
+      malformedBatch = flushIfNecessary(malformedBatch);
 
       LOG.trace("Got message");
       ByteBuffer data = rec.getKinesis().getData();
@@ -69,7 +84,9 @@ public class KinesisToFirehoseAvroWriter {
         configuredJson.mapFrom(new ByteBufferBackedInputStream(rec.getKinesis().getData()));
 
       // parse out the necessary values
-      AvroSchemaBridge bridge = AvroSchemaBridge.create(store, new MapRecord(values));
+      MapRecord record = new MapRecord(values);
+      String orgId = record.getStringByField(SchemaBuilder.ORG_ID_KEY);
+      AvroSchemaBridge bridge = AvroSchemaBridge.create(store, record);
       if (bridge == null) {
         malformedBatch = addMalformedRecord(malformedBatch, data);
         continue;
@@ -80,18 +97,18 @@ public class KinesisToFirehoseAvroWriter {
       FirehoseWriter writer = new FirehoseWriter()
         .setCodec(CodecFactory.deflateCodec(Deflater.BEST_SPEED));
       // add the record
-      batch = addCorrectlyFormedRecord(batch, writer.write(outRecord));
+      this.kinesis.addUserRecord(props.getParsedStreamName(), orgId, writer.write(outRecord));
     }
 
     if (LOG.isDebugEnabled()) {
-      int batchSizeString = batch == null ? 0 : batch.getRecords().size();
       int malformedBatchSize = malformedBatch == null ? 0 : malformedBatch.getRecords().size();
       LOG.debug(
-        "write out the correct (" + batchSizeString + ") and malformed (" + malformedBatchSize + ")"
-        + " records");
+        "write out the malformed (" + malformedBatchSize + ") records");
     }
-    writeBatch(batch);
     writeBatch(malformedBatch);
+
+    LOG.debug("Waiting on kinesis to finish writing all records");
+    kinesis.flushSync();
     LOG.debug("Finished writing record batches");
   }
 
@@ -110,7 +127,7 @@ public class KinesisToFirehoseAvroWriter {
   }
 
   private void writeBatch(PutRecordBatchRequest batch) {
-    if(batch == null){
+    if (batch == null) {
       return;
     }
     PutRecordBatchResult result = firehoseClient.putRecordBatch(batch);
@@ -142,11 +159,6 @@ public class KinesisToFirehoseAvroWriter {
     LOG.trace("Successfully put message to firehose");
   }
 
-  private PutRecordBatchRequest addCorrectlyFormedRecord(PutRecordBatchRequest batch, ByteBuffer
-    data) {
-    return addRecordToBatch(batch, props::getFirehoseStreamName, data);
-  }
-
   private PutRecordBatchRequest addMalformedRecord(PutRecordBatchRequest batch, ByteBuffer data)
     throws IOException {
     // convert the data into a malformed record
@@ -172,9 +184,12 @@ public class KinesisToFirehoseAvroWriter {
     props = FirehoseClientProperties.load();
     this.store = props.createSchemaStore();
 
+    KinesisProducerConfiguration conf = new KinesisProducerConfiguration()
+      .setCustomEndpoint(props.getKinesisEndpoint());
+    this.kinesis = new KinesisProducer(conf);
+
     firehoseClient = new AmazonKinesisFirehoseClient();
     firehoseClient.setEndpoint(props.getFirehoseUrl());
-    checkHoseStatus(props.getFirehoseStreamName());
     checkHoseStatus(props.getFirehoseMalformedStreamName());
   }
 
@@ -187,7 +202,6 @@ public class KinesisToFirehoseAvroWriter {
       describeHoseResult = firehoseClient.describeDeliveryStream(describeHoseRequest);
       status = describeHoseResult.getDeliveryStreamDescription().getDeliveryStreamStatus();
     } catch (Exception e) {
-      System.out.println(e.getLocalizedMessage());
       LOG.error("Firehose " + deliveryStreamName + " Not Existent", e);
       throw new RuntimeException(e);
     }
@@ -209,9 +223,10 @@ public class KinesisToFirehoseAvroWriter {
 
   @VisibleForTesting
   public void setupForTesting(FirehoseClientProperties props, AmazonKinesisFirehoseClient client,
-    SchemaStore store) {
+    SchemaStore store, KinesisProducer producer) {
     this.props = props;
     this.firehoseClient = client;
     this.store = store;
+    this.kinesis = producer;
   }
 }

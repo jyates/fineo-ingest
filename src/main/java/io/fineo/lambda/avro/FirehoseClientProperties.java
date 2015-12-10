@@ -13,10 +13,12 @@ import java.util.Properties;
  */
 public class FirehoseClientProperties {
 
-  private static final String PROP_FILE_NAME = "fineo-kinesis-firehose.properties";
+  private static final String PROP_FILE_NAME = "fineo-lambda.properties";
+  private final java.lang.String KINESIS_URL = "fineo.kinesis.url";
+  static final String PARSED_STREAM_NAME = "fineo.kinesis.parsed";
+
   static final String FIREHOSE_URL = "fineo.firehose.url";
-  static final String FIREHOSE_STREAM_NAME = "fineo.firehose.stream.name";
-  static final java.lang.String FIREHOSE_MALFORMED_STREAM_NAME = "fineo.firehose.stream.malformed";
+  static final java.lang.String FIREHOSE_MALFORMED_STREAM_NAME = "fineo.firehose.malformed";
 
   private final Properties props;
 
@@ -25,31 +27,36 @@ public class FirehoseClientProperties {
     this.props = props;
   }
 
-  public String getFirehoseUrl(){
-    return props.getProperty(FIREHOSE_URL);
-  }
-
-  public String getFirehoseStreamName(){
-    return props.getProperty(FIREHOSE_STREAM_NAME);
-  }
-
   public static FirehoseClientProperties load() throws IOException {
     return load(PROP_FILE_NAME);
   }
 
   public static FirehoseClientProperties load(String file) throws IOException {
     InputStream input = FirehoseClientProperties.class.getClassLoader().getResourceAsStream(file);
-    Preconditions.checkArgument(input != null, "Could not load properties file: "+input);
+    Preconditions.checkArgument(input != null, "Could not load properties file: " + input);
     Properties props = new Properties();
     props.load(input);
     return new FirehoseClientProperties(props);
   }
 
-  public String getFirehoseMalformedStreamName() {
-    return props.getProperty(FIREHOSE_MALFORMED_STREAM_NAME);
-  }
-
   public SchemaStore createSchemaStore() {
     return null;
+  }
+
+  public String getKinesisEndpoint() {
+    return props.getProperty(KINESIS_URL);
+  }
+
+  public String getParsedStreamName() {
+    return props.getProperty(PARSED_STREAM_NAME);
+  }
+
+
+  public String getFirehoseUrl() {
+    return props.getProperty(FIREHOSE_URL);
+  }
+
+  public String getFirehoseMalformedStreamName() {
+    return props.getProperty(FIREHOSE_MALFORMED_STREAM_NAME);
   }
 }

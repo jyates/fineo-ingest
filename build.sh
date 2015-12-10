@@ -19,31 +19,36 @@ home=`dirname "$this"`
 home=`cd "$home">/dev/null; pwd`
 
 CONFIG_DIR=${CONFIG_DIR:-"${home}/config"}
-CONFIG_FILE=${CONFIG_FILE:-"${CONFIG_DIR}/fineo-kinesis-firehose.properties"}
+CONFIG_FILE=${CONFIG_FILE:-"${CONFIG_DIR}/fineo-lambda.properties"}
 
 function help(){
   echo "Build the fineo-lamba project"
   echo "Options:"
+  echo " -k <kinesis endpoint>. Not a URL, just an address - we always connect over TLS"
+  echo " -p <parsed stream name>"
+  echo
   echo " -f <firehose url>"
-  echo " -s <delivery stream name>"
-  echo " -e <malformed records stream name>"
+  echo " -m <malformed records stream name>"
+  echo
+  echo " -h show this help"
 }
 
+KINESIS_URL=${KINESIS_URL:-"kinesis.us-east-1.amazonaws.com"}
 FIREHOSE_URL=${FIREHOSE_URL:-"https://firehose.us-east-1.amazonaws.com"}
-STREAM_NAME=${STREAM_NAME:-"fineo-staged-records"}
-MALFORMED_STREAM_NAME=${MALFORMED_STREAM_NAME:-"fineo-malformed-records"}
+PARSED_STREAM=${PARSED_STREAM:-"fineo-parsed-records"}
+MALFORMED_STREAM=${MALFORMED_STREAM:-"fineo-malformed-records"}
 
 
-while getopts ":f:s:e:h" OPT; do
+while getopts ":f:k:p:m:h" OPT; do
   case $OPT in
     f)
       FIREHOSE_URL=${OPT}
     ;;
-    s)
-      STREAM_NAME=${OPT}
+    p)
+      PARSED_STREAM=${OPT}
     ;;
-    e)
-      MALFORMED_STREAM_NAME=${OPT}
+    m)
+      MALFORMED_STREAM=${OPT}
     ;;
     h)
       help
@@ -61,9 +66,17 @@ if [ ! -d ${CONFIG_DIR} ]; then
   mkdir -p ${CONFIG_DIR};
 fi
 
-echo "fineo.firehose.url=${FIREHOSE_URL}" > ${CONFIG_FILE}
-echo "fineo.firehose.stream.name=${STREAM_NAME}" >> ${CONFIG_FILE}
-echo "fineo.firehose.stream.malformed=${MALFORMED_STREAM_NAME}" >> ${CONFIG_FILE}
+function add(){
+  echo "fineo.${1}=${2}" >> ${CONFIG_FILE}
+
+}
+# Kinesis properties
+add "kinesis.url" "${KINESIS_URL}"
+add "kinesis.parsed" "${PARSED_STREAM}"
+
+# Firehose properties
+add "firehose.url" "${FIREHOSE_URL}"
+add "firehose.malformed" "${MALFORMED_STREAM}"
 
 echo "Wrote config file:"
 cat ${CONFIG_FILE}

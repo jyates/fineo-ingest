@@ -1,5 +1,6 @@
 package io.fineo.lambda.avro;
 
+import com.amazonaws.services.kinesis.producer.KinesisProducer;
 import com.amazonaws.services.kinesisfirehose.AmazonKinesisFirehoseClient;
 import com.amazonaws.services.kinesisfirehose.model.PutRecordBatchRequest;
 import com.amazonaws.services.kinesisfirehose.model.PutRecordBatchResponseEntry;
@@ -8,6 +9,7 @@ import com.amazonaws.services.kinesisfirehose.model.Record;
 import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
 import com.fasterxml.jackson.jr.ob.JSON;
 import com.google.common.collect.Lists;
+import com.google.common.util.concurrent.Futures;
 import io.fineo.internal.customer.Malformed;
 import io.fineo.schema.OldSchemaException;
 import io.fineo.schema.avro.SchemaTestUtils;
@@ -27,21 +29,21 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Random;
 import java.util.UUID;
+import java.util.stream.Stream;
 
-import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 /**
  * Test running the lambda function locally and that we we resuscitate the records
  */
-public class TestKinesisToFirehoseAvroWriter {
-  private static final Log LOG = LogFactory.getLog(TestKinesisToFirehoseAvroWriter.class);
+public class TestKinesisRecordToAvro {
+  private static final Log LOG = LogFactory.getLog(TestKinesisRecordToAvro.class);
 
   /**
    * Read/write a single event successfully
@@ -61,33 +63,13 @@ public class TestKinesisToFirehoseAvroWriter {
   private void verifyReadWriteRecordsAsIndividualEvents(Map<String, Object>... records)
     throws Exception {
     // setup the mocks/fakes
-    FirehoseClientProperties props = getBasicProperties();
-    AmazonKinesisFirehoseClient client = Mockito.mock(AmazonKinesisFirehoseClient.class);
-    PutRecordBatchResult result = Mockito.mock(PutRecordBatchResult.class);
-
     List<KinesisEvent> events = new ArrayList<>();
     SchemaStore store = null;
     for (Map<String, Object> fields : records) {
       events.add(getEvent(fields));
       store = createSchemaStore(store, fields);
     }
-
-    List<PutRecordBatchRequest> requests =
-      doSetupAndWrite(props, client, store, result, events.toArray(new
-        KinesisEvent[0]));
-
-    assertEquals(records.length, requests.size());
-    for (int i = 0; i < records.length; i++) {
-      // verify number of records/requests
-      PutRecordBatchRequest request = requests.get(i);
-      assertEquals(1, request.getRecords().size());
-    }
-    verifyRecords(requests, records);
-
-    // ensure that we did everything we should have via mocks
-    Mockito.verify(client, Mockito.times(records.length))
-           .putRecordBatch(Mockito.any(PutRecordBatchRequest.class));
-    Mockito.verify(result, Mockito.times(records.length)).getFailedPutCount();
+    verifyReadWriterEventsWithoutMalformed(store, events, records);
   }
 
   @Test
@@ -95,23 +77,35 @@ public class TestKinesisToFirehoseAvroWriter {
     Map<String, Object>[] records = createRecords(2);
 
     // setup the mocks/fakes
-    FirehoseClientProperties props = getBasicProperties();
-    AmazonKinesisFirehoseClient client = Mockito.mock(AmazonKinesisFirehoseClient.class);
-    PutRecordBatchResult result = Mockito.mock(PutRecordBatchResult.class);
-
     Pair<KinesisEvent, SchemaStore> created = createStoreAndSingleEvent(records);
     KinesisEvent event = created.getKey();
     SchemaStore store = created.getValue();
 
-    List<PutRecordBatchRequest> requests = doSetupAndWrite(props, client, store, result, event);
-    assertEquals(1, requests.size());
-    assertEquals(2, requests.get(0).getRecords().size());
-    verifyRecords(requests, records);
+    verifyReadWriterEventsWithoutMalformed(store, Lists.newArrayList(event), records);
+  }
 
-    // verify the mocks
-    Mockito.verify(client, Mockito.times(1))
-           .putRecordBatch(Mockito.any(PutRecordBatchRequest.class));
-    Mockito.verify(result, Mockito.times(1)).getFailedPutCount();
+  private void verifyReadWriterEventsWithoutMalformed(SchemaStore store, List<KinesisEvent> events,
+    Map<String, Object>[] records) throws IOException {
+    FirehoseClientProperties props = getBasicProperties();
+    KinesisProducer producer = Mockito.mock(KinesisProducer.class);
+
+    // do the writing
+    Pair<List<KinesisRequest>, List<PutRecordBatchRequest>> requests =
+      doSetupAndWrite(props, null, producer, store, null, events.toArray(new
+        KinesisEvent[0]));
+
+    List<PutRecordBatchRequest> malformed = requests.getValue();
+    assertEquals("There were some malformed requests: " + malformed, 0, malformed.size());
+
+    List<KinesisRequest> parsed = requests.getKey();
+    assertEquals("Got wrong number of parsed records. Received: " + parsed, records.length,
+      parsed.size());
+    verifyParsedRecords(parsed, records);
+
+    // kinesis write verification, beyond the added records tracking... just in case
+    Mockito.verify(producer, Mockito.times(records.length))
+           .addUserRecord(Mockito.anyString(), Mockito.anyString(), Mockito.any(ByteBuffer.class));
+    Mockito.verify(producer, Mockito.times(events.size())).flushSync();
   }
 
   private Pair<KinesisEvent, SchemaStore> createStoreAndSingleEvent(Map<String, Object>[] records)
@@ -137,22 +131,26 @@ public class TestKinesisToFirehoseAvroWriter {
   @Test
   public void testEarlyFlush() throws Exception {
     int recordCount = 500;
-    Map<String, Object>[] records = createRecords(recordCount);
+    Map<String, Object>[] records = createMalformedRecords(recordCount);
 
     // setup the mocks/fakes
     FirehoseClientProperties props = getBasicProperties();
     AmazonKinesisFirehoseClient client = Mockito.mock(AmazonKinesisFirehoseClient.class);
     PutRecordBatchResult result = Mockito.mock(PutRecordBatchResult.class);
+    KinesisProducer producer = Mockito.mock(KinesisProducer.class);
+    Mockito.when(result.getFailedPutCount()).thenReturn(0);
 
     Pair<KinesisEvent, SchemaStore> created = createStoreAndSingleEvent(records);
     KinesisEvent event = created.getKey();
     SchemaStore store = created.getValue();
 
-    List<PutRecordBatchRequest> requests = doSetupAndWrite(props, client, store, result, event);
-    assertEquals(2, requests.size());
-    assertEquals(recordCount - 10, requests.get(0).getRecords().size());
-    assertEquals(10, requests.get(1).getRecords().size());
-    verifyRecords(requests, records);
+    Pair<List<KinesisRequest>, List<PutRecordBatchRequest>> requests =
+      doSetupAndWrite(props, client, producer, store, result, event);
+    assertEquals(0, requests.getKey().size());
+
+    assertEquals(recordCount - 10, requests.getValue().get(0).getRecords().size());
+    assertEquals(10, requests.getValue().get(1).getRecords().size());
+    verifyMalformedRecords(requests.getValue(), event);
 
     // verify the mocks
     Mockito.verify(client, Mockito.times(2))
@@ -160,16 +158,30 @@ public class TestKinesisToFirehoseAvroWriter {
     Mockito.verify(result, Mockito.times(2)).getFailedPutCount();
   }
 
+  private Map<String, Object>[] createMalformedRecords(int count) {
+    Map<String, Object>[] events = createRecords(count);
+    long seed = System.currentTimeMillis();
+    LOG.info("Using malformed record seed: " + seed);
+    Random random = new Random(seed);
+    // randomly remove either the org key or the metric type key, creating a 'broken' event
+    String[] fields = new String[]{SchemaBuilder.ORG_ID_KEY, SchemaBuilder.ORG_METRIC_TYPE_KEY};
+    for (Map<String, Object> map : events) {
+      map.remove(fields[random.nextInt(2)]);
+    }
+    return events;
+  }
+
 
   @Test
   public void testRetryFailedRequests() throws Exception {
     int recordCount = 5;
     int failureCount = 2;
-    Map<String, Object>[] records = createRecords(recordCount);
+    Map<String, Object>[] records = createMalformedRecords(recordCount);
 
     // setup the mocks/fakes
     FirehoseClientProperties props = getBasicProperties();
     AmazonKinesisFirehoseClient client = Mockito.mock(AmazonKinesisFirehoseClient.class);
+    KinesisProducer producer = Mockito.mock(KinesisProducer.class);
 
     // setup the responses as 2 failures and then all success
     PutRecordBatchResult result = new PutRecordBatchResult();
@@ -199,8 +211,8 @@ public class TestKinesisToFirehoseAvroWriter {
     SchemaStore store = created.getValue();
 
     // update the writer with the test properties
-    KinesisToFirehoseAvroWriter writer = new KinesisToFirehoseAvroWriter();
-    writer.setupForTesting(props, client, store);
+    KinesisRecordToAvro writer = new KinesisRecordToAvro();
+    writer.setupForTesting(props, client, store, producer);
 
     // actually run the test
     writer.handleEvent(event);
@@ -213,67 +225,24 @@ public class TestKinesisToFirehoseAvroWriter {
     // verify the records we wrote
     PutRecordBatchRequest copyRequest =
       new PutRecordBatchRequest().withRecords(requests.get(0).getValue());
-    verifyRecords(Lists.newArrayList(copyRequest), records);
+    verifyMalformedRecords(Lists.newArrayList(copyRequest), event);
     // failed records are the only ones retained
-    Map<String, Object>[] retried = new Map[]{records[1], records[4]};
-    verifyRecords(Lists.newArrayList(requests.get(1).getKey()), retried);
+    event.getRecords().remove(3);
+    event.getRecords().remove(2);
+    event.getRecords().remove(0);
+
+    verifyMalformedRecords(Lists.newArrayList(requests.get(1).getKey()), event);
 
     // verify the mocks
     Mockito.verify(client, Mockito.times(2))
            .putRecordBatch(Mockito.any(PutRecordBatchRequest.class));
+    Mockito.verify(producer).flushSync();
   }
 
-  @Test
-  public void testMalformedEvents() throws Exception {
-    // setup the broken events
-    List<Map<String, Object>> records = new ArrayList<>();
-    Map<String, Object> missingMetric = new HashMap<>();
-    missingMetric.put("field1", "v1");
-    missingMetric.put(SchemaBuilder.ORG_ID_KEY, "orgid");
-    records.add(missingMetric);
-    Map<String, Object> missingOrg = new HashMap<>();
-    missingMetric.put("field1", "v1");
-    missingMetric.put(SchemaBuilder.ORG_METRIC_TYPE_KEY, "metricid");
-    records.add(missingOrg);
-    Map<String, Object> correctlyFormedWrongOrg = createRecords(1)[0];
-    records.add(correctlyFormedWrongOrg);
+  private void verifyParsedRecords(List<KinesisRequest> requests, Map<String, Object>[] records)
+    throws IOException {
+    byte[] data = combineRecords(requests.stream().map(request -> request.buff));
 
-    Map<String, Object>[] otherOrgs = createRecords(1);
-    Pair<KinesisEvent, SchemaStore> created = createStoreAndSingleEvent(otherOrgs);
-    SchemaStore store = created.getValue();
-    KinesisEvent event =
-      (KinesisEvent) createStoreAndSingleEvent(records.toArray(new Map[0])).getKey();
-
-    // setup the mocks/fakes
-    FirehoseClientProperties props = getBasicProperties();
-    AmazonKinesisFirehoseClient client = Mockito.mock(AmazonKinesisFirehoseClient.class);
-    PutRecordBatchResult result = Mockito.mock(PutRecordBatchResult.class);
-
-    // do a basic write, but it should cause two malformed records, rather than a regular record
-    List<PutRecordBatchRequest> requests = doSetupAndWrite(props, client, store, result, event);
-    assertEquals(1, requests.size());
-    PutRecordBatchRequest request = requests.get(0);
-    assertEquals(3, request.getRecords().size());
-
-    // verify the mocks
-    Mockito.verify(client, Mockito.times(1))
-           .putRecordBatch(Mockito.any(PutRecordBatchRequest.class));
-
-    // verify the data
-    byte[] data = combineRecords(requests);
-    FirehoseReader<Malformed> reader =
-      new FirehoseReader<>(new SeekableByteArrayInput(data), Malformed.class);
-    List<KinesisEvent.KinesisEventRecord> sent = event.getRecords();
-    for (int i = 0; i < sent.size(); i++) {
-      Malformed record = reader.next();
-      ByteBuffer bytes = record.getRecordContent();
-      assertEquals(sent.get(i).getKinesis().getData(), bytes);
-    }
-  }
-
-  private void verifyRecords(List<PutRecordBatchRequest> requests, Map<String, Object>[] records)
-    throws IOException, InterruptedException {
-    byte[] data = combineRecords(requests);
     FirehoseReader<GenericRecord> reader = new FirehoseReader<>(new SeekableByteArrayInput(data));
     for (int i = 0; i < records.length; i++) {
       LOG.info("Reading and verifying record: " + i);
@@ -287,43 +256,103 @@ public class TestKinesisToFirehoseAvroWriter {
     }
   }
 
-  private List<PutRecordBatchRequest> doSetupAndWrite(FirehoseClientProperties props,
-    AmazonKinesisFirehoseClient client, SchemaStore store, PutRecordBatchResult result,
-    KinesisEvent... events)
-    throws IOException {
-    KinesisToFirehoseAvroWriter writer = new KinesisToFirehoseAvroWriter();
-    // update the writer with the test properties
-    writer.setupForTesting(props, client, store);
+  private void verifyMalformedRecords(List<PutRecordBatchRequest> requests,
+    KinesisEvent event) throws IOException, InterruptedException {
+    byte[] data =
+      combineRecords(requests
+        .stream()
+        .flatMap(request ->
+          request.getRecords().stream())
+        .map(record -> record.getData()));
 
-    List<PutRecordBatchRequest> requests = new ArrayList<>();
-    Mockito.when(result.getFailedPutCount()).thenReturn(0);
+    FirehoseReader<Malformed> reader = new FirehoseReader<>(new SeekableByteArrayInput
+      (data), Malformed.class);
+    List<KinesisEvent.KinesisEventRecord> sent = event.getRecords();
+    for (int i = 0; i < sent.size(); i++) {
+        Malformed record = reader.next();
+        ByteBuffer bytes = record.getRecordContent();
+        assertEquals(sent.get(i).getKinesis().getData(), bytes);
+      }
+
+  }
+
+  private byte[] combineRecords(Stream<ByteBuffer> requests) throws IOException {
+    ByteArrayOutputStream bos = new ByteArrayOutputStream();
+    requests.forEach(data -> {
+      byte[] raw = new byte[data.limit()];
+      data.get(raw);
+      data.clear();
+      try {
+        bos.write(raw);
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    });
+
+    bos.close();
+    return bos.toByteArray();
+  }
+
+  private Pair<List<KinesisRequest>, List<PutRecordBatchRequest>> doSetupAndWrite(
+    FirehoseClientProperties props, AmazonKinesisFirehoseClient client, KinesisProducer producer,
+    SchemaStore store, PutRecordBatchResult result, KinesisEvent... events) throws IOException {
+    boolean noClient = false, noResult = false;
+    if (client == null) {
+      noClient = true;
+      client = Mockito.mock(AmazonKinesisFirehoseClient.class);
+    }
+
+    if (result == null) {
+      noResult = true;
+      result = Mockito.mock(PutRecordBatchResult.class);
+    }
+
+    final PutRecordBatchResult fResult = result;
+    KinesisRecordToAvro writer = new KinesisRecordToAvro();
+    // update the writer with the test properties
+    writer.setupForTesting(props, client, store, producer);
+
+    List<PutRecordBatchRequest> malformedRequests = new ArrayList<>();
     Mockito.when(client.putRecordBatch(Mockito.any(PutRecordBatchRequest.class)))
            .then(invocation -> {
-             requests.add((PutRecordBatchRequest) invocation.getArguments()[0]);
-             return result;
+             malformedRequests.add((PutRecordBatchRequest) invocation.getArguments()[0]);
+             return fResult;
            });
+
+    List<KinesisRequest> parsedRequests = new ArrayList<>();
+    Mockito.when(producer.addUserRecord(Mockito.anyString(), Mockito.anyString(), Mockito.any
+      (ByteBuffer.class))).then(invoke -> {
+      parsedRequests.add(new KinesisRequest(invoke.getArguments()));
+      return Futures.immediateFuture(null);
+    });
 
     // actually run the test
     for (KinesisEvent event : events) {
       writer.handleEvent(event);
     }
-    return requests;
+
+    if (noClient)
+      Mockito.verifyZeroInteractions(client);
+    if (noResult)
+      Mockito.verifyZeroInteractions(result);
+
+    return new Pair<>(parsedRequests, malformedRequests);
   }
 
+  private class KinesisRequest {
+    ByteBuffer buff;
+    String stream;
+    String key;
 
-  private byte[] combineRecords(List<PutRecordBatchRequest> requests) throws IOException {
-    ByteArrayOutputStream bos = new ByteArrayOutputStream();
-    for (PutRecordBatchRequest request : requests) {
-      for (Record record : request.getRecords()) {
-        ByteBuffer data = record.getData();
-        byte[] raw = new byte[data.limit()];
-        data.get(raw);
-        data.clear();
-        bos.write(raw);
-      }
+    public KinesisRequest(String stream, String key, ByteBuffer buff) {
+      this.buff = buff;
+      this.stream = stream;
+      this.key = key;
     }
-    bos.close();
-    return bos.toByteArray();
+
+    public KinesisRequest(Object[] arguments) {
+      this((String) arguments[0], (String) arguments[1], (ByteBuffer) arguments[2]);
+    }
   }
 
   /**
@@ -350,7 +379,7 @@ public class TestKinesisToFirehoseAvroWriter {
   private FirehoseClientProperties getBasicProperties() {
     Properties props = new Properties();
     props.put(FirehoseClientProperties.FIREHOSE_URL, "url");
-    props.put(FirehoseClientProperties.FIREHOSE_STREAM_NAME, "stream");
+    props.put(FirehoseClientProperties.PARSED_STREAM_NAME, "stream");
     props.put(FirehoseClientProperties.FIREHOSE_MALFORMED_STREAM_NAME, "malformed");
     return new FirehoseClientProperties(props);
   }
