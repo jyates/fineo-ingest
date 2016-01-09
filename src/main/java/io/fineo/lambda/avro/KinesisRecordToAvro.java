@@ -10,7 +10,6 @@ import com.google.common.annotations.VisibleForTesting;
 import io.fineo.internal.customer.Malformed;
 import io.fineo.schema.MapRecord;
 import io.fineo.schema.avro.AvroSchemaBridge;
-import io.fineo.schema.store.SchemaBuilder;
 import io.fineo.schema.store.SchemaStore;
 import org.apache.avro.file.CodecFactory;
 import org.apache.avro.file.FirehoseRecordWriter;
@@ -41,10 +40,10 @@ import java.util.zip.Deflater;
 public class KinesisRecordToAvro {
 
   private static final Log LOG = LogFactory.getLog(KinesisRecordToAvro.class);
-  private FirehoseBatchWriter firehoseClient;
+  private FirehoseBatchWriter malformedRecords;
   private FirehoseClientProperties props;
   private SchemaStore store;
-  private KinesisProducer kinesis;
+  private KinesisProducer convertedRecords;
 
   public void handler(KinesisEvent event) throws IOException {
     setup();
@@ -69,10 +68,15 @@ public class KinesisRecordToAvro {
 
       // parse out the necessary values
       MapRecord record = new MapRecord(values);
-      String orgId = record.getStringByField(SchemaBuilder.ORG_ID_KEY);
-      AvroSchemaBridge bridge = AvroSchemaBridge.create(store, record);
-      if (bridge == null) {
-        firehoseClient.addToBatch(data);
+      // this is an ugly reach into the bridge, logic for the org ID, specially as we pull it out
+      // when we create the schema bridge, but that requires a bit more refactoring than I want
+      // to do right now for the schema bridge. Maybe an easy improvement later.
+      String orgId = record.getStringByField(AvroSchemaBridge.ORG_ID_KEY);
+      AvroSchemaBridge bridge;
+      try {
+        bridge = AvroSchemaBridge.create(store, record);
+      } catch (IllegalArgumentException e) {
+        malformedRecords.addToBatch(data);
         continue;
       }
 
@@ -81,22 +85,23 @@ public class KinesisRecordToAvro {
       FirehoseRecordWriter writer = new FirehoseRecordWriter()
         .setCodec(CodecFactory.deflateCodec(Deflater.BEST_SPEED));
       // add the record
-      this.kinesis.addUserRecord(props.getParsedStreamName(), orgId, writer.write(outRecord));
+      this.convertedRecords.addUserRecord(props.getParsedStreamName(), orgId,
+        writer.write(outRecord));
     }
 
-    firehoseClient.flush();
+    malformedRecords.flush();
 
     LOG.debug("Waiting on kinesis to finish writing all records");
-    kinesis.flushSync();
+    convertedRecords.flushSync();
     LOG.debug("Finished writing record batches");
   }
 
   private void malformedEvent(KinesisEvent event) throws IOException {
     for (KinesisEvent.KinesisEventRecord record : event.getRecords()) {
-      firehoseClient.addToBatch(record.getKinesis().getData());
+      malformedRecords.addToBatch(record.getKinesis().getData());
     }
     LOG.trace("Putting message to firehose");
-    firehoseClient.flush();
+    malformedRecords.flush();
     LOG.trace("Successfully put message to firehose");
   }
 
@@ -119,9 +124,9 @@ public class KinesisRecordToAvro {
 
     KinesisProducerConfiguration conf = new KinesisProducerConfiguration()
       .setCustomEndpoint(props.getKinesisEndpoint());
-    this.kinesis = new KinesisProducer(conf);
+    this.convertedRecords = new KinesisProducer(conf);
 
-    firehoseClient = new FirehoseBatchWriter(props, transform, props
+    malformedRecords = new FirehoseBatchWriter(props, transform, props
       .getFirehoseMalformedStreamName());
   }
 
@@ -129,9 +134,9 @@ public class KinesisRecordToAvro {
   public void setupForTesting(FirehoseClientProperties props, AmazonKinesisFirehoseClient client,
     SchemaStore store, KinesisProducer producer) {
     this.props = props;
-    this.firehoseClient =
+    this.malformedRecords =
       new FirehoseBatchWriter(transform, props.getFirehoseMalformedStreamName(), client);
     this.store = store;
-    this.kinesis = producer;
+    this.convertedRecords = producer;
   }
 }

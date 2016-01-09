@@ -8,12 +8,14 @@ import com.amazonaws.services.kinesisfirehose.model.PutRecordBatchResult;
 import com.amazonaws.services.kinesisfirehose.model.Record;
 import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
 import com.fasterxml.jackson.jr.ob.JSON;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.Futures;
 import io.fineo.internal.customer.Malformed;
+import io.fineo.schema.avro.AvroRecordDecoder;
+import io.fineo.schema.avro.AvroSchemaBridge;
 import io.fineo.schema.avro.SchemaNameUtils;
 import io.fineo.schema.avro.SchemaTestUtils;
-import io.fineo.schema.store.SchemaBuilder;
 import io.fineo.schema.store.SchemaStore;
 import javafx.util.Pair;
 import org.apache.avro.file.FirehoseRecordReader;
@@ -50,7 +52,7 @@ public class TestKinesisToAvroRecordLocalSchemaStore {
   protected boolean storeTableCreated = true;
 
   @Before
-  public void setupStore() throws Exception{
+  public void setupStore() throws Exception {
     store = new SchemaStore(new InMemoryRepository(ValidatorFactory.EMPTY));
   }
 
@@ -176,7 +178,8 @@ public class TestKinesisToAvroRecordLocalSchemaStore {
     LOG.info("Using malformed record seed: " + seed);
     Random random = new Random(seed);
     // randomly remove either the org key or the metric type key, creating a 'broken' event
-    String[] fields = new String[]{SchemaBuilder.ORG_ID_KEY, SchemaBuilder.ORG_METRIC_TYPE_KEY};
+    String[] fields =
+      new String[]{AvroSchemaBridge.ORG_ID_KEY, AvroSchemaBridge.ORG_METRIC_TYPE_KEY};
     for (Map<String, Object> map : events) {
       map.remove(fields[random.nextInt(2)]);
     }
@@ -256,12 +259,14 @@ public class TestKinesisToAvroRecordLocalSchemaStore {
     throws IOException {
     byte[] data = combineRecords(requests.stream().map(request -> request.buff));
 
-    FirehoseRecordReader<GenericRecord> reader = new FirehoseRecordReader<>(new SeekableByteArrayInput(data));
+    FirehoseRecordReader<GenericRecord> reader =
+      new FirehoseRecordReader<>(new SeekableByteArrayInput(data));
     for (int i = 0; i < records.length; i++) {
       LOG.info("Reading and verifying record: " + i);
       // verify that we read the next record in order of it being written
       GenericRecord avro = reader.next();
-      String orgId = (String) records[i].get(SchemaBuilder.ORG_ID_KEY);
+      AvroRecordDecoder decoder = new AvroRecordDecoder(avro);
+      String orgId = decoder.getMetadata().getOrgID();
       String expectedPrefix = SchemaNameUtils.getCustomerNamespace(orgId);
       String fullName = avro.getSchema().getFullName();
       assertTrue("Expected schema full name (" + fullName + ") to start with " + expectedPrefix,
@@ -370,29 +375,32 @@ public class TestKinesisToAvroRecordLocalSchemaStore {
 
   /**
    * Create a schema that matches the fields in the event. Assumes all fields are string type
+   *
    * @return new store with that event
    */
   private SchemaStore createSchemaStore(SchemaStore store, Map<String, Object> event)
     throws Exception {
-    FirehoseClientProperties props = getClientProperties();
-    String orgId = (String) event.get(SchemaBuilder.ORG_ID_KEY);
-    String metricType = (String) event.get(SchemaBuilder.ORG_METRIC_TYPE_KEY);
+    String orgId = (String) event.get(AvroSchemaBridge.ORG_ID_KEY);
+    String metricType = (String) event.get(AvroSchemaBridge.ORG_METRIC_TYPE_KEY);
     if (orgId == null || metricType == null) {
       return null;
     }
+
+    FirehoseClientProperties props = getClientProperties();
     if (store == null) {
       store = props.createSchemaStore();
     }
+
     SchemaTestUtils.addNewOrg(store, orgId, metricType);
     return store;
   }
 
   protected FirehoseClientProperties getClientProperties() throws Exception {
     Properties props = getMockProps();
-    return FirehoseClientProperties.createForTesting(props,store);
+    return FirehoseClientProperties.createForTesting(props, store);
   }
 
-  protected  Properties getMockProps(){
+  protected Properties getMockProps() {
     Properties props = new Properties();
     props.put(FirehoseClientProperties.FIREHOSE_URL, "url");
     props.put(FirehoseClientProperties.PARSED_STREAM_NAME, "stream");
@@ -421,14 +429,14 @@ public class TestKinesisToAvroRecordLocalSchemaStore {
       LOG.debug("Using UUID - " + uuid);
       records[i] = SchemaTestUtils.getBaseFields("org" + i + "_" + uuid, "mt" + i + "_" + uuid);
     }
-    return (Map<String, Object>[])records;
+    return (Map<String, Object>[]) records;
   }
 
-  private void usedStore(){
+  private void usedStore() {
     this.storeTableCreated = true;
   }
 
-  private void didNotUseStore(){
+  private void didNotUseStore() {
     this.storeTableCreated = false;
   }
 }

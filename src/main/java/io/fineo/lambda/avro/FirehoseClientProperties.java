@@ -32,13 +32,13 @@ public class FirehoseClientProperties {
 
   static final String DYNAMO_ENDPOINT = "fineo.dynamo.url";
   static final String DYNAMO_SCHEMA_STORE_TABLE = "fineo.dynamo.schema-store";
-  private static final String DYNAMO_INGEST_TABLE_PREFIX = "fineo.dynamo.ingest.prefix";
-  private static final String DYNAMO_READ_LIMIT = "fineo.dynamo.limit.read";
-  private static final String DYNAMO_WRITE_LIMIT = "fineo.dynamo.limit.write";
+  static final String DYNAMO_INGEST_TABLE_PREFIX = "fineo.dynamo.ingest.prefix";
+  static final String DYNAMO_READ_LIMIT = "fineo.dynamo.limit.read";
+  static final String DYNAMO_WRITE_LIMIT = "fineo.dynamo.limit.write";
+
   private AWSCredentialsProvider provider;
 
   private final Properties props;
-  private long dynamoWriteMax;
 
   @VisibleForTesting
   FirehoseClientProperties(Properties props) {
