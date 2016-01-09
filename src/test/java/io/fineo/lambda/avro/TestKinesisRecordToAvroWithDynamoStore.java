@@ -4,6 +4,7 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
 import com.amazonaws.services.dynamodbv2.util.TableUtils;
 import io.fineo.aws.AwsDependentTests;
 import io.fineo.aws.rule.AwsCredentialResource;
+import io.fineo.lambda.storage.AwsDynamoResource;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -23,15 +24,13 @@ public class TestKinesisRecordToAvroWithDynamoStore
 
   private static LocalDynamoTestUtil dynamo;
   private String testTableName;
-  private static AmazonDynamoDBClient dynamodb;
 
   @ClassRule
-  public static AwsCredentialResource credentials = new AwsCredentialResource();
+  public static AwsDynamoResource dynamoResource = new AwsDynamoResource();
 
   @BeforeClass
   public static void setupDb() throws Exception {
-    dynamo = new LocalDynamoTestUtil(credentials);
-    dynamodb = dynamo.start();
+    dynamo = dynamoResource.start();
   }
 
   @Before
@@ -53,12 +52,7 @@ public class TestKinesisRecordToAvroWithDynamoStore
   @Test
   public void testCreateSchemaStore() throws Exception {
     getClientProperties().createSchemaStore();
-    TableUtils.waitUntilExists(dynamodb, testTableName, 1000, 100);
-  }
-
-  @AfterClass
-  public static void shutdown() throws Exception {
-    dynamo.stop();
+    TableUtils.waitUntilExists(dynamoResource.getClient(), testTableName, 1000, 100);
   }
 
   @Override
@@ -66,7 +60,7 @@ public class TestKinesisRecordToAvroWithDynamoStore
     Properties props = getMockProps();
     dynamo.setConnectionProperties(props);
     FirehoseClientProperties fProps = new FirehoseClientProperties(props);
-    fProps.setAwsCredentialProviderForTesting(credentials.getFakeProvider());
+    fProps.setAwsCredentialProviderForTesting(dynamoResource.getCredentials().getFakeProvider());
     return fProps;
   }
 }

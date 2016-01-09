@@ -10,7 +10,6 @@ import io.fineo.internal.customer.BaseFields;
 import io.fineo.lambda.avro.FirehoseClientProperties;
 import io.fineo.schema.avro.AvroRecordDecoder;
 import io.fineo.schema.avro.AvroSchemaBridge;
-import javafx.util.Pair;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.logging.Log;
@@ -57,7 +56,7 @@ public class AvroToDynamoWriter {
   static final String PARTITION_KEY_NAME = "id_schema";
   static final String SORT_KEY_NAME = "timestamp";
   private static final int LONG_SIZE = 8;
-  private final DyanmoTableManager tables;
+  private final DynamoTableManager tables;
 
   private final AmazonDynamoDBAsyncClient client;
 
@@ -67,7 +66,7 @@ public class AvroToDynamoWriter {
   public AvroToDynamoWriter(AmazonDynamoDBAsyncClient client, String dynamoIngestTablePrefix, long
    writeMax, long readMax) {
     this.client = client;
-    this.tables = new DyanmoTableManager(client, dynamoIngestTablePrefix, readMax, writeMax);
+    this.tables = new DynamoTableManager(client, dynamoIngestTablePrefix, readMax, writeMax);
   }
 
   public static AvroToDynamoWriter create(FirehoseClientProperties props) {

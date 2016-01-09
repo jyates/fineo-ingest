@@ -11,31 +11,28 @@ import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.google.common.base.Joiner;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.LoadingCache;
-import com.google.common.collect.Lists;
-import io.fineo.internal.customer.BaseFields;
-import io.fineo.schema.avro.AvroRecordDecoder;
 import javafx.util.Pair;
-import org.apache.avro.generic.GenericRecord;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 
 /**
  * Manages the actual table creation + schema
  */
-public class DyanmoTableManager {
+public class DynamoTableManager {
 
   public static final String SEPARATOR = "_";
-  private static final Joiner JOIN = Joiner.on(SEPARATOR);
+  static final Joiner TABLE_NAME_PARTS_JOINER = Joiner.on(SEPARATOR);
   private final String prefix;
   private final LoadingCache<String, Table> cache;
+  private static final ZoneId UTC = ZoneId.of("UTC");
 
-  public DyanmoTableManager(AmazonDynamoDBAsyncClient client, String prefix, long readCapacity,
+  public DynamoTableManager(AmazonDynamoDBAsyncClient client, String prefix, long readCapacity,
     long writeCapacity) {
     this.prefix = prefix;
     Pair<List<KeySchemaElement>, List<AttributeDefinition>> schema = getSchema();
@@ -72,25 +69,27 @@ public class DyanmoTableManager {
 
   }
 
-  public static String getPrefixAndStart(String fullTableName) {
-    String[] parts = fullTableName.split(SEPARATOR);
-    return JOIN.join(Lists.newArrayList(parts).subList(0, parts.length - 1));
-  }
-
-  public Table getTable(long ts) throws ExecutionException {
-    return cache.get(getTableName(ts));
-  }
-
+  /**
+   * Get the name of the table from the millisecond timestamp
+   *
+   * @param ts time of the record to map in milliseconds
+   * @return
+   */
   public String getTableName(long ts) {
     // map this time to the start of the week
-    Instant time = Instant.ofEpochMilli(ts);
-    LocalDateTime date = LocalDateTime.from(time);
-    LocalDateTime tableStart = date.truncatedTo(ChronoUnit.WEEKS);
-    LocalDateTime tableEnd = tableStart.plus(1, ChronoUnit.WEEKS);
+    Instant iTs = Instant.ofEpochMilli(ts);
+    LocalDateTime time = LocalDateTime.ofInstant(iTs, UTC).truncatedTo(ChronoUnit.DAYS);
+    int day = time.getDayOfYear();
+    // day of the year starts at 1, not 0, so we adjust to offset to make mod work nice
+    int weekOffset = (day - 1) % 7;
 
-    long start = tableStart.toEpochSecond(ZoneOffset.UTC);
-    long end = tableEnd.toEpochSecond(ZoneOffset.UTC);
+    LocalDateTime tableStart, tableEnd;
+      tableStart = time.minusDays(weekOffset);
+      tableEnd = time.plusDays(7 - weekOffset);
+
+    long start = tableStart.toInstant(ZoneOffset.UTC).toEpochMilli();
+    long end = tableEnd.toInstant(ZoneOffset.UTC).toEpochMilli();
     // build the table name
-    return JOIN.join(prefix, start, end);
+    return TABLE_NAME_PARTS_JOINER.join(prefix, start, end);
   }
 }

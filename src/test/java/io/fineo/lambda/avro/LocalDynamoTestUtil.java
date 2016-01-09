@@ -1,14 +1,14 @@
 package io.fineo.lambda.avro;
 
+import com.amazonaws.AmazonWebServiceClient;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
 import com.amazonaws.services.dynamodbv2.local.main.ServerRunner;
 import com.amazonaws.services.dynamodbv2.local.server.DynamoDBProxyServer;
 import com.amazonaws.services.dynamodbv2.model.ListTablesRequest;
-import com.amazonaws.services.dynamodbv2.model.ListTablesResult;
 import io.fineo.aws.rule.AwsCredentialResource;
 
 import java.net.ServerSocket;
-import java.util.List;
 import java.util.Properties;
 import java.util.Random;
 import java.util.UUID;
@@ -34,7 +34,7 @@ public class LocalDynamoTestUtil {
     this.credentials = credentials;
   }
 
-  public AmazonDynamoDBClient start() throws Exception {
+  public void start() throws Exception {
     // create a local database instance with an local server url on an open port
     ServerSocket socket = new ServerSocket(0);
     port = socket.getLocalPort();
@@ -45,9 +45,8 @@ public class LocalDynamoTestUtil {
     server.start();
     url = "http://localhost:" + port;
 
-    dynamodb = new AmazonDynamoDBClient(credentials.getFakeProvider());
-    dynamodb.setEndpoint("http://localhost:" + port);
-    return dynamodb;
+    // internal client connection so we can easily stop, cleanup, etc. later
+    this.dynamodb = getClient();
   }
 
   public void stop() throws Exception {
@@ -93,5 +92,18 @@ public class LocalDynamoTestUtil {
 
   public String getCurrentTestTable() {
     return this.storeTableName;
+  }
+
+  public AmazonDynamoDBClient getClient() {
+    return withProvider(new AmazonDynamoDBClient(credentials.getFakeProvider()));
+  }
+
+  public AmazonDynamoDBAsyncClient getAsyncClient() {
+    return withProvider(new AmazonDynamoDBAsyncClient(credentials.getFakeProvider()));
+  }
+
+  private <T extends AmazonWebServiceClient> T withProvider(T client) {
+    client.setEndpoint("http://localhost:" + port);
+    return client;
   }
 }
