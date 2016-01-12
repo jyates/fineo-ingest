@@ -7,9 +7,6 @@ import com.amazonaws.services.kinesisfirehose.model.DescribeDeliveryStreamResult
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-/**
- *
- */
 public class FirehoseUtils {
 
   private static final Log LOG = LogFactory.getLog(FirehoseUtils.class);

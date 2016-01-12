@@ -1,7 +1,6 @@
 package io.fineo.lambda.avro;
 
 import com.amazonaws.auth.AWSCredentialsProvider;
-import com.amazonaws.auth.AWSCredentialsProviderChain;
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
@@ -28,20 +27,25 @@ public class FirehoseClientProperties {
   static final String FIREHOSE_URL = "fineo.firehose.url";
   static final String FIREHOSE_MALFORMED_STREAM_NAME = "fineo.firehose.malformed";
   static final String FIREHOSE_STAGED_STREAM_NAME = "fineo.firehose.staged";
-  static final String FIREHOSE_STAGED_DYANMO_ERROR_STREAM_NAME ="firehose.staged.error.dynamo";
+  static final String FIREHOSE_STAGED_DYANMO_ERROR_STREAM_NAME = "firehose.staged.error.dynamo";
 
-  static final String DYNAMO_ENDPOINT = "fineo.dynamo.url";
-  static final String DYNAMO_SCHEMA_STORE_TABLE = "fineo.dynamo.schema-store";
-  static final String DYNAMO_INGEST_TABLE_PREFIX = "fineo.dynamo.ingest.prefix";
-  static final String DYNAMO_READ_LIMIT = "fineo.dynamo.limit.read";
-  static final String DYNAMO_WRITE_LIMIT = "fineo.dynamo.limit.write";
+  public static final String DYNAMO_ENDPOINT = "fineo.dynamo.url";
+  public static final String DYNAMO_SCHEMA_STORE_TABLE = "fineo.dynamo.schema-store";
+  public static final String DYNAMO_INGEST_TABLE_PREFIX = "fineo.dynamo.ingest.prefix";
+  public static final String DYNAMO_READ_LIMIT = "fineo.dynamo.limit.read";
+  public static final String DYNAMO_WRITE_LIMIT = "fineo.dynamo.limit.write";
 
   private AWSCredentialsProvider provider;
 
   private final Properties props;
 
+  /**
+   * Use the static {@link #load()} to load properties. This is only exposed <b>FOR TESTING</b>
+   *
+   * @param props
+   */
   @VisibleForTesting
-  FirehoseClientProperties(Properties props) {
+  public FirehoseClientProperties(Properties props) {
     this.props = props;
   }
 
@@ -49,7 +53,7 @@ public class FirehoseClientProperties {
     return load(PROP_FILE_NAME);
   }
 
-  public static FirehoseClientProperties load(String file) throws IOException {
+  private static FirehoseClientProperties load(String file) throws IOException {
     InputStream input = FirehoseClientProperties.class.getClassLoader().getResourceAsStream(file);
     Preconditions.checkArgument(input != null, "Could not load properties file: " + input);
     Properties props = new Properties();
@@ -59,7 +63,7 @@ public class FirehoseClientProperties {
     return fProps;
   }
 
-  public AmazonDynamoDBAsyncClient getDynamo(){
+  public AmazonDynamoDBAsyncClient getDynamo() {
     AmazonDynamoDBAsyncClient client = new AmazonDynamoDBAsyncClient(provider);
     client.setEndpoint(props.getProperty(DYNAMO_ENDPOINT));
     return client;

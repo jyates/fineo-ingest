@@ -9,7 +9,7 @@ import com.google.common.base.Joiner;
 import io.fineo.internal.customer.BaseFields;
 import io.fineo.lambda.avro.FirehoseClientProperties;
 import io.fineo.schema.avro.AvroRecordDecoder;
-import io.fineo.schema.avro.AvroSchemaBridge;
+import io.fineo.schema.avro.AvroSchemaEncoder;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.logging.Log;
@@ -55,7 +55,6 @@ public class AvroToDynamoWriter {
   private static final Joiner COMMAS = Joiner.on(',');
   static final String PARTITION_KEY_NAME = "id_schema";
   static final String SORT_KEY_NAME = "timestamp";
-  private static final int LONG_SIZE = 8;
   private final DynamoTableManager tables;
 
   private final AmazonDynamoDBAsyncClient client;
@@ -128,7 +127,7 @@ public class AvroToDynamoWriter {
     // for each field in the record, add it to the update, skipping the 'base fields' field,
     // since we handled that separately above
     record.getSchema().getFields().stream()
-          .filter(field -> !field.name().equals(AvroSchemaBridge.BASE_FIELDS_KEY))
+          .filter(field -> !field.name().equals(AvroSchemaEncoder.BASE_FIELDS_KEY))
           .forEach(field -> {
             String name = field.name();
             setAttribute(name, convertField(field, record.get(name)), expressionBuilder, values);
@@ -173,9 +172,9 @@ public class AvroToDynamoWriter {
     }
 
     // convert the value into a hex so we can get an ExpressionAttributeValue
-    String attributeName = String.format("%x", name);
+    String attributeName = Integer.toString(name.hashCode());
     while (values.get(attributeName) != null) {
-      attributeName += "1";
+      attributeName += 1;
     }
     values.put(attributeName, value);
     set.add(name + "= :" + attributeName);

@@ -8,12 +8,11 @@ import com.amazonaws.services.kinesisfirehose.model.PutRecordBatchResult;
 import com.amazonaws.services.kinesisfirehose.model.Record;
 import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
 import com.fasterxml.jackson.jr.ob.JSON;
-import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.Futures;
 import io.fineo.internal.customer.Malformed;
 import io.fineo.schema.avro.AvroRecordDecoder;
-import io.fineo.schema.avro.AvroSchemaBridge;
+import io.fineo.schema.avro.AvroSchemaEncoder;
 import io.fineo.schema.avro.SchemaNameUtils;
 import io.fineo.schema.avro.SchemaTestUtils;
 import io.fineo.schema.store.SchemaStore;
@@ -179,7 +178,7 @@ public class TestKinesisToAvroRecordLocalSchemaStore {
     Random random = new Random(seed);
     // randomly remove either the org key or the metric type key, creating a 'broken' event
     String[] fields =
-      new String[]{AvroSchemaBridge.ORG_ID_KEY, AvroSchemaBridge.ORG_METRIC_TYPE_KEY};
+      new String[]{AvroSchemaEncoder.ORG_ID_KEY, AvroSchemaEncoder.ORG_METRIC_TYPE_KEY};
     for (Map<String, Object> map : events) {
       map.remove(fields[random.nextInt(2)]);
     }
@@ -380,8 +379,8 @@ public class TestKinesisToAvroRecordLocalSchemaStore {
    */
   private SchemaStore createSchemaStore(SchemaStore store, Map<String, Object> event)
     throws Exception {
-    String orgId = (String) event.get(AvroSchemaBridge.ORG_ID_KEY);
-    String metricType = (String) event.get(AvroSchemaBridge.ORG_METRIC_TYPE_KEY);
+    String orgId = (String) event.get(AvroSchemaEncoder.ORG_ID_KEY);
+    String metricType = (String) event.get(AvroSchemaEncoder.ORG_METRIC_TYPE_KEY);
     if (orgId == null || metricType == null) {
       return null;
     }

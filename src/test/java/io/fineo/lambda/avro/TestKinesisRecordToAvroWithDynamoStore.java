@@ -60,7 +60,7 @@ public class TestKinesisRecordToAvroWithDynamoStore
     Properties props = getMockProps();
     dynamo.setConnectionProperties(props);
     FirehoseClientProperties fProps = new FirehoseClientProperties(props);
-    fProps.setAwsCredentialProviderForTesting(dynamoResource.getCredentials().getFakeProvider());
+    dynamoResource.setCredentials(fProps);
     return fProps;
   }
 }

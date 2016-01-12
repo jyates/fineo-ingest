@@ -9,11 +9,11 @@ import com.fasterxml.jackson.jr.ob.JSON;
 import com.google.common.annotations.VisibleForTesting;
 import io.fineo.internal.customer.Malformed;
 import io.fineo.schema.MapRecord;
-import io.fineo.schema.avro.AvroSchemaBridge;
+import io.fineo.schema.avro.AvroSchemaEncoder;
 import io.fineo.schema.store.SchemaStore;
 import org.apache.avro.file.CodecFactory;
 import org.apache.avro.file.FirehoseRecordWriter;
-import org.apache.avro.generic.GenericData;
+import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -71,17 +71,17 @@ public class KinesisRecordToAvro {
       // this is an ugly reach into the bridge, logic for the org ID, specially as we pull it out
       // when we create the schema bridge, but that requires a bit more refactoring than I want
       // to do right now for the schema bridge. Maybe an easy improvement later.
-      String orgId = record.getStringByField(AvroSchemaBridge.ORG_ID_KEY);
-      AvroSchemaBridge bridge;
+      String orgId = record.getStringByField(AvroSchemaEncoder.ORG_ID_KEY);
+      AvroSchemaEncoder bridge;
       try {
-        bridge = AvroSchemaBridge.create(store, record);
+        bridge = AvroSchemaEncoder.create(store, record);
       } catch (IllegalArgumentException e) {
         malformedRecords.addToBatch(data);
         continue;
       }
 
       // write the record to a ByteBuffer
-      GenericData.Record outRecord = bridge.encode(new MapRecord(values));
+      GenericRecord outRecord = bridge.encode(new MapRecord(values));
       FirehoseRecordWriter writer = new FirehoseRecordWriter()
         .setCodec(CodecFactory.deflateCodec(Deflater.BEST_SPEED));
       // add the record
