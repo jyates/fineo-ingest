@@ -63,7 +63,7 @@ public class AvroToDynamoWriter {
   private final Phaser phase = new Phaser();
   private final List<UpdateItemRequest> actions = new LinkedList<>();
 
-  public AvroToDynamoWriter(AmazonDynamoDBAsyncClient client, String dynamoIngestTablePrefix, long
+  private AvroToDynamoWriter(AmazonDynamoDBAsyncClient client, String dynamoIngestTablePrefix, long
    writeMax, long readMax) {
     this.client = client;
     this.tables = new DynamoTableManager(client, dynamoIngestTablePrefix, readMax, writeMax);
