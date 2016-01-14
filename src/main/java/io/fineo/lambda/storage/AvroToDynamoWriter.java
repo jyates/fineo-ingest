@@ -18,8 +18,8 @@ import org.apache.commons.logging.LogFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -35,7 +35,7 @@ import java.util.concurrent.Phaser;
  * The schema of the table is as follows:
  * <table>
  * <tr><th>Partition Key</th><th>Sort Key</th><th>Known Fields</th><th>Unknown Fields</th></tr>
- * <tr><td>[orgID][schema cannonical name]</td><td>[timestamp]</td><td>encoded with
+ * <tr><td>[orgID]_[metricId]</td><td>[timestamp]</td><td>encoded as
  * type</td><td>string
  * encoded</td></tr>
  * </table>
@@ -49,29 +49,43 @@ import java.util.concurrent.Phaser;
  * Generally, this is fine as this writer is called from a short-running lambda function that
  * only handles a very small number of requests.
  * </p>
+ * <p>
+ * This writer is only <b>partially thread-safe</b>; each method will describe its thread safety
+ * </p>
  */
 public class AvroToDynamoWriter {
   private static final Log LOG = LogFactory.getLog(AvroToDynamoWriter.class);
   private static final Joiner COMMAS = Joiner.on(',');
-  static final String PARTITION_KEY_NAME = "id_schema";
-  static final String SORT_KEY_NAME = "timestamp";
-  private final DynamoTableManager tables;
+  /**
+   * name of the column shortened (for speed) of "org ID" and "metric id"
+   */
+  static final String PARTITION_KEY_NAME = "oid_mid";
+  /**
+   * shortened for 'timestamp'
+   */
+  static final String SORT_KEY_NAME = "ts";
+  // TODO replace with a schema ID so we can lookup the schema on read, if necessary
+  private static final String MARKER = "marker";
 
+  private final long retries;
+  private final DynamoTableManager tables;
   private final AmazonDynamoDBAsyncClient client;
 
   private final Phaser phase = new Phaser();
-  private final List<UpdateItemRequest> actions = new LinkedList<>();
+  private final List<UpdateItemHandler> actions = Collections.synchronizedList(new ArrayList<>());
+  private final List<UpdateItemHandler> failed = Collections.synchronizedList(new ArrayList<>(0));
 
   private AvroToDynamoWriter(AmazonDynamoDBAsyncClient client, String dynamoIngestTablePrefix, long
-   writeMax, long readMax) {
+    writeMax, long readMax, long maxRetries) {
     this.client = client;
     this.tables = new DynamoTableManager(client, dynamoIngestTablePrefix, readMax, writeMax);
+    this.retries = maxRetries;
   }
 
   public static AvroToDynamoWriter create(FirehoseClientProperties props) {
     AmazonDynamoDBAsyncClient client = props.getDynamo();
     return new AvroToDynamoWriter(client, props.getDynamoIngestTablePrefix(),
-      props.getDynamoWriteMax(), props.getDynamoReadMax());
+      props.getDynamoWriteMax(), props.getDynamoReadMax(), props.getDynamoMaxRetries());
   }
 
   /**
@@ -81,18 +95,23 @@ public class AvroToDynamoWriter {
    * @param record record to write to dynamo. Expected to have at least a {@link BaseFields} field
    */
   public void write(GenericRecord record) throws IOException, ExecutionException {
-    UpdateItemRequest request = getUpdateForTable(record);
+    UpdateItemHandler request = getUpdateForTable(record);
 
     // submit the request for the update items into a future. Handler does all the heavy lifting
     // of resubmission, etc.
-    UpdateItemHandler handler = new UpdateItemHandler(request);
     actions.add(request);
     phase.register();
-    submit(handler, request);
+    submit(request);
   }
 
-  private void submit(UpdateItemHandler handler, UpdateItemRequest request) {
-    client.updateItemAsync(request, handler);
+  private void submit(UpdateItemHandler handler) {
+    if (handler.attempts >= retries) {
+      this.actions.remove(handler);
+      this.failed.add(handler);
+      phase.arriveAndDeregister();
+      return;
+    }
+    client.updateItemAsync(handler.request, handler);
   }
 
   /**
@@ -102,14 +121,14 @@ public class AvroToDynamoWriter {
    * @param record to parse
    * @return
    */
-  private UpdateItemRequest getUpdateForTable(GenericRecord record) throws IOException {
+  private UpdateItemHandler getUpdateForTable(GenericRecord record) throws IOException {
     AvroRecordDecoder decoder = new AvroRecordDecoder(record);
     AvroRecordDecoder.RecordMetadata metadata = decoder.getMetadata();
 
     UpdateItemRequest request = new UpdateItemRequest();
     BaseFields fields = decoder.getBaseFields();
 
-    String tableName = tables.getTableName(fields.getTimestamp());
+    String tableName = tables.getTableAndEnsureExists(fields.getTimestamp());
     request.setTableName(tableName);
 
     request.addKeyEntry(PARTITION_KEY_NAME, getPartitionKey(metadata));
@@ -117,11 +136,14 @@ public class AvroToDynamoWriter {
 
     Map<String, List<String>> expressionBuilder = new HashMap<>();
     Map<String, AttributeValue> values = new HashMap<>();
+
+    // add a default field, just in case there are no fields in the record
+    setAttribute(MARKER, new AttributeValue("0"), expressionBuilder, values);
+
     // store the unknown fields from the base fields that we parsed
     Map<String, String> unknown = fields.getUnknownFields();
     unknown.forEach((name, value) -> {
-      AttributeValue attrib = new AttributeValue(value);
-      setAttribute(name, attrib, expressionBuilder, values);
+      setAttribute(name, new AttributeValue(value), expressionBuilder, values);
     });
 
     // for each field in the record, add it to the update, skipping the 'base fields' field,
@@ -141,7 +163,13 @@ public class AvroToDynamoWriter {
     request.withUpdateExpression(sb.toString());
     // and the values for that expression
     request.withExpressionAttributeValues(values);
-    return request;
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Record: " + record);
+      LOG.debug("Using update: " + request.getUpdateExpression());
+      LOG.debug("Using expression values: " + request.getExpressionAttributeValues());
+    }
+
+    return new UpdateItemHandler(request, record);
   }
 
   private AttributeValue convertField(Schema.Field field, Object value) {
@@ -171,13 +199,13 @@ public class AvroToDynamoWriter {
       expression.put("SET", set);
     }
 
-    // convert the value into a hex so we can get an ExpressionAttributeValue
-    String attributeName = Integer.toString(name.hashCode());
-    while (values.get(attributeName) != null) {
-      attributeName += 1;
+    // convert the name into a unique value so we can get an ExpressionAttributeValue
+    String attributeName = DynamoExpressionPlaceHolders.asExpressionAttributeValue(name);
+    while (values.containsKey(attributeName)) {
+      attributeName += "a";
     }
     values.put(attributeName, value);
-    set.add(name + "= :" + attributeName);
+    set.add(name + "= " + attributeName);
   }
 
   private AttributeValue getSortKey(BaseFields fields) {
@@ -190,35 +218,49 @@ public class AvroToDynamoWriter {
   }
 
   /**
-   * Blocking flush waiting on outstanding record updates
+   * Blocking flush waiting on outstanding record updates. Assumes access to the writer is
+   * <b>single threaded</b>. The {@link MultiWriteFailures} returned from this method is not
+   * synchronized or thread-safe in any way.
    */
-  public void flush() {
+  public MultiWriteFailures flush() {
     phase.register();
-    phase.arriveAndAwaitAdvance();
+    phase.awaitAdvance(phase.arriveAndDeregister());
     assert actions.size() == 0 :
       "Some outstanding actions, but phaser is done. Actions: " + actions;
     LOG.debug("All update actions completed!");
+    return new MultiWriteFailures(failed);
   }
 
-  private class UpdateItemHandler implements AsyncHandler<UpdateItemRequest, UpdateItemResult> {
+  class UpdateItemHandler implements AsyncHandler<UpdateItemRequest, UpdateItemResult> {
 
+    private int attempts = 0;
+
+    private GenericRecord baseRecord;
     private final UpdateItemRequest request;
 
-    public UpdateItemHandler(UpdateItemRequest request) {
+    public UpdateItemHandler(UpdateItemRequest request, GenericRecord base) {
+      this.baseRecord = base;
       this.request = request;
     }
 
     @Override
     public void onError(Exception exception) {
       LOG.error("Failed to make an update.", exception);
-      submit(this, request);
+      attempts++;
+      submit(this);
     }
 
     @Override
     public void onSuccess(UpdateItemRequest request, UpdateItemResult updateItemResult) {
       // remove the request from the pending list because we were successful
-      actions.remove(this.request);
+      LOG.debug("Update success: " + this);
+      actions.remove(this);
       phase.arriveAndDeregister();
+
+    }
+
+    public GenericRecord getBaseRecord() {
+      return baseRecord;
     }
   }
 }

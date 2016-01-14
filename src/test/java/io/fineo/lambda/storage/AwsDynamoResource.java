@@ -17,21 +17,30 @@ public class AwsDynamoResource extends ExternalResource {
   private AwsCredentialResource credentials = new AwsCredentialResource();
   private LocalDynamoTestUtil util;
 
-  public LocalDynamoTestUtil start() throws Exception {
+  private LocalDynamoTestUtil start() throws Exception {
     util = new LocalDynamoTestUtil(credentials);
     util.start();
     return util;
   }
 
   @Override
+  protected void before() throws Exception {
+    start();
+  }
+
+  @Override
   protected void after() {
-    if(util != null){
+    if (util != null) {
       try {
         util.stop();
       } catch (Exception e) {
         throw new RuntimeException(e);
       }
     }
+  }
+
+  public LocalDynamoTestUtil getUtil() {
+    return this.util;
   }
 
   public AwsCredentialResource getCredentials() {
@@ -52,5 +61,9 @@ public class AwsDynamoResource extends ExternalResource {
 
   public void setCredentials(FirehoseClientProperties props) throws Exception {
     props.setAwsCredentialProviderForTesting(this.getCredentials().getFakeProvider());
+  }
+
+  public void cleanup() {
+    this.util.cleanupTables(false);
   }
 }

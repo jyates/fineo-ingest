@@ -225,7 +225,7 @@ public class TestKinesisToAvroRecordLocalSchemaStore {
     SchemaStore store = created.getValue();
 
     // update the writer with the test properties
-    KinesisRecordToAvro writer = new KinesisRecordToAvro();
+    LambdaRawRecordToAvro writer = new LambdaRawRecordToAvro();
     writer.setupForTesting(props, client, store, producer);
 
     // actually run the test
@@ -325,7 +325,7 @@ public class TestKinesisToAvroRecordLocalSchemaStore {
     }
 
     final PutRecordBatchResult fResult = result;
-    KinesisRecordToAvro writer = new KinesisRecordToAvro();
+    LambdaRawRecordToAvro writer = new LambdaRawRecordToAvro();
     // update the writer with the test properties
     writer.setupForTesting(props, client, store, producer);
 

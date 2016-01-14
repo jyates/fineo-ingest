@@ -34,13 +34,14 @@ public class FirehoseClientProperties {
   public static final String DYNAMO_INGEST_TABLE_PREFIX = "fineo.dynamo.ingest.prefix";
   public static final String DYNAMO_READ_LIMIT = "fineo.dynamo.limit.read";
   public static final String DYNAMO_WRITE_LIMIT = "fineo.dynamo.limit.write";
+  public static final String DYNAMO_RETRIES = "fineo.dynamo.limit.retries";
 
   private AWSCredentialsProvider provider;
 
   private final Properties props;
 
   /**
-   * Use the static {@link #load()} to load properties. This is only exposed <b>FOR TESTING</b>
+   * Use the static {@link #load()} to createTable properties. This is only exposed <b>FOR TESTING</b>
    *
    * @param props
    */
@@ -129,5 +130,9 @@ public class FirehoseClientProperties {
 
   public Long getDynamoReadMax() {
     return Long.valueOf(props.getProperty(DYNAMO_READ_LIMIT));
+  }
+
+  public long getDynamoMaxRetries() {
+    return Long.valueOf(props.getProperty(DYNAMO_RETRIES));
   }
 }

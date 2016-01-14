@@ -10,6 +10,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.zip.Deflater;
 
 /**
  * Writes an Avro {@link org.apache.avro.generic.GenericRecord} to a format that we can read back
@@ -53,5 +54,9 @@ public class FirehoseRecordWriter {
     bb.putInt(0, len);
 
     return bb;
+  }
+
+  public static FirehoseRecordWriter create() {
+    return new FirehoseRecordWriter().setCodec(CodecFactory.deflateCodec(Deflater.BEST_SPEED));
   }
 }

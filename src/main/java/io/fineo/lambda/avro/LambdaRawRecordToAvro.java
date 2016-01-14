@@ -37,9 +37,9 @@ import java.util.zip.Deflater;
  * records' Firehose Kinesis stream.
  * </p>
  */
-public class KinesisRecordToAvro {
+public class LambdaRawRecordToAvro {
 
-  private static final Log LOG = LogFactory.getLog(KinesisRecordToAvro.class);
+  private static final Log LOG = LogFactory.getLog(LambdaRawRecordToAvro.class);
   private FirehoseBatchWriter malformedRecords;
   private FirehoseClientProperties props;
   private SchemaStore store;
@@ -82,8 +82,7 @@ public class KinesisRecordToAvro {
 
       // write the record to a ByteBuffer
       GenericRecord outRecord = bridge.encode(new MapRecord(values));
-      FirehoseRecordWriter writer = new FirehoseRecordWriter()
-        .setCodec(CodecFactory.deflateCodec(Deflater.BEST_SPEED));
+      FirehoseRecordWriter writer = FirehoseRecordWriter.create();
       // add the record
       this.convertedRecords.addUserRecord(props.getParsedStreamName(), orgId,
         writer.write(outRecord));

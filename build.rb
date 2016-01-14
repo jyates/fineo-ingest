@@ -28,6 +28,7 @@ opts = {
   :ingest_prefix => Pair.new("customer-ingest", "dynamo.ingest.prefix")
   :write_max => Pair.new("100", "dynamo.limit.write")
   :read_max => Pair.new("1000", "dynamo.limit.read")
+  :retries => Pair.new("3", "dynamo.limit.retries")
 }
 
 # set pair value at option[ref]
@@ -71,12 +72,16 @@ parser = OptionParser.new do|opts|
   end
   opts.on('r', '--dynamo-read-limit limit', 'Max amount of read units to allocate to a single table')
    do |name|
-    set options, :ingest_prefix, name
+    set options, :read_max, name
   end
-  opts.on('w', '--dynamo-write-limit limt', 'Max amount of write units to allocate to a single table')
+  opts.on('w', '--dynamo-write-limit limit', 'Max amount of write units to allocate to a single table')
     do |name|
-    set options, :ingest_prefix, name
+    set options, :write_max, name
   end
+    opts.on('l', '--dynamo-max-retries limit', 'Max amount of write units to allocate to a single table')
+      do |name|
+      set options, :retries, name
+    end
 
   opts.on('-h', '--help', 'Displays Help') do
     puts opts

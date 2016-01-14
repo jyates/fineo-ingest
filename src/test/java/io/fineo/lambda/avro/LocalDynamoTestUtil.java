@@ -60,6 +60,7 @@ public class LocalDynamoTestUtil {
     props.setProperty(FirehoseClientProperties.DYNAMO_INGEST_TABLE_PREFIX, ingestPrefix);
     props.setProperty(FirehoseClientProperties.DYNAMO_READ_LIMIT, "10");
     props.setProperty(FirehoseClientProperties.DYNAMO_WRITE_LIMIT, "10");
+    props.setProperty(FirehoseClientProperties.DYNAMO_RETRIES, "1");
   }
 
   public void cleanupTables(boolean storeTableCreated) {

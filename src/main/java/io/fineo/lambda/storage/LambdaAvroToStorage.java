@@ -1,10 +1,10 @@
 package io.fineo.lambda.storage;
 
-import com.amazonaws.services.kinesisfirehose.AmazonKinesisFirehoseClient;
 import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
 import io.fineo.lambda.avro.FirehoseBatchWriter;
 import io.fineo.lambda.avro.FirehoseClientProperties;
 import org.apache.avro.file.FirehoseRecordReader;
+import org.apache.avro.file.FirehoseRecordWriter;
 import org.apache.avro.file.SeekableByteArrayInput;
 import org.apache.avro.file.TranslatedSeekableInput;
 import org.apache.avro.generic.GenericRecord;
@@ -60,8 +60,18 @@ public class LambdaAvroToStorage {
         reuse = recordReader.next(reuse);
       }
     }
+
     this.firehose.flush();
-    this.dynamo.flush();
+
+    // get any failed writes and flush them into the right firehose for failures
+    MultiWriteFailures failures = this.dynamo.flush();
+    if (failures.any()) {
+      FirehoseRecordWriter writer = new FirehoseRecordWriter();
+      for (GenericRecord failed : failures.getFailedRecords()) {
+        dynamoErrors.addToBatch(writer.write(failed));
+      }
+    }
+    dynamoErrors.flush();
   }
 
   private void setup() throws IOException {
