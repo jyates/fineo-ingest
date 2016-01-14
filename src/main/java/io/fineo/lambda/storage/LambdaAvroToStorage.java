@@ -1,13 +1,14 @@
 package io.fineo.lambda.storage;
 
 import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
+import com.google.common.annotations.VisibleForTesting;
 import io.fineo.lambda.avro.FirehoseBatchWriter;
 import io.fineo.lambda.avro.FirehoseClientProperties;
 import org.apache.avro.file.FirehoseRecordReader;
 import org.apache.avro.file.FirehoseRecordWriter;
-import org.apache.avro.file.SeekableByteArrayInput;
-import org.apache.avro.file.TranslatedSeekableInput;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -30,38 +31,34 @@ import java.nio.ByteBuffer;
  */
 public class LambdaAvroToStorage {
 
+  private static final Log LOG = LogFactory.getLog(LambdaAvroToStorage.class);
   private FirehoseClientProperties props;
-  private FirehoseBatchWriter firehose;
+  private FirehoseBatchWriter archiveAllRecords;
   private FirehoseBatchWriter dynamoErrors;
   private AvroToDynamoWriter dynamo;
 
   public void handler(KinesisEvent event) throws IOException {
     setup();
-    handleEvent(event);
+    handleEventInternal(event);
   }
 
-  private void handleEvent(KinesisEvent event) throws IOException {
+  @VisibleForTesting
+  public void handleEventInternal(KinesisEvent event) throws IOException {
     for (KinesisEvent.KinesisEventRecord record : event.getRecords()) {
       ByteBuffer data = record.getKinesis().getData();
-      this.firehose.addToBatch(data);
+      this.archiveAllRecords.addToBatch(data);
 
       // convert the raw bytes to a GenericRecord and let the writer deal with writing it
-      FirehoseRecordReader<GenericRecord> recordReader = new FirehoseRecordReader<>(
-        new TranslatedSeekableInput(data.arrayOffset(), data.limit(),
-          new SeekableByteArrayInput(data.array())));
+      FirehoseRecordReader<GenericRecord> recordReader = FirehoseRecordReader.create(data);
       GenericRecord reuse = recordReader.next();
       while (reuse != null) {
-        try {
-          this.dynamo.write(reuse);
-          dynamoErrors.addToBatch(data);
-        } catch (Exception e) {
-
-        }
+        this.dynamo.write(reuse);
         reuse = recordReader.next(reuse);
       }
     }
 
-    this.firehose.flush();
+    // flush the records to the appropriate firehose location
+    this.archiveAllRecords.flush();
 
     // get any failed writes and flush them into the right firehose for failures
     MultiWriteFailures failures = this.dynamo.flush();
@@ -70,14 +67,14 @@ public class LambdaAvroToStorage {
       for (GenericRecord failed : failures.getFailedRecords()) {
         dynamoErrors.addToBatch(writer.write(failed));
       }
+      dynamoErrors.flush();
     }
-    dynamoErrors.flush();
   }
 
   private void setup() throws IOException {
     props = FirehoseClientProperties.load();
 
-    this.firehose = getFirehose(props.getFirehoseStagedStreamName());
+    this.archiveAllRecords = getFirehose(props.getFirehoseStagedStreamName());
     this.dynamoErrors = getFirehose(props.getFirehoseStagedDyanmoErrorsName());
 
     this.dynamo = AvroToDynamoWriter.create(props);
@@ -85,5 +82,13 @@ public class LambdaAvroToStorage {
 
   private FirehoseBatchWriter getFirehose(String name) {
     return new FirehoseBatchWriter(props, ByteBuffer::duplicate, name);
+  }
+
+  @VisibleForTesting
+  public void setupForTesting(FirehoseBatchWriter records, FirehoseBatchWriter errors,
+    AvroToDynamoWriter dynamo){
+    this.archiveAllRecords = records;
+    this.dynamoErrors = errors;
+    this.dynamo = dynamo;
   }
 }

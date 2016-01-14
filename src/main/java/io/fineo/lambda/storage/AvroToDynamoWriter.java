@@ -15,14 +15,12 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Phaser;
 
 /**
@@ -94,7 +92,7 @@ public class AvroToDynamoWriter {
    *
    * @param record record to write to dynamo. Expected to have at least a {@link BaseFields} field
    */
-  public void write(GenericRecord record) throws IOException, ExecutionException {
+  public void write(GenericRecord record)  {
     UpdateItemHandler request = getUpdateForTable(record);
 
     // submit the request for the update items into a future. Handler does all the heavy lifting
@@ -121,7 +119,7 @@ public class AvroToDynamoWriter {
    * @param record to parse
    * @return
    */
-  private UpdateItemHandler getUpdateForTable(GenericRecord record) throws IOException {
+  private UpdateItemHandler getUpdateForTable(GenericRecord record) {
     AvroRecordDecoder decoder = new AvroRecordDecoder(record);
     AvroRecordDecoder.RecordMetadata metadata = decoder.getMetadata();
 
@@ -212,8 +210,7 @@ public class AvroToDynamoWriter {
     return new AttributeValue().withN(fields.getTimestamp().toString());
   }
 
-  private AttributeValue getPartitionKey(AvroRecordDecoder.RecordMetadata metadata)
-    throws IOException {
+  private AttributeValue getPartitionKey(AvroRecordDecoder.RecordMetadata metadata) {
     return new AttributeValue(metadata.getOrgID() + metadata.getMetricCannonicalType());
   }
 

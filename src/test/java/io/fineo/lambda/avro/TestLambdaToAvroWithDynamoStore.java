@@ -1,12 +1,9 @@
 package io.fineo.lambda.avro;
 
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
 import com.amazonaws.services.dynamodbv2.util.TableUtils;
 import io.fineo.aws.AwsDependentTests;
-import io.fineo.aws.rule.AwsCredentialResource;
 import io.fineo.lambda.storage.AwsDynamoResource;
 import org.junit.After;
-import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
@@ -19,8 +16,8 @@ import java.util.Properties;
  * Run the kinesis record parsing using a dynamo instance to back the schema store
  */
 @Category(AwsDependentTests.class)
-public class TestKinesisRecordToAvroWithDynamoStore
-  extends TestKinesisToAvroRecordLocalSchemaStore {
+public class TestLambdaToAvroWithDynamoStore
+  extends TestLambdaToAvroWithLocalSchemaStore {
 
   private static LocalDynamoTestUtil dynamo;
   private String testTableName;
@@ -30,7 +27,7 @@ public class TestKinesisRecordToAvroWithDynamoStore
 
   @BeforeClass
   public static void setupDb() throws Exception {
-    dynamo = dynamoResource.start();
+    dynamo = dynamoResource.getUtil();
   }
 
   @Before

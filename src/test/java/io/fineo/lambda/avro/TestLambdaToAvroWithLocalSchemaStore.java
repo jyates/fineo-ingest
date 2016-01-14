@@ -7,14 +7,13 @@ import com.amazonaws.services.kinesisfirehose.model.PutRecordBatchResponseEntry;
 import com.amazonaws.services.kinesisfirehose.model.PutRecordBatchResult;
 import com.amazonaws.services.kinesisfirehose.model.Record;
 import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
-import com.fasterxml.jackson.jr.ob.JSON;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.Futures;
 import io.fineo.internal.customer.Malformed;
+import io.fineo.lambda.LambdaTestUtils;
 import io.fineo.schema.avro.AvroRecordDecoder;
 import io.fineo.schema.avro.AvroSchemaEncoder;
 import io.fineo.schema.avro.SchemaNameUtils;
-import io.fineo.schema.avro.SchemaTestUtils;
 import io.fineo.schema.store.SchemaStore;
 import javafx.util.Pair;
 import org.apache.avro.file.FirehoseRecordReader;
@@ -36,7 +35,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Random;
-import java.util.UUID;
 import java.util.stream.Stream;
 
 import static org.junit.Assert.assertEquals;
@@ -45,8 +43,8 @@ import static org.junit.Assert.assertTrue;
 /**
  * Test kinesis parsing with a generic, in-memory schema store that is refreshed after each test.
  */
-public class TestKinesisToAvroRecordLocalSchemaStore {
-  private static final Log LOG = LogFactory.getLog(TestKinesisToAvroRecordLocalSchemaStore.class);
+public class TestLambdaToAvroWithLocalSchemaStore {
+  private static final Log LOG = LogFactory.getLog(TestLambdaToAvroWithLocalSchemaStore.class);
   private SchemaStore store;
   protected boolean storeTableCreated = true;
 
@@ -62,12 +60,12 @@ public class TestKinesisToAvroRecordLocalSchemaStore {
    */
   @Test
   public void readWriteRecord() throws Exception {
-    verifyReadWriteRecordsAsIndividualEvents(createRecords(1));
+    verifyReadWriteRecordsAsIndividualEvents(LambdaTestUtils.createRecords(1));
   }
 
   @Test
   public void testReadWriteMultipleRequests() throws Exception {
-    verifyReadWriteRecordsAsIndividualEvents(createRecords(2));
+    verifyReadWriteRecordsAsIndividualEvents(LambdaTestUtils.createRecords(2));
   }
 
   @SafeVarargs
@@ -77,7 +75,7 @@ public class TestKinesisToAvroRecordLocalSchemaStore {
     List<KinesisEvent> events = new ArrayList<>();
     SchemaStore store = null;
     for (Map<String, Object> fields : records) {
-      events.add(getEvent(fields));
+      events.add(LambdaTestUtils.getKinesisEvent(fields));
       store = createSchemaStore(store, fields);
     }
     verifyReadWriterEventsWithoutMalformed(store, events, records);
@@ -85,7 +83,7 @@ public class TestKinesisToAvroRecordLocalSchemaStore {
 
   @Test
   public void testReadWriteMultipleRecordInSameRequest() throws Exception {
-    Map<String, Object>[] records = createRecords(2);
+    Map<String, Object>[] records = LambdaTestUtils.createRecords(2);
 
     // setup the mocks/fakes
     Pair<KinesisEvent, SchemaStore> created = createStoreAndSingleEvent(records);
@@ -127,9 +125,9 @@ public class TestKinesisToAvroRecordLocalSchemaStore {
     SchemaStore store = null;
     for (Map<String, Object> fields : records) {
       if (event == null) {
-        event = getEvent(fields);
+        event = LambdaTestUtils.getKinesisEvent(fields);
       } else {
-        event.getRecords().addAll(getEvent(fields).getRecords());
+        event.getRecords().addAll(LambdaTestUtils.getKinesisEvent(fields).getRecords());
       }
       store = createSchemaStore(store, fields);
     }
@@ -172,7 +170,7 @@ public class TestKinesisToAvroRecordLocalSchemaStore {
   }
 
   private Map<String, Object>[] createMalformedRecords(int count) {
-    Map<String, Object>[] events = createRecords(count);
+    Map<String, Object>[] events = LambdaTestUtils.createRecords(count);
     long seed = System.currentTimeMillis();
     LOG.info("Using malformed record seed: " + seed);
     Random random = new Random(seed);
@@ -226,10 +224,10 @@ public class TestKinesisToAvroRecordLocalSchemaStore {
 
     // update the writer with the test properties
     LambdaRawRecordToAvro writer = new LambdaRawRecordToAvro();
-    writer.setupForTesting(props, client, store, producer);
+    writer.setupForTesting(props, client, store, producer, null);
 
     // actually run the test
-    writer.handleEvent(event);
+    writer.handleEventInternal(event);
 
     assertEquals(2, requests.size());
     assertTrue("Didn't reuse batch request for second write",
@@ -264,12 +262,7 @@ public class TestKinesisToAvroRecordLocalSchemaStore {
       LOG.info("Reading and verifying record: " + i);
       // verify that we read the next record in order of it being written
       GenericRecord avro = reader.next();
-      AvroRecordDecoder decoder = new AvroRecordDecoder(avro);
-      String orgId = decoder.getMetadata().getOrgID();
-      String expectedPrefix = SchemaNameUtils.getCustomerNamespace(orgId);
-      String fullName = avro.getSchema().getFullName();
-      assertTrue("Expected schema full name (" + fullName + ") to start with " + expectedPrefix,
-        fullName.startsWith(expectedPrefix));
+      LambdaTestUtils.verifyRecordMatchesExpectedNaming(store, avro);
     }
   }
 
@@ -327,7 +320,7 @@ public class TestKinesisToAvroRecordLocalSchemaStore {
     final PutRecordBatchResult fResult = result;
     LambdaRawRecordToAvro writer = new LambdaRawRecordToAvro();
     // update the writer with the test properties
-    writer.setupForTesting(props, client, store, producer);
+    writer.setupForTesting(props, client, store, producer, null);
 
     List<PutRecordBatchRequest> malformedRequests = new ArrayList<>();
     Mockito.when(client.putRecordBatch(Mockito.any(PutRecordBatchRequest.class)))
@@ -345,7 +338,7 @@ public class TestKinesisToAvroRecordLocalSchemaStore {
 
     // actually run the test
     for (KinesisEvent event : events) {
-      writer.handleEvent(event);
+      writer.handleEventInternal(event);
     }
 
     if (noClient)
@@ -379,18 +372,15 @@ public class TestKinesisToAvroRecordLocalSchemaStore {
    */
   private SchemaStore createSchemaStore(SchemaStore store, Map<String, Object> event)
     throws Exception {
-    String orgId = (String) event.get(AvroSchemaEncoder.ORG_ID_KEY);
-    String metricType = (String) event.get(AvroSchemaEncoder.ORG_METRIC_TYPE_KEY);
-    if (orgId == null || metricType == null) {
-      return null;
-    }
-
     FirehoseClientProperties props = getClientProperties();
     if (store == null) {
       store = props.createSchemaStore();
     }
-
-    SchemaTestUtils.addNewOrg(store, orgId, metricType);
+    try{
+      LambdaTestUtils.updateSchemaStore(store, event);
+    }catch (IllegalArgumentException e){
+      return null;
+    }
     return store;
   }
 
@@ -405,30 +395,6 @@ public class TestKinesisToAvroRecordLocalSchemaStore {
     props.put(FirehoseClientProperties.PARSED_STREAM_NAME, "stream");
     props.put(FirehoseClientProperties.FIREHOSE_MALFORMED_STREAM_NAME, "malformed");
     return props;
-  }
-
-  private KinesisEvent getEvent(Map<String, Object> fields) throws IOException {
-    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    JSON.std.write(fields, baos);
-    baos.close();
-    ByteBuffer data = ByteBuffer.wrap(baos.toByteArray());
-    KinesisEvent event = Mockito.mock(KinesisEvent.class);
-    KinesisEvent.KinesisEventRecord kinesisRecord = new KinesisEvent.KinesisEventRecord();
-    KinesisEvent.Record record = new KinesisEvent.Record();
-    record.setData(data);
-    kinesisRecord.setKinesis(record);
-    Mockito.when(event.getRecords()).thenReturn(Lists.newArrayList(kinesisRecord));
-    return event;
-  }
-
-  private static Map<String, Object>[] createRecords(int count) {
-    Map[] records = new Map[count];
-    for (int i = 0; i < count; i++) {
-      String uuid = UUID.randomUUID().toString();
-      LOG.debug("Using UUID - " + uuid);
-      records[i] = SchemaTestUtils.getBaseFields("org" + i + "_" + uuid, "mt" + i + "_" + uuid);
-    }
-    return (Map<String, Object>[]) records;
   }
 
   private void usedStore() {

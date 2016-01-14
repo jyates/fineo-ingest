@@ -11,7 +11,6 @@ import io.fineo.internal.customer.Malformed;
 import io.fineo.schema.MapRecord;
 import io.fineo.schema.avro.AvroSchemaEncoder;
 import io.fineo.schema.store.SchemaStore;
-import org.apache.avro.file.CodecFactory;
 import org.apache.avro.file.FirehoseRecordWriter;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.logging.Log;
@@ -21,7 +20,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.function.Function;
-import java.util.zip.Deflater;
 
 
 /**
@@ -48,14 +46,14 @@ public class LambdaRawRecordToAvro {
   public void handler(KinesisEvent event) throws IOException {
     setup();
     try {
-      handleEvent(event);
+      handleEventInternal(event);
     } catch (Exception e) {
       malformedEvent(event);
     }
   }
 
   @VisibleForTesting
-  void handleEvent(KinesisEvent event) throws IOException {
+  public void handleEventInternal(KinesisEvent event) throws IOException {
     for (KinesisEvent.KinesisEventRecord rec : event.getRecords()) {
       LOG.trace("Got message");
       ByteBuffer data = rec.getKinesis().getData();
@@ -131,9 +129,11 @@ public class LambdaRawRecordToAvro {
 
   @VisibleForTesting
   public void setupForTesting(FirehoseClientProperties props, AmazonKinesisFirehoseClient client,
-    SchemaStore store, KinesisProducer producer) {
+    SchemaStore store, KinesisProducer producer, FirehoseBatchWriter malformed) {
     this.props = props;
     this.malformedRecords =
+      malformed != null?
+      malformed:
       new FirehoseBatchWriter(transform, props.getFirehoseMalformedStreamName(), client);
     this.store = store;
     this.convertedRecords = producer;

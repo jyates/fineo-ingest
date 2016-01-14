@@ -22,7 +22,7 @@ public class FirehoseClientProperties {
   private static final String PROP_FILE_NAME = "fineo-lambda.properties";
 
   private final java.lang.String KINESIS_URL = "fineo.kinesis.url";
-  static final String PARSED_STREAM_NAME = "fineo.kinesis.parsed";
+  public static final String PARSED_STREAM_NAME = "fineo.kinesis.parsed";
 
   static final String FIREHOSE_URL = "fineo.firehose.url";
   static final String FIREHOSE_MALFORMED_STREAM_NAME = "fineo.firehose.malformed";

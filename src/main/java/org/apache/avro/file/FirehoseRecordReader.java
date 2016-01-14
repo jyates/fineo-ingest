@@ -5,6 +5,7 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.specific.SpecificDatumReader;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 /**
  * Reader of a firehose written file. Records are assumed to have been written
@@ -86,5 +87,10 @@ public class FirehoseRecordReader<D> {
       ((bytes[1] & 0xff) << 16) |
       ((bytes[2] & 0xff) << 8) |
       ((bytes[3] & 0xff)));
+  }
+
+  public static FirehoseRecordReader<GenericRecord> create(ByteBuffer data) throws IOException {
+    return new FirehoseRecordReader<>(new TranslatedSeekableInput(data.arrayOffset(), data.limit(),
+      new SeekableByteArrayInput(data.array())));
   }
 }
