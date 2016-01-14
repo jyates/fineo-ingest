@@ -1,0 +1,15 @@
+{"namespace": "io.fineo.avro.test",
+  "type": "record",
+  "name": "User",
+  "fields": [
+    { "name": "name", "type": {
+      "type": "record",
+      "namespace": "io.fineo.avro.test.User.field",
+      "aliases": []
+      "fields": [
+        {"name": "value", "type":"string"}
+      ]
+    }},
+  { "name":
+ ]
+}

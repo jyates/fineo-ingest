@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>io.fineo.aws</groupId>
+  <artifactId>fineo-etl</artifactId>
+  <version>1.0-SNAPSHOT</version>
+
+  <properties>
+    <surefire.version>2.19</surefire.version>
+
+    <scala.base.version>2.10</scala.base.version>
+    <scala.major.version>2.10.5</scala.major.version>
+    <scala.version-next>2.11</scala.version-next>
+    <!-- Test setup -->
+    <test.output.to.file>true</test.output.to.file>
+    <test.exclude.pattern></test.exclude.pattern>
+    <surefire.s3tests>io.fineo.aws.AwsDependentTests</surefire.s3tests>
+    <surefire.skipSimpleTests>false</surefire.skipSimpleTests>
+    <surefire.skipS3Tests>true</surefire.skipS3Tests>
+  </properties>
+
+  <build>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <version>3.3</version>
+          <configuration>
+            <source>1.8</source>
+            <target>1.8</target>
+          </configuration>
+        </plugin>
+        <plugin>
+          <!-- Configuration for two distinct phases of test execution. First phase just
+           supports local, non-s3 requiring tests. The second phase is just the tests
+           that require a connection to s3 manipulate buckets/files there. -->
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-surefire-plugin</artifactId>
+          <version>${surefire.version}</version>
+          <!-- Generic testing configuration for all packages -->
+          <configuration>
+            <redirectTestOutputToFile>${test.output.to.file}</redirectTestOutputToFile>
+            <skip>true</skip>
+            <argLine>-enableassertions -Djava.security.egd=file:/dev/./urandom</argLine>
+            <excludes>
+              <!-- users can add -D option to skip particular test classes
+             ex: mvn test -Dtest.exclude.pattern=**/TestFoo.java,**/TestBar.java
+              -->
+              <exclude>${test.exclude.pattern}</exclude>
+            </excludes>
+          </configuration>
+          <executions>
+            <execution>
+              <id>local-tests</id>
+              <goals>
+                <goal>test</goal>
+              </goals>
+              <configuration>
+                <excludedGroups>${surefire.s3tests}</excludedGroups>
+                <skip>${surefire.skipSimpleTests}</skip>
+              </configuration>
+            </execution>
+            <execution>
+              <id>s3tests</id>
+              <goals>
+                <goal>test</goal>
+              </goals>
+              <configuration>
+                <groups>${surefire.s3tests}</groups>
+                <skip>${surefire.skipS3Tests}</skip>
+              </configuration>
+            </execution>
+          </executions>
+        </plugin>
+        <!-- Create the test jar -->
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-jar-plugin</artifactId>
+          <version>2.6</version>
+          <executions>
+            <execution>
+              <goals>
+                <goal>test-jar</goal>
+              </goals>
+            </execution>
+          </executions>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <groupId>net.alchim31.maven</groupId>
+        <artifactId>scala-maven-plugin</artifactId>
+        <version>3.2.2</version>
+        <configuration>
+          <recompileMode>incremental</recompileMode>
+          <useZincServer>false</useZincServer>
+          <charset>${project.build.sourceEncoding}</charset>
+          <jvmArgs>
+            <jvmArg>-Xmx1024m</jvmArg>
+          </jvmArgs>
+          <!-- <addScalacArgs>-target:jvm-1.5</addScalacArgs> -->
+          <scalaVersion>${scala.major.version}</scalaVersion>
+        </configuration>
+        <executions>
+          <execution>
+            <id>compile</id>
+            <goals>
+              <goal>compile</goal>
+            </goals>
+            <phase>compile</phase>
+          </execution>
+          <execution>
+            <id>test-compile</id>
+            <goals>
+              <goal>testCompile</goal>
+            </goals>
+            <phase>test-compile</phase>
+          </execution>
+          <execution>
+            <phase>process-resources</phase>
+            <goals>
+              <goal>compile</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+
+  <dependencies>
+    <dependency>
+      <groupId>io.fineo.schema</groupId>
+      <artifactId>schema-mgmt</artifactId>
+      <version>1.0-SNAPSHOT</version>
+    </dependency>
+    <dependency>
+      <groupId>org.scala-lang</groupId>
+      <artifactId>scala-library</artifactId>
+      <version>${scala.major.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.spark</groupId>
+      <artifactId>spark-core_${scala.base.version}</artifactId>
+      <version>1.5.0</version>
+    </dependency>
+    <dependency>
+      <groupId>commons-cli</groupId>
+      <artifactId>commons-cli</artifactId>
+      <version>1.2<!-- match hadoop version --></version>
+    </dependency>
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>4.12</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.fineo.aws</groupId>
+      <artifactId>aws-common</artifactId>
+      <version>1.0-SNAPSHOT</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <profiles>
+    <!-- Setup the different test phases -->
+    <profile>
+      <id>s3Tests</id>
+      <activation>
+        <property>
+          <name>s3Tests</name>
+        </property>
+      </activation>
+      <properties>
+        <surefire.skipS3Tests>false</surefire.skipS3Tests>
+      </properties>
+    </profile>
+    <profile>
+      <id>skipLocalTests</id>
+      <activation>
+        <property>
+          <name>skipLocalTests</name>
+        </property>
+      </activation>
+      <properties>
+        <surefire.skipSimpleTests>true</surefire.skipSimpleTests>
+      </properties>
+    </profile>
+  </profiles>
+</project>
