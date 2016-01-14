@@ -55,12 +55,12 @@ public class LocalDynamoTestUtil {
   }
 
   public void setConnectionProperties(Properties props) {
-    props.setProperty(FirehoseClientProperties.DYNAMO_ENDPOINT, url);
-    props.setProperty(FirehoseClientProperties.DYNAMO_SCHEMA_STORE_TABLE, storeTableName);
-    props.setProperty(FirehoseClientProperties.DYNAMO_INGEST_TABLE_PREFIX, ingestPrefix);
-    props.setProperty(FirehoseClientProperties.DYNAMO_READ_LIMIT, "10");
-    props.setProperty(FirehoseClientProperties.DYNAMO_WRITE_LIMIT, "10");
-    props.setProperty(FirehoseClientProperties.DYNAMO_RETRIES, "1");
+    props.setProperty(LambdaClientProperties.DYNAMO_ENDPOINT, url);
+    props.setProperty(LambdaClientProperties.DYNAMO_SCHEMA_STORE_TABLE, storeTableName);
+    props.setProperty(LambdaClientProperties.DYNAMO_INGEST_TABLE_PREFIX, ingestPrefix);
+    props.setProperty(LambdaClientProperties.DYNAMO_READ_LIMIT, "10");
+    props.setProperty(LambdaClientProperties.DYNAMO_WRITE_LIMIT, "10");
+    props.setProperty(LambdaClientProperties.DYNAMO_RETRIES, "1");
   }
 
   public void cleanupTables(boolean storeTableCreated) {

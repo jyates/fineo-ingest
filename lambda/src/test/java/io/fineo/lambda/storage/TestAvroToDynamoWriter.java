@@ -12,8 +12,7 @@ import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
 import com.google.common.collect.Lists;
 import io.fineo.aws.AwsDependentTests;
-import io.fineo.internal.customer.BaseFields;
-import io.fineo.lambda.avro.FirehoseClientProperties;
+import io.fineo.lambda.avro.LambdaClientProperties;
 import io.fineo.schema.avro.AvroRecordDecoder;
 import io.fineo.schema.avro.SchemaTestUtils;
 import org.apache.avro.generic.GenericRecord;
@@ -47,7 +46,7 @@ public class TestAvroToDynamoWriter {
   @Test
   public void testFailedWriteDynamoUnreachable() throws Exception {
     AmazonDynamoDBAsyncClient client = Mockito.mock(AmazonDynamoDBAsyncClient.class);
-    FirehoseClientProperties props = Mockito.mock(FirehoseClientProperties.class);
+    LambdaClientProperties props = Mockito.mock(LambdaClientProperties.class);
     Mockito.when(props.getDynamoIngestTablePrefix()).thenReturn(UUID.randomUUID().toString());
     Mockito.when(props.getDynamoMaxRetries()).thenReturn(1L);
     Mockito.when(props.getDynamoReadMax()).thenReturn(10L);
@@ -93,7 +92,7 @@ public class TestAvroToDynamoWriter {
     dynamo.setConnectionProperties(prop);
 
     // setup the writer
-    FirehoseClientProperties props = new FirehoseClientProperties(prop);
+    LambdaClientProperties props = new LambdaClientProperties(prop);
     dynamo.setCredentials(props);
     AvroToDynamoWriter writer = AvroToDynamoWriter.create(props);
 

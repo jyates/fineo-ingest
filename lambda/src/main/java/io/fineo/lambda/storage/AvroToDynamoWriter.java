@@ -7,7 +7,7 @@ import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
 import com.google.common.base.Joiner;
 import io.fineo.internal.customer.BaseFields;
-import io.fineo.lambda.avro.FirehoseClientProperties;
+import io.fineo.lambda.avro.LambdaClientProperties;
 import io.fineo.schema.avro.AvroRecordDecoder;
 import io.fineo.schema.avro.AvroSchemaEncoder;
 import org.apache.avro.Schema;
@@ -80,7 +80,7 @@ public class AvroToDynamoWriter {
     this.retries = maxRetries;
   }
 
-  public static AvroToDynamoWriter create(FirehoseClientProperties props) {
+  public static AvroToDynamoWriter create(LambdaClientProperties props) {
     AmazonDynamoDBAsyncClient client = props.getDynamo();
     return new AvroToDynamoWriter(client, props.getDynamoIngestTablePrefix(),
       props.getDynamoWriteMax(), props.getDynamoReadMax(), props.getDynamoMaxRetries());

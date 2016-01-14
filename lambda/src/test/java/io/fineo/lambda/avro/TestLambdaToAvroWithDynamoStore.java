@@ -53,10 +53,10 @@ public class TestLambdaToAvroWithDynamoStore
   }
 
   @Override
-  protected FirehoseClientProperties getClientProperties() throws Exception {
+  protected LambdaClientProperties getClientProperties() throws Exception {
     Properties props = getMockProps();
     dynamo.setConnectionProperties(props);
-    FirehoseClientProperties fProps = new FirehoseClientProperties(props);
+    LambdaClientProperties fProps = new LambdaClientProperties(props);
     dynamoResource.setCredentials(fProps);
     return fProps;
   }

@@ -42,11 +42,15 @@ public class LambdaTestUtils {
     return event;
   }
 
-  public static KinesisEvent getKinesisEvent(Map<String, Object> fields) throws IOException {
+  public static ByteBuffer asBytes(Map<String, Object> fields) throws IOException {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     JSON.std.write(fields, baos);
     baos.close();
-    return getKinesisEvent(ByteBuffer.wrap(baos.toByteArray()));
+    return ByteBuffer.wrap(baos.toByteArray());
+  }
+
+  public static KinesisEvent getKinesisEvent(Map<String, Object> fields) throws IOException {
+    return getKinesisEvent(asBytes(fields));
   }
 
   public static Map<String, Object>[] createRecords(int count) {

@@ -3,7 +3,7 @@ package io.fineo.lambda.storage;
 import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
 import com.google.common.annotations.VisibleForTesting;
 import io.fineo.lambda.avro.FirehoseBatchWriter;
-import io.fineo.lambda.avro.FirehoseClientProperties;
+import io.fineo.lambda.avro.LambdaClientProperties;
 import org.apache.avro.file.FirehoseRecordReader;
 import org.apache.avro.file.FirehoseRecordWriter;
 import org.apache.avro.generic.GenericRecord;
@@ -29,10 +29,10 @@ import java.nio.ByteBuffer;
  * </ol>
  * </p>
  */
-public class LambdaAvroToStorage {
+public class LambdaAvroToStorage implements TestableLambda {
 
   private static final Log LOG = LogFactory.getLog(LambdaAvroToStorage.class);
-  private FirehoseClientProperties props;
+  private LambdaClientProperties props;
   private FirehoseBatchWriter archiveAllRecords;
   private FirehoseBatchWriter dynamoErrors;
   private AvroToDynamoWriter dynamo;
@@ -43,6 +43,7 @@ public class LambdaAvroToStorage {
   }
 
   @VisibleForTesting
+  @Override
   public void handleEventInternal(KinesisEvent event) throws IOException {
     for (KinesisEvent.KinesisEventRecord record : event.getRecords()) {
       ByteBuffer data = record.getKinesis().getData();
@@ -72,7 +73,7 @@ public class LambdaAvroToStorage {
   }
 
   private void setup() throws IOException {
-    props = FirehoseClientProperties.load();
+    props = LambdaClientProperties.load();
 
     this.archiveAllRecords = getFirehose(props.getFirehoseStagedStreamName());
     this.dynamoErrors = getFirehose(props.getFirehoseStagedDyanmoErrorsName());

@@ -1,14 +1,13 @@
 package io.fineo.lambda;
 
-import com.amazonaws.services.kinesis.producer.KinesisProducer;
-import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
 import io.fineo.internal.customer.Metric;
 import io.fineo.lambda.avro.FirehoseBatchWriter;
-import io.fineo.lambda.avro.FirehoseClientProperties;
+import io.fineo.lambda.avro.LambdaClientProperties;
 import io.fineo.lambda.avro.LambdaRawRecordToAvro;
 import io.fineo.lambda.storage.AvroToDynamoWriter;
 import io.fineo.lambda.storage.LambdaAvroToStorage;
 import io.fineo.lambda.storage.MultiWriteFailures;
+import io.fineo.lambda.storage.TestableLambda;
 import io.fineo.schema.avro.AvroRecordDecoder;
 import io.fineo.schema.avro.AvroSchemaEncoder;
 import io.fineo.schema.store.SchemaStore;
@@ -21,7 +20,7 @@ import org.schemarepo.InMemoryRepository;
 import org.schemarepo.ValidatorFactory;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +28,7 @@ import java.util.Properties;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -37,6 +37,7 @@ import static org.junit.Assert.assertTrue;
 public class TestEndToEndLambda {
 
   private static final Log LOG = LogFactory.getLog(TestEndToEndLambda.class);
+  public static final String AVRO_TO_STORAGE_STREAM_NAME = "parsed-stream";
 
   /**
    * Path where there are no issues with records.
@@ -45,18 +46,40 @@ public class TestEndToEndLambda {
    */
   @Test
   public void testHappyPath() throws Exception {
-    SchemaStore store = new SchemaStore(new InMemoryRepository(ValidatorFactory.EMPTY));
-    Map<String, Object> json = createRecord(store);
+    // Setup
+    //-------
+    Properties props = new Properties();
+    // firehose outputs
+    String malformed = "mal", dynamoErrors = "dynamoErrors", archived = "archived";
+    props.setProperty(LambdaClientProperties.FIREHOSE_MALFORMED_STREAM_NAME, malformed);
+    props
+      .setProperty(LambdaClientProperties.FIREHOSE_STAGED_DYANMO_ERROR_STREAM_NAME, dynamoErrors);
+    props.setProperty(LambdaClientProperties.FIREHOSE_STAGED_STREAM_NAME, archived);
 
-    // handle amazon's conversion from data to a new kinesis event
-    ByteBuffer dataOut = convertToAvroEncodedBytes(json, store);
-    assertTrue(dataOut.remaining() > 0);
-    KinesisEvent event = LambdaTestUtils.getKinesisEvent(dataOut);
+    // between stage stream
+    props.setProperty(LambdaClientProperties.PARSED_STREAM_NAME, AVRO_TO_STORAGE_STREAM_NAME);
 
-    GenericRecord record = storeAvroEncodedBytes(event);
+    // Run
+    // -----
+    EndToEndTestUtil test = new EndToEndTestUtil(props);
+    Map<String, Object> json = LambdaTestUtils.createRecords(1, 1)[0];
+    test.run(json);
 
     // Validation
     // -----------
+    // ensure that we didn't write any errors
+    assertNull(test.getFirehoseWrites(malformed));
+    assertNull(test.getFirehoseWrites(dynamoErrors));
+
+    // ensure that we archived a single message
+    assertEquals(1, test.getFirehoseWrites(archived).size());
+    assertTrue(test.getFirehoseWrites(archived).get(0).hasRemaining());
+
+    List<GenericRecord> records = test.getDynamoWrites();
+    assertEquals("Got unexpected records: "+records, 1, records.size());
+    GenericRecord record = records.get(0);
+    SchemaStore store = test.getStore();
+
     // org/schema naming
     LambdaTestUtils.verifyRecordMatchesExpectedNaming(store, record);
     LOG.debug("Comparing \nJSON: " + json + "\nRecord: " + record);
@@ -84,72 +107,5 @@ public class TestEndToEndLambda {
           assertEquals("JSON: " + json + "\nRecord: " + record,
             entry.getValue(), record.get(cname));
         });
-  }
-
-  private GenericRecord storeAvroEncodedBytes(KinesisEvent event) throws IOException {
-    FirehoseBatchWriter errors = Mockito.mock(FirehoseBatchWriter.class);
-    FirehoseBatchWriter s3 = Mockito.mock(FirehoseBatchWriter.class);
-    AvroToDynamoWriter dynamo = Mockito.mock(AvroToDynamoWriter.class);
-    MultiWriteFailures failures = Mockito.mock(MultiWriteFailures.class);
-    List<GenericRecord> received = new ArrayList<>(1);
-    Mockito.doAnswer(invocationOnMock -> {
-      received.add((GenericRecord) invocationOnMock.getArguments()[0]);
-      return null;
-    }).when(dynamo).write(Mockito.any(GenericRecord.class));
-    Mockito.when(failures.any()).thenReturn(false);
-    Mockito.when(dynamo.flush()).thenReturn(failures);
-
-    LambdaAvroToStorage avroToStorage = new LambdaAvroToStorage();
-    avroToStorage.setupForTesting(s3, errors, dynamo);
-    avroToStorage.handleEventInternal(event);
-
-    Mockito.verify(s3).addToBatch(Mockito.any());
-    Mockito.verify(s3).flush();
-
-    Mockito.verify(dynamo).flush();
-    Mockito.verify(dynamo).write(Mockito.any());
-
-    Mockito.verifyZeroInteractions(errors);
-    return received.get(0);
-  }
-
-  private ByteBuffer convertToAvroEncodedBytes(Map<String, Object> json, SchemaStore store)
-    throws IOException {
-    LambdaRawRecordToAvro rawToAvro = new LambdaRawRecordToAvro();
-    FirehoseBatchWriter errors = Mockito.mock(FirehoseBatchWriter.class);
-    KinesisProducer pipe = Mockito.mock(KinesisProducer.class);
-    FirehoseClientProperties props = getTestProperties();
-    rawToAvro.setupForTesting(props, null, store, pipe, errors);
-
-    // catch the record in the pipe
-    List<ByteBuffer> received = new ArrayList<>();
-    Mockito.when(pipe.addUserRecord(Mockito.any(), Mockito.any(), Mockito.any()))
-           .then(invocationOnMock -> {
-             received.add((ByteBuffer) invocationOnMock.getArguments()[2]);
-             return null;
-           });
-
-    // send the event to the lambda instance
-    KinesisEvent event = LambdaTestUtils.getKinesisEvent(json);
-    rawToAvro.handleEventInternal(event);
-
-    // ensure we got the data we expected
-    assertEquals(1, received.size());
-    Mockito.verify(pipe).addUserRecord(Mockito.anyString(), Mockito.anyString(), Mockito.any());
-    Mockito.verify(errors).flush();
-    return received.get(0);
-  }
-
-  private Map<String, Object> createRecord(SchemaStore store) throws Exception {
-    Map<String, Object> json = LambdaTestUtils.createRecords(1, 1)[0];
-    // add the event to the managed schema
-    LambdaTestUtils.updateSchemaStore(store, json);
-    return json;
-  }
-
-  private FirehoseClientProperties getTestProperties() {
-    Properties props = new Properties();
-    props.put(FirehoseClientProperties.PARSED_STREAM_NAME, "parsed-stream");
-    return new FirehoseClientProperties(props);
   }
 }

@@ -11,9 +11,7 @@ import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.Futures;
 import io.fineo.internal.customer.Malformed;
 import io.fineo.lambda.LambdaTestUtils;
-import io.fineo.schema.avro.AvroRecordDecoder;
 import io.fineo.schema.avro.AvroSchemaEncoder;
-import io.fineo.schema.avro.SchemaNameUtils;
 import io.fineo.schema.store.SchemaStore;
 import javafx.util.Pair;
 import org.apache.avro.file.FirehoseRecordReader;
@@ -95,7 +93,7 @@ public class TestLambdaToAvroWithLocalSchemaStore {
 
   private void verifyReadWriterEventsWithoutMalformed(SchemaStore store, List<KinesisEvent> events,
     Map<String, Object>[] records) throws Exception {
-    FirehoseClientProperties props = getClientProperties();
+    LambdaClientProperties props = getClientProperties();
     KinesisProducer producer = Mockito.mock(KinesisProducer.class);
 
     // do the writing
@@ -144,7 +142,7 @@ public class TestLambdaToAvroWithLocalSchemaStore {
     Map<String, Object>[] records = createMalformedRecords(recordCount);
 
     // setup the mocks/fakes
-    FirehoseClientProperties props = getClientProperties();
+    LambdaClientProperties props = getClientProperties();
     AmazonKinesisFirehoseClient client = Mockito.mock(AmazonKinesisFirehoseClient.class);
     PutRecordBatchResult result = Mockito.mock(PutRecordBatchResult.class);
     KinesisProducer producer = Mockito.mock(KinesisProducer.class);
@@ -191,7 +189,7 @@ public class TestLambdaToAvroWithLocalSchemaStore {
     Map<String, Object>[] records = createMalformedRecords(recordCount);
 
     // setup the mocks/fakes
-    FirehoseClientProperties props = getClientProperties();
+    LambdaClientProperties props = getClientProperties();
     AmazonKinesisFirehoseClient client = Mockito.mock(AmazonKinesisFirehoseClient.class);
     KinesisProducer producer = Mockito.mock(KinesisProducer.class);
 
@@ -304,7 +302,7 @@ public class TestLambdaToAvroWithLocalSchemaStore {
   }
 
   private Pair<List<KinesisRequest>, List<PutRecordBatchRequest>> doSetupAndWrite(
-    FirehoseClientProperties props, AmazonKinesisFirehoseClient client, KinesisProducer producer,
+    LambdaClientProperties props, AmazonKinesisFirehoseClient client, KinesisProducer producer,
     SchemaStore store, PutRecordBatchResult result, KinesisEvent... events) throws IOException {
     boolean noClient = false, noResult = false;
     if (client == null) {
@@ -372,7 +370,7 @@ public class TestLambdaToAvroWithLocalSchemaStore {
    */
   private SchemaStore createSchemaStore(SchemaStore store, Map<String, Object> event)
     throws Exception {
-    FirehoseClientProperties props = getClientProperties();
+    LambdaClientProperties props = getClientProperties();
     if (store == null) {
       store = props.createSchemaStore();
     }
@@ -384,16 +382,16 @@ public class TestLambdaToAvroWithLocalSchemaStore {
     return store;
   }
 
-  protected FirehoseClientProperties getClientProperties() throws Exception {
+  protected LambdaClientProperties getClientProperties() throws Exception {
     Properties props = getMockProps();
-    return FirehoseClientProperties.createForTesting(props, store);
+    return LambdaClientProperties.createForTesting(props, store);
   }
 
   protected Properties getMockProps() {
     Properties props = new Properties();
-    props.put(FirehoseClientProperties.FIREHOSE_URL, "url");
-    props.put(FirehoseClientProperties.PARSED_STREAM_NAME, "stream");
-    props.put(FirehoseClientProperties.FIREHOSE_MALFORMED_STREAM_NAME, "malformed");
+    props.put(LambdaClientProperties.FIREHOSE_URL, "url");
+    props.put(LambdaClientProperties.PARSED_STREAM_NAME, "stream");
+    props.put(LambdaClientProperties.FIREHOSE_MALFORMED_STREAM_NAME, "malformed");
     return props;
   }
 

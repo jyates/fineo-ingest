@@ -8,6 +8,8 @@ import com.fasterxml.jackson.databind.util.ByteBufferBackedInputStream;
 import com.fasterxml.jackson.jr.ob.JSON;
 import com.google.common.annotations.VisibleForTesting;
 import io.fineo.internal.customer.Malformed;
+import io.fineo.lambda.StreamProducer;
+import io.fineo.lambda.storage.TestableLambda;
 import io.fineo.schema.MapRecord;
 import io.fineo.schema.avro.AvroSchemaEncoder;
 import io.fineo.schema.store.SchemaStore;
@@ -35,11 +37,11 @@ import java.util.function.Function;
  * records' Firehose Kinesis stream.
  * </p>
  */
-public class LambdaRawRecordToAvro {
+public class LambdaRawRecordToAvro implements StreamProducer, TestableLambda {
 
   private static final Log LOG = LogFactory.getLog(LambdaRawRecordToAvro.class);
   private FirehoseBatchWriter malformedRecords;
-  private FirehoseClientProperties props;
+  private LambdaClientProperties props;
   private SchemaStore store;
   private KinesisProducer convertedRecords;
 
@@ -53,6 +55,7 @@ public class LambdaRawRecordToAvro {
   }
 
   @VisibleForTesting
+  @Override
   public void handleEventInternal(KinesisEvent event) throws IOException {
     for (KinesisEvent.KinesisEventRecord rec : event.getRecords()) {
       LOG.trace("Got message");
@@ -116,7 +119,7 @@ public class LambdaRawRecordToAvro {
 
 
   private void setup() throws IOException {
-    props = FirehoseClientProperties.load();
+    props = LambdaClientProperties.load();
     this.store = props.createSchemaStore();
 
     KinesisProducerConfiguration conf = new KinesisProducerConfiguration()
@@ -128,7 +131,7 @@ public class LambdaRawRecordToAvro {
   }
 
   @VisibleForTesting
-  public void setupForTesting(FirehoseClientProperties props, AmazonKinesisFirehoseClient client,
+  public void setupForTesting(LambdaClientProperties props, AmazonKinesisFirehoseClient client,
     SchemaStore store, KinesisProducer producer, FirehoseBatchWriter malformed) {
     this.props = props;
     this.malformedRecords =
@@ -136,6 +139,11 @@ public class LambdaRawRecordToAvro {
       malformed:
       new FirehoseBatchWriter(transform, props.getFirehoseMalformedStreamName(), client);
     this.store = store;
+    setDownstreamForTesting(producer);
+  }
+
+  @Override
+  public void setDownstreamForTesting(KinesisProducer producer) {
     this.convertedRecords = producer;
   }
 }

@@ -1,4 +1,4 @@
-package io.fineo.spark.redshift;/*
+package io.fineo.etl.spark;/*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.
@@ -15,8 +15,9 @@ package io.fineo.spark.redshift;/*
  * limitations under the License.
  */
 
-import io.fineo.spark.redshift.options.ETLOptionBuilder;
-import io.fineo.spark.redshift.options.ETLOptions;
+import io.fineo.etl.SeekableDataInput;
+import io.fineo.etl.options.ETLOptionBuilder;
+import io.fineo.etl.options.ETLOptions;
 import org.apache.avro.file.MultiSchemaFileReader;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.hadoop.fs.FSDataInputStream;

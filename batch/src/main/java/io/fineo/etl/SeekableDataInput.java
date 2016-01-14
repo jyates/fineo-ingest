@@ -1,4 +1,4 @@
-package io.fineo.spark.redshift;
+package io.fineo.etl;
 
 import org.apache.avro.file.SeekableInput;
 import org.apache.hadoop.fs.FSDataInputStream;

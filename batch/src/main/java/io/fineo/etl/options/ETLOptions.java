@@ -14,9 +14,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.fineo.spark.redshift.options;
+package io.fineo.etl.options;
 
-import io.fineo.spark.redshift.SparkETL;
+import io.fineo.etl.SparkETL;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;

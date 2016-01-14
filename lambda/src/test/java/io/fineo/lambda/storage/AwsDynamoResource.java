@@ -3,7 +3,7 @@ package io.fineo.lambda.storage;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
 import io.fineo.aws.rule.AwsCredentialResource;
-import io.fineo.lambda.avro.FirehoseClientProperties;
+import io.fineo.lambda.avro.LambdaClientProperties;
 import io.fineo.lambda.avro.LocalDynamoTestUtil;
 import org.junit.rules.ExternalResource;
 
@@ -59,7 +59,7 @@ public class AwsDynamoResource extends ExternalResource {
     util.setConnectionProperties(prop);
   }
 
-  public void setCredentials(FirehoseClientProperties props) throws Exception {
+  public void setCredentials(LambdaClientProperties props) throws Exception {
     props.setAwsCredentialProviderForTesting(this.getCredentials().getFakeProvider());
   }
 

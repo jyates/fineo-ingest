@@ -17,7 +17,7 @@ import java.util.Properties;
 /**
  * Simple wrapper around java properties
  */
-public class FirehoseClientProperties {
+public class LambdaClientProperties {
 
   private static final String PROP_FILE_NAME = "fineo-lambda.properties";
 
@@ -25,9 +25,9 @@ public class FirehoseClientProperties {
   public static final String PARSED_STREAM_NAME = "fineo.kinesis.parsed";
 
   static final String FIREHOSE_URL = "fineo.firehose.url";
-  static final String FIREHOSE_MALFORMED_STREAM_NAME = "fineo.firehose.malformed";
-  static final String FIREHOSE_STAGED_STREAM_NAME = "fineo.firehose.staged";
-  static final String FIREHOSE_STAGED_DYANMO_ERROR_STREAM_NAME = "firehose.staged.error.dynamo";
+  public static final String FIREHOSE_MALFORMED_STREAM_NAME = "fineo.firehose.malformed";
+  public static final String FIREHOSE_STAGED_STREAM_NAME = "fineo.firehose.staged";
+  public static final String FIREHOSE_STAGED_DYANMO_ERROR_STREAM_NAME = "firehose.staged.error.dynamo";
 
   public static final String DYNAMO_ENDPOINT = "fineo.dynamo.url";
   public static final String DYNAMO_SCHEMA_STORE_TABLE = "fineo.dynamo.schema-store";
@@ -46,20 +46,20 @@ public class FirehoseClientProperties {
    * @param props
    */
   @VisibleForTesting
-  public FirehoseClientProperties(Properties props) {
+  public LambdaClientProperties(Properties props) {
     this.props = props;
   }
 
-  public static FirehoseClientProperties load() throws IOException {
+  public static LambdaClientProperties load() throws IOException {
     return load(PROP_FILE_NAME);
   }
 
-  private static FirehoseClientProperties load(String file) throws IOException {
-    InputStream input = FirehoseClientProperties.class.getClassLoader().getResourceAsStream(file);
+  private static LambdaClientProperties load(String file) throws IOException {
+    InputStream input = LambdaClientProperties.class.getClassLoader().getResourceAsStream(file);
     Preconditions.checkArgument(input != null, "Could not load properties file: " + input);
     Properties props = new Properties();
     props.load(input);
-    FirehoseClientProperties fProps = new FirehoseClientProperties(props);
+    LambdaClientProperties fProps = new LambdaClientProperties(props);
     fProps.provider = new DefaultAWSCredentialsProviderChain();
     return fProps;
   }
@@ -100,9 +100,9 @@ public class FirehoseClientProperties {
     this.provider = provider;
   }
 
-  public static FirehoseClientProperties createForTesting(Properties props,
+  public static LambdaClientProperties createForTesting(Properties props,
     SchemaStore schemaStore) {
-    FirehoseClientProperties client = new FirehoseClientProperties(props) {
+    LambdaClientProperties client = new LambdaClientProperties(props) {
       @Override
       public SchemaStore createSchemaStore() {
         return schemaStore;
