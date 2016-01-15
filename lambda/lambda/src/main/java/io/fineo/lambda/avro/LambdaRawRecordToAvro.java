@@ -52,11 +52,13 @@ public class LambdaRawRecordToAvro implements StreamProducer, TestableLambda {
     } catch (Exception e) {
       malformedEvent(event);
     }
+    LOG.info("Finished!");
   }
 
   @VisibleForTesting
   @Override
   public void handleEventInternal(KinesisEvent event) throws IOException {
+    LOG.info("Entering handler");
     for (KinesisEvent.KinesisEventRecord rec : event.getRecords()) {
       LOG.trace("Got message");
       ByteBuffer data = rec.getKinesis().getData();
@@ -66,7 +68,7 @@ public class LambdaRawRecordToAvro implements StreamProducer, TestableLambda {
         .USE_DEFERRED_MAPS);
       Map<String, Object> values =
         configuredJson.mapFrom(new ByteBufferBackedInputStream(rec.getKinesis().getData()));
-
+      LOG.info("Parsed json: "+values);
       // parse out the necessary values
       MapRecord record = new MapRecord(values);
       // this is an ugly reach into the bridge, logic for the org ID, specially as we pull it out
@@ -80,18 +82,23 @@ public class LambdaRawRecordToAvro implements StreamProducer, TestableLambda {
         malformedRecords.addToBatch(data);
         continue;
       }
+      LOG.info("Got the encoder");
 
       // write the record to a ByteBuffer
       GenericRecord outRecord = bridge.encode(new MapRecord(values));
+      LOG.info("Encoded the record");
       FirehoseRecordWriter writer = FirehoseRecordWriter.create();
       // add the record
       this.convertedRecords.addUserRecord(props.getParsedStreamName(), orgId,
         writer.write(outRecord));
+      LOG.info("Wrote the record");
     }
 
+    LOG.info("Flushing malformed records");
     malformedRecords.flush();
+    LOG.info("Flushed malformed records");
 
-    LOG.debug("Waiting on kinesis to finish writing all records");
+    LOG.debug("Waiting on kinesis to finish writing all converted records");
     convertedRecords.flushSync();
     LOG.debug("Finished writing record batches");
   }
@@ -119,13 +126,17 @@ public class LambdaRawRecordToAvro implements StreamProducer, TestableLambda {
 
 
   private void setup() throws IOException {
+    LOG.info("Setting up");
     props = LambdaClientProperties.load();
+    LOG.info("Creating store");
     this.store = props.createSchemaStore();
 
+    LOG.info("Setting up producer");
     KinesisProducerConfiguration conf = new KinesisProducerConfiguration()
       .setCustomEndpoint(props.getKinesisEndpoint());
     this.convertedRecords = new KinesisProducer(conf);
 
+    LOG.info("Setting up batch writer");
     malformedRecords = new FirehoseBatchWriter(props, transform, props
       .getFirehoseMalformedStreamName());
   }

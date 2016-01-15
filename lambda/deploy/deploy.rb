@@ -8,8 +8,10 @@ $PROP_FILE = "fineo-lambda.properties"
 # File properties
 path = File.dirname(__FILE__)
 file = File.basename(__FILE__)
-debug = ENV["DEBUG"] || "t"
-
+lambda = "#{path}/../lambda"
+jar_dir = "#{lambda}/target"
+build_script = "#{lambda}/build.sh"
+$lambda_validation = "#{path}/../lambda-validate"
 
 # List of the functions and properties about them
 functions = [
@@ -18,8 +20,8 @@ functions = [
     description: "Convert raw JSON records to avro encoded records",
     handler: "io.fineo.lambda.avro.LambdaRawRecordToAvro::handler",
     role: "arn:aws:iam::766732214526:role/Lambda-Raw-To-Avro-Ingest-Role",
-    timeout: 10,
-    memory_size: 128
+    timeout: 20, # seconds
+    memory_size: 198 # MB
   },
   {
     function_name: "AvroToStorage",
@@ -93,6 +95,13 @@ def printProperties(jar)
   end
 end
 
+def runTest(opts)
+  logging = opts.test_log ? "-Dtest.output.to.file=false" : ""
+  cmd = "mvn -f #{$lambda_validation} test -DallTests #{logging}"
+  puts "Running: #{cmd}" if opts.verbose
+  system cmd
+end
+
 # Options
 ##########
 
@@ -105,6 +114,8 @@ options.region = 'us-east-1'
 options.names = []
 options.force = false
 options.verbose = false
+options.test = false
+options.test_log
 
 parser = OptionParser.new do |opts|
   opts.banner = "Usage: #{file} [options]"
@@ -121,8 +132,14 @@ parser = OptionParser.new do |opts|
   end
 
   opts.separator "Runtime options:"
+  opts.on("--test [log-to-sys-out]", "Run test suite against the deployed lambda functions and "+
+  "whether or not logging should be to system out. Default: test: #{options.test}, sys-out: " +
+  "#{options.test_log}") do |t|
+    options.test = true
+    options.test_log = t if !t.nil?
+  end
   opts.on('-f', '--force', "Force with first acceptable jar. Default: #{options.force}") do |f|
-    options.force = true;
+    options.force = true
   end
   opts.on('-v', '--verbose', "Run verbosely") do |s|
     options.verbose = true
@@ -134,20 +151,18 @@ parser = OptionParser.new do |opts|
 end
 parser.parse!
 
+puts "[Verbose mode enabled]" if options.verbose
 
 # Check to see if a deployable artifact is present
-jars = Dir["#{path}/../target/lambda-*[.]jar"]
-jars.each{|jar|
-  if jar.end_with? "tests.jar"
-    jars.delete jar
-    end
- }
-raise "No deployable jar found!" unless !jars.empty?
+puts "Checking #{jar_dir} for jars..." if options.verbose
+
+jars = Dir["#{jar_dir}/lambda-*.jar"]
+jar = jars.find{|jar| /lambda-[0-9.]+(-SNAPSHOT)?-aws.jar/=~ jar}
+raise "No deployable jar found!" if jar.nil?
 
 # There are some jars, so ask the user if they want to deploy this particular jar
-jar = jars[0]
-
 unless options.force
+  system "date"
   deployCheck = "Do you want to deploy #{getFileStat(jar)}\n? [y/n]"
   result = getCorrectResult(deployCheck)
   exit unless result.eql?("y")
@@ -170,14 +185,18 @@ client = Aws::Lambda::Client.new(
   secret_access_key: creds['secret_access_key'],
   validate_params: true
 )
-uploaded = client.list_functions({})
 
+didUpload = false
+uploaded = client.list_functions({})
 encoded = File.binread(jar)
 functions.each{|function|
   # filter out functions that don't match the expected name
   if options.names.empty? || options.names.include?(function[:function_name])
     upload(uploaded.functions, client, function, encoded)
+    didUpload = true
   elsif options.verbose
     puts "Skipping function: #{function[:function_name]}"
   end
 }
+
+runTest(options) if didUpload && options.test

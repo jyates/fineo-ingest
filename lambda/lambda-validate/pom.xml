@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>io.fineo.etl</groupId>
+  <version>1.0-SNAPSHOT</version>
+  <artifactId>lambda-validate</artifactId>
+  <description>Validate that the lambda components were correctly deployed</description>
+  <properties>
+    <!-- Build properties -->
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <maven.compile.version>1.8</maven.compile.version>
+
+    <!-- Plugin Versions -->
+    <maven.compiler.version>3.3</maven.compiler.version>
+
+    <!-- Dependency Versions -->
+    <!-- AWS -->
+    <aws-java-sdk.version>1.10.40</aws-java-sdk.version>
+    <aws-lambda-java-core.version>1.1.0</aws-lambda-java-core.version>
+    <amazon-kinesis-producer.version>0.10.2</amazon-kinesis-producer.version>
+
+    <!-- Other -->
+    <fineo.version>1.0-SNAPSHOT</fineo.version>
+
+    <!-- Test dependencies -->
+    <surefire.version>2.19</surefire.version>
+    <junit.version>4.12</junit.version>
+    <mockito.version>1.10.19</mockito.version>
+
+    <!-- Test properties -->
+    <test.output.to.file>true</test.output.to.file>
+    <test.exclude.pattern></test.exclude.pattern>
+    <surefire.awsLocalTests>io.fineo.aws.AwsDependentTests</surefire.awsLocalTests>
+    <surefire.skipSimpleTests>false</surefire.skipSimpleTests>
+    <surefire.skipAwsLocalTests>true</surefire.skipAwsLocalTests>
+  </properties>
+
+  <dependencies>
+    <!-- AWS Resources -->
+    <dependency>
+      <groupId>com.amazonaws</groupId>
+      <artifactId>aws-java-sdk</artifactId>
+      <version>${aws-java-sdk.version}</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.amazonaws</groupId>
+      <artifactId>aws-lambda-java-core</artifactId>
+      <version>${aws-lambda-java-core.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.amazonaws</groupId>
+      <artifactId>aws-lambda-java-events</artifactId>
+      <version>${aws-lambda-java-core.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.amazonaws</groupId>
+      <artifactId>amazon-kinesis-producer</artifactId>
+      <version>${amazon-kinesis-producer.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.amazonaws</groupId>
+      <artifactId>aws-java-sdk-dynamodb</artifactId>
+      <version>${aws-java-sdk.version}</version>
+    </dependency>
+
+    <!-- Fineo dependencies -->
+    <dependency>
+      <groupId>io.fineo.etl</groupId>
+      <artifactId>lambda</artifactId>
+      <version>${fineo.version}</version>
+      <classifier>aws</classifier>
+      <scope>test</scope>
+      <exclusions>
+        <exclusion>
+          <artifactId>*</artifactId>
+          <groupId>*</groupId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>io.fineo.etl</groupId>
+      <artifactId>lambda</artifactId>
+      <version>${fineo.version}</version>
+      <classifier>tests</classifier>
+      <scope>test</scope>
+      <exclusions>
+        <exclusion>
+          <artifactId>com.amazonaws</artifactId>
+          <groupId>*</groupId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>io.fineo.schema</groupId>
+      <artifactId>schema-mgmt</artifactId>
+      <version>${fineo.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.fineo.schema</groupId>
+      <artifactId>schema-mgmt</artifactId>
+      <version>${fineo.version}</version>
+      <scope>test</scope>
+      <classifier>tests</classifier>
+    </dependency>
+    <dependency>
+      <groupId>io.fineo.aws</groupId>
+      <artifactId>aws-common</artifactId>
+      <version>${fineo.version}</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>${junit.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-all</artifactId>
+      <version>${mockito.version}</version>
+    </dependency>
+  </dependencies>
+
+  <!-- Build the output jar -->
+  <build>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <version>${maven.compiler.version}</version>
+          <configuration>
+            <source>${maven.compile.version}</source>
+            <target>${maven.compile.version}</target>
+          </configuration>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-surefire-plugin</artifactId>
+          <version>${surefire.version}</version>
+          <configuration>
+            <redirectTestOutputToFile>${test.output.to.file}</redirectTestOutputToFile>
+            <!-- Skip the standard test running, instead run the 'phases' below -->
+            <skip>true</skip>
+            <argLine>-enableassertions -Djava.security.egd=file:/dev/./urandom
+              -Dsqlite4java.library.path=${project.build.directory}/dependencies
+            </argLine>
+            <excludes>
+              <!-- users can add -D option to skip particular test classes
+             ex: mvn test -Dtest.exclude.pattern=**/TestFoo.java,**/TestBar.java
+              -->
+              <exclude>${test.exclude.pattern}</exclude>
+            </excludes>
+          </configuration>
+          <executions>
+            <execution>
+              <id>local-tests</id>
+              <goals>
+                <goal>test</goal>
+              </goals>
+              <configuration>
+                <excludedGroups>${surefire.awsLocalTests}</excludedGroups>
+                <skip>${surefire.skipSimpleTests}</skip>
+              </configuration>
+            </execution>
+            <execution>
+              <id>awsLocalTests</id>
+              <goals>
+                <goal>test</goal>
+              </goals>
+              <configuration>
+                <groups>${surefire.awsLocalTests}</groups>
+                <skip>${surefire.skipAwsLocalTests}</skip>
+              </configuration>
+            </execution>
+          </executions>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+  </build>
+
+  <profiles>
+    <!-- Setup the different test phases -->
+    <profile>
+      <id>allTests</id>
+      <activation>
+        <property>
+          <name>allTests</name>
+        </property>
+      </activation>
+      <properties>
+        <surefire.skipAwsLocalTests>false</surefire.skipAwsLocalTests>
+        <surefire.skipSimpleTests>false</surefire.skipSimpleTests>
+      </properties>
+    </profile>
+    <profile>
+      <id>awsLocalTests</id>
+      <activation>
+        <property>
+          <name>awsLocalTests</name>
+        </property>
+      </activation>
+      <properties>
+        <surefire.skipAwsLocalTests>false</surefire.skipAwsLocalTests>
+        <surefire.skipSimpleTests>true</surefire.skipSimpleTests>
+      </properties>
+    </profile>
+    <profile>
+      <id>skipSimpleTests</id>
+      <activation>
+        <property>
+          <name>skipSimpleTests</name>
+        </property>
+      </activation>
+      <properties>
+        <surefire.skipSimpleTests>true</surefire.skipSimpleTests>
+      </properties>
+    </profile>
+  </profiles>
+</project>

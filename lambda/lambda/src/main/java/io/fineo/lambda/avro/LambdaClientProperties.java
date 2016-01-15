@@ -8,6 +8,8 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import io.fineo.schema.aws.dynamodb.DynamoDBRepository;
 import io.fineo.schema.store.SchemaStore;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.schemarepo.ValidatorFactory;
 
 import java.io.IOException;
@@ -19,6 +21,7 @@ import java.util.Properties;
  */
 public class LambdaClientProperties {
 
+  private static final Log LOG = LogFactory.getLog(LambdaClientProperties.class);
   private static final String PROP_FILE_NAME = "fineo-lambda.properties";
 
   private final java.lang.String KINESIS_URL = "fineo.kinesis.url";
@@ -65,16 +68,20 @@ public class LambdaClientProperties {
   }
 
   public AmazonDynamoDBAsyncClient getDynamo() {
+    LOG.info("Creating dynamo with provider: "+provider);
     AmazonDynamoDBAsyncClient client = new AmazonDynamoDBAsyncClient(provider);
+    LOG.info("Got client, setting endpoint");
     client.setEndpoint(props.getProperty(DYNAMO_ENDPOINT));
     return client;
   }
 
   public SchemaStore createSchemaStore() {
     AmazonDynamoDBClient client = getDynamo();
+    LOG.info("got dynamo");
     DynamoDBRepository repo =
       new DynamoDBRepository(client, props.getProperty(DYNAMO_SCHEMA_STORE_TABLE),
         new ValidatorFactory.Builder().build());
+    LOG.info("created repository");
     return new SchemaStore(repo);
   }
 

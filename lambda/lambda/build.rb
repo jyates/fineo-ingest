@@ -36,9 +36,13 @@ def set(options, ref, value)
   options[ref].one = value
 end
 
+skip_tests = ""
+
 file = File.basename(__FILE__)
 parser = OptionParser.new do|opts|
   opts.banner = "Usage: #{file} [options]"
+
+  opts.separator "Kinesis Options:"
   opts.on('-k', '--kinesis-url kinesis-url', 'Kinesis address - not a URL') do |url|
     set(options, :kinesis, url)
   end
@@ -46,6 +50,7 @@ parser = OptionParser.new do|opts|
     set options, :parsed, name
   end
 
+  opts.separator "Firehose Options:"
   opts.on('-f', '--firehose-url firehose-url', 'Firehose Url') do |url|
     set options, :firehose, url
   end
@@ -60,28 +65,33 @@ parser = OptionParser.new do|opts|
       set options, :staged_dynamo_error, name
   end
 
-  opts.on('d', '--dynamo-url dynamo-url', 'DynamoDB Endpoint Url') do |url|
+  opts.separator "Dynamo Options:"
+  opts.on('-d', '--dynamo-url dynamo-url', 'DynamoDB Endpoint Url') do |url|
     set options, :dynamo, url
   end
-  opts.on('s', '--dynamo-schema-table table-name', 'DynamoDB schema repository table name') do |name|
+  opts.on('-s', '--dynamo-schema-table table-name', 'DynamoDB schema repository table name') do |name|
     set options, :schema_table, name
   end
-  opts.on('i', '--dynamo-ingest-prefix table-prefix', 'DynamoDB ingest table name prefix') do |name|
+  opts.on('-i', '--dynamo-ingest-prefix table-prefix', 'DynamoDB ingest table name prefix') do |name|
     set options, :ingest_prefix, name
   end
-  opts.on('r', '--dynamo-read-limit limit', 'Max amount of read units to allocate to a '+
+  opts.on('-r', '--dynamo-read-limit limit', 'Max amount of read units to allocate to a '+
     'single table') do |name|
       set options, :read_max, name
     end
-  opts.on('w', '--dynamo-write-limit limit', 'Max amount of write units to allocate to a ' +
+  opts.on('-w', '--dynamo-write-limit limit', 'Max amount of write units to allocate to a ' +
     'single table')do |name|
       set options, :write_max, name
     end
-  opts.on('l', '--dynamo-max-retries limit', 'Max amount of write units to allocate to a '+
+  opts.on('-l', '--dynamo-max-retries limit', 'Max amount of write units to allocate to a '+
     'single table') do |name|
       set options, :retries, name
     end
 
+  opts.separator ""
+  opts.on("--skip-tests", "Skip running tests when building deployable jar") do |s|
+    skip_tests="-DskipTests"
+  end
   opts.on('-h', '--help', 'Displays Help') do
     puts opts
     exit
@@ -114,7 +124,7 @@ unless debug.nil?
 end
 
 # Build the package
-system "mvn clean package -Ddeploy"
+system "mvn -f #{path} clean package -Ddeploy #{skip_tests}"
 
 jar = Dir["#{path}/target/lambda-*.jar"]
 puts "Upload #{jar[0]} to AWS"

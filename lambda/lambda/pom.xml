@@ -218,7 +218,6 @@
         <version>${maven.dependency.version}</version>
         <executions>
           <execution>
-            <!--<id>copy-dependencies</id>-->
             <phase>process-test-resources</phase>
             <goals>
               <goal>copy-dependencies</goal>
@@ -264,6 +263,8 @@
             <version>${maven.shade.version}</version>
             <configuration>
               <createDependencyReducedPom>false</createDependencyReducedPom>
+              <shadedArtifactAttached>true</shadedArtifactAttached>
+              <shadedClassifierName>aws</shadedClassifierName>
             </configuration>
             <executions>
               <execution>
@@ -272,18 +273,14 @@
                   <goal>shade</goal>
                 </goals>
                 <configuration>
-                  <minimizeJar>true</minimizeJar>
                   <artifactSet>
                     <excludes>
-                      <!-- logging jars -->
-                      <exclude>log4j:log4j</exclude>
-                      <exclude>org.slf4j:slf4j-log4j12</exclude>
                       <!-- Test jars -->
                       <exclude>junit:junit</exclude>
+                      <exclude>org.mockito:mockito-all</exclude>
                       <exclude>com.amazonaws:DynamoDBLocal</exclude>
                       <exclude>io.fineo.aws:aws-common</exclude>
                       <exclude>io.fineo.schema:schema-mgmt:tests</exclude>
-                      <exclude>org.mockito:mockito-all</exclude>
                     </excludes>
                   </artifactSet>
                   <filters>

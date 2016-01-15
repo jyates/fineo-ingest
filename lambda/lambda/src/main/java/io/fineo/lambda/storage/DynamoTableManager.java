@@ -11,7 +11,7 @@ import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Joiner;
-import javafx.util.Pair;
+import io.fineo.schema.Pair;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
