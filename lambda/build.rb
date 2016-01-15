@@ -25,9 +25,9 @@ opts = {
 
   :dynamo => Pair.new("https://dynamodb.us-east-1.amazonaws.com", "dynamo.url"),
   :schema_table => Pair.new("customer-schema", "dynamo.schema-store"),
-  :ingest_prefix => Pair.new("customer-ingest", "dynamo.ingest.prefix")
-  :write_max => Pair.new("100", "dynamo.limit.write")
-  :read_max => Pair.new("1000", "dynamo.limit.read")
+  :ingest_prefix => Pair.new("customer-ingest", "dynamo.ingest.prefix"),
+  :write_max => Pair.new("100", "dynamo.limit.write"),
+  :read_max => Pair.new("1000", "dynamo.limit.read"),
   :retries => Pair.new("3", "dynamo.limit.retries")
 }
 
@@ -49,16 +49,15 @@ parser = OptionParser.new do|opts|
   opts.on('-f', '--firehose-url firehose-url', 'Firehose Url') do |url|
     set options, :firehose, url
   end
-  opts.on('-m', '--malformed-stream stream-name', 'Malformed event Kinesis Firehose stream name')
-   do |name|
+  opts.on('-m', '--malformed-stream stream-name', 'Malformed event Kinesis Firehose stream name') do |name|
     set options, :malformed, name
   end
-  opts.on('-t, '--staged-stream stream-name', 'Staged avro event Kinesis Firehose stream name')  do |name|
+  opts.on('-t', '--staged-stream stream-name', 'Staged avro event Kinesis Firehose stream name') do |name|
     set options, :staged, name
   end
-  opts.on('-e, '--staged-dynamo-error-stream stream-name', 'Kinesis Firehose stream' +
+  opts.on('-e', '--staged-dynamo-error-stream stream-name', 'Kinesis Firehose stream' +
     'name for messages that could not be written dynamo')  do |name|
-    set options, :staged_dynamo_error, name
+      set options, :staged_dynamo_error, name
   end
 
   opts.on('d', '--dynamo-url dynamo-url', 'DynamoDB Endpoint Url') do |url|
@@ -70,16 +69,16 @@ parser = OptionParser.new do|opts|
   opts.on('i', '--dynamo-ingest-prefix table-prefix', 'DynamoDB ingest table name prefix') do |name|
     set options, :ingest_prefix, name
   end
-  opts.on('r', '--dynamo-read-limit limit', 'Max amount of read units to allocate to a single table')
-   do |name|
-    set options, :read_max, name
-  end
-  opts.on('w', '--dynamo-write-limit limit', 'Max amount of write units to allocate to a single table')
-    do |name|
-    set options, :write_max, name
-  end
-    opts.on('l', '--dynamo-max-retries limit', 'Max amount of write units to allocate to a single table')
-      do |name|
+  opts.on('r', '--dynamo-read-limit limit', 'Max amount of read units to allocate to a '+
+    'single table') do |name|
+      set options, :read_max, name
+    end
+  opts.on('w', '--dynamo-write-limit limit', 'Max amount of write units to allocate to a ' +
+    'single table')do |name|
+      set options, :write_max, name
+    end
+  opts.on('l', '--dynamo-max-retries limit', 'Max amount of write units to allocate to a '+
+    'single table') do |name|
       set options, :retries, name
     end
 
