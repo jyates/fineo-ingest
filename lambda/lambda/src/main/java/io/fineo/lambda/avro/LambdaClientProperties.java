@@ -4,6 +4,8 @@ import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
+import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
+import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import io.fineo.schema.aws.dynamodb.DynamoDBRepository;
@@ -28,9 +30,9 @@ public class LambdaClientProperties {
   public static final String PARSED_STREAM_NAME = "fineo.kinesis.parsed";
 
   static final String FIREHOSE_URL = "fineo.firehose.url";
-  public static final String FIREHOSE_MALFORMED_STREAM_NAME = "fineo.firehose.malformed";
+  public static final String FIREHOSE_MALFORMED_STREAM_NAME = "fineo.firehose.raw.error";
   public static final String FIREHOSE_STAGED_STREAM_NAME = "fineo.firehose.staged";
-  public static final String FIREHOSE_STAGED_DYANMO_ERROR_STREAM_NAME = "firehose.staged.error.dynamo";
+  public static final String FIREHOSE_STAGED_DYANMO_ERROR_STREAM_NAME = "firehose.staged.error";
 
   public static final String DYNAMO_ENDPOINT = "fineo.dynamo.url";
   public static final String DYNAMO_SCHEMA_STORE_TABLE = "fineo.dynamo.schema-store";
@@ -77,10 +79,13 @@ public class LambdaClientProperties {
 
   public SchemaStore createSchemaStore() {
     AmazonDynamoDBClient client = getDynamo();
-    LOG.info("got dynamo");
+    CreateTableRequest create =
+      DynamoDBRepository.getBaseTableCreate(props.getProperty(DYNAMO_SCHEMA_STORE_TABLE));
+    create.setProvisionedThroughput(new ProvisionedThroughput()
+    .withReadCapacityUnits(getDynamoReadMax())
+    .withWriteCapacityUnits(getDynamoWriteMax()));
     DynamoDBRepository repo =
-      new DynamoDBRepository(client, props.getProperty(DYNAMO_SCHEMA_STORE_TABLE),
-        new ValidatorFactory.Builder().build());
+      new DynamoDBRepository(new ValidatorFactory.Builder().build(), client, create);
     LOG.info("created repository");
     return new SchemaStore(repo);
   }

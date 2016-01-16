@@ -81,11 +81,11 @@ public class TestEndToEndLambdaAws {
   }
 
   private void setupSchema(Map<String, Object> json) throws Exception {
-//    LambdaClientProperties props = LambdaClientProperties.load();
-//    props.setAwsCredentialProviderForTesting(awsCredentials.getProvider());
-//    LOG.info("Start");
-//    SchemaStore store = props.createSchemaStore();
-//    LambdaTestUtils.updateSchemaStore(store, json);
+    LambdaClientProperties props = LambdaClientProperties.load();
+    props.setAwsCredentialProviderForTesting(awsCredentials.getProvider());
+    LOG.info("Start");
+    SchemaStore store = props.createSchemaStore();
+    LambdaTestUtils.updateSchemaStore(store, json);
   }
 
   private void makeRequest(Map<String, Object> json) throws IOException, OldSchemaException {

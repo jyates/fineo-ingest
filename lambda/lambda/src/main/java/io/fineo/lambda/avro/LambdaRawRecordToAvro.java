@@ -46,10 +46,11 @@ public class LambdaRawRecordToAvro implements StreamProducer, TestableLambda {
   private KinesisProducer convertedRecords;
 
   public void handler(KinesisEvent event) throws IOException {
-    setup();
     try {
+      setup();
       handleEventInternal(event);
     } catch (Exception e) {
+      LOG.error("Failed to write event!", e);
       malformedEvent(event);
     }
     LOG.info("Finished!");
