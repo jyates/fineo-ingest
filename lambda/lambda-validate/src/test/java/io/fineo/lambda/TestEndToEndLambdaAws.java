@@ -64,7 +64,7 @@ public class TestEndToEndLambdaAws {
     + "      \"eventName\": \"aws:kinesis:record\","
     + "      \"eventSourceARN\": \"arn:aws:kinesis:EXAMPLE\","
     + "      \"eventSource\": \"aws:kinesis\","
-    + "      \"awsRegion\": \"%S\""
+    + "      \"awsRegion\": \"%s\""
     + "    }"
     + "  ]"
     + "}"
