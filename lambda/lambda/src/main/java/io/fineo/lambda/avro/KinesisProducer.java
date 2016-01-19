@@ -3,13 +3,13 @@ package io.fineo.lambda.avro;
 import com.amazonaws.services.kinesis.AmazonKinesisAsyncClient;
 import com.amazonaws.services.kinesis.model.PutRecordRequest;
 import com.amazonaws.services.kinesis.model.PutRecordResult;
-import com.amazonaws.services.kinesis.model.PutRecordsRequest;
-import com.amazonaws.services.kinesis.model.PutRecordsRequestEntry;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import io.fineo.lambda.aws.AwsAsyncRequest;
+import io.fineo.lambda.aws.AwsAsyncSubmitter;
+import io.fineo.lambda.aws.MultiWriteFailures;
+import org.apache.avro.file.FirehoseRecordWriter;
+import org.apache.avro.generic.GenericRecord;
 
-import java.nio.ByteBuffer;
-import java.util.concurrent.Future;
+import java.io.IOException;
 
 /**
  * Similar amazon's {@link com.amazonaws.services.kinesis.producer.KinesisProducer}, but uses the
@@ -19,30 +19,31 @@ import java.util.concurrent.Future;
  * <li>Works in Lambda functions because it doesn't require access to /tmp</li>
  * <li>Has a much smaller startup time, a huge boon to Lambda functions</li>
  * </ol>
- * <p>
- * All writes are accumulated until a call to {@link #flush()}. That same flush can then be
- * sychronously blocked on by calling {@link #sync()}. This class is <b>not thread-safe</b>, so
- * two successive calls to flush, only the second will be blocked on when calling {@link #sync()}.
- * </p>
+ * <p/>
+ * All writes are accumulated until a call to {@link #flush()}, which is <b>blocks until all
+ * requests have completed</b>. This is merely a simple wrapper around an {@link AwsAsyncSubmitter}
+ *
+ * @see AwsAsyncSubmitter for more information about thread safety
  */
 public class KinesisProducer {
-  private static final Log LOG = LogFactory.getLog(KinesisProducer.class);
-  private final AmazonKinesisAsyncClient client;
-  PutRecordRequest request;
-  private Future<PutRecordResult> written;
+  private final AwsAsyncSubmitter<PutRecordRequest, PutRecordResult, GenericRecord> submitter;
+  private final FirehoseRecordWriter converter;
 
-  public KinesisProducer(AmazonKinesisAsyncClient client, String streamName) {
-    this.client = client;
-    request = new PutRecordRequest().withStreamName(streamName);
+  public KinesisProducer(AmazonKinesisAsyncClient kinesisClient, long kinesisRetries) {
+    this.submitter = new AwsAsyncSubmitter<>(kinesisRetries,
+      kinesisClient::putRecordAsync);
+    this.converter = FirehoseRecordWriter.create();
   }
 
-  public void add(ByteBuffer data, String hashKey, String partitonKey){
-    this.written = client.putRecordAsync(request);
+  public void add(String stream, String partitionKey, GenericRecord data) throws IOException {
+    PutRecordRequest request =
+      new PutRecordRequest().withStreamName(stream)
+                            .withData(converter.write(data))
+                            .withPartitionKey(partitionKey);
+    submitter.submit(new AwsAsyncRequest<>(data, request));
   }
 
-  public void flush() {
-  }
-
-  public void sync() throws Exception{
+  public MultiWriteFailures<GenericRecord> flush() {
+    return this.submitter.flush();
   }
 }

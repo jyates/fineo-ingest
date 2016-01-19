@@ -8,5 +8,5 @@ import com.amazonaws.services.kinesis.producer.KinesisProducer;
  */
 public interface StreamProducer {
 
-  void setDownstreamForTesting(AmazonKinesisClient producer);
+  void setDownstreamForTesting(io.fineo.lambda.avro.KinesisProducer producer);
 }

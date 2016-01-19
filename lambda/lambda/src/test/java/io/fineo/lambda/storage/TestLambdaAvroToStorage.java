@@ -1,9 +1,12 @@
 package io.fineo.lambda.storage;
 
+import com.amazonaws.AmazonWebServiceRequest;
 import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
 import com.google.common.collect.Lists;
-import io.fineo.lambda.avro.FirehoseBatchWriter;
 import io.fineo.lambda.LambdaTestUtils;
+import io.fineo.lambda.avro.FirehoseBatchWriter;
+import io.fineo.lambda.aws.AwsAsyncRequest;
+import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.schema.avro.SchemaTestUtils;
 import org.apache.avro.file.FirehoseRecordReader;
 import org.apache.avro.file.FirehoseRecordWriter;
@@ -59,10 +62,8 @@ public class TestLambdaAvroToStorage {
     FirehoseBatchWriter error = Mockito.mock(FirehoseBatchWriter.class);
     AvroToDynamoWriter dynamo = Mockito.mock(AvroToDynamoWriter.class);
 
-    AvroToDynamoWriter.UpdateItemHandler handler = Mockito.mock(AvroToDynamoWriter
-      .UpdateItemHandler.class);
-    Mockito.when(handler.getBaseRecord()).thenReturn(record);
-    MultiWriteFailures failures = new MultiWriteFailures(Lists.newArrayList(handler));
+    MultiWriteFailures<GenericRecord> failures = new MultiWriteFailures<>(Lists.newArrayList(new
+      AwsAsyncRequest<>(record, AmazonWebServiceRequest.NOOP)));
     Mockito.when(dynamo.flush()).thenReturn(failures);
 
     List<ByteBuffer> errors = new ArrayList<>();

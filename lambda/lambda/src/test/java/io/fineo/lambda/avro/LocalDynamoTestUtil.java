@@ -7,8 +7,12 @@ import com.amazonaws.services.dynamodbv2.local.main.ServerRunner;
 import com.amazonaws.services.dynamodbv2.local.server.DynamoDBProxyServer;
 import com.amazonaws.services.dynamodbv2.model.ListTablesRequest;
 import io.fineo.aws.rule.AwsCredentialResource;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import java.net.ServerSocket;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
 import java.util.Random;
 import java.util.UUID;
@@ -20,6 +24,7 @@ import static org.junit.Assert.assertEquals;
  */
 public class LocalDynamoTestUtil {
 
+  private static final Log LOG = LogFactory.getLog(LocalDynamoTestUtil.class);
   private AmazonDynamoDBClient dynamodb;
   private DynamoDBProxyServer server;
 
@@ -55,7 +60,7 @@ public class LocalDynamoTestUtil {
   }
 
   public void setConnectionProperties(Properties props) {
-    props.setProperty(LambdaClientProperties.DYNAMO_ENDPOINT, url);
+    props.setProperty(LambdaClientProperties.DYNAMO_URL_FOR_TESTING, url);
     props.setProperty(LambdaClientProperties.DYNAMO_SCHEMA_STORE_TABLE, storeTableName);
     props.setProperty(LambdaClientProperties.DYNAMO_INGEST_TABLE_PREFIX, ingestPrefix);
     props.setProperty(LambdaClientProperties.DYNAMO_READ_LIMIT, "10");
@@ -69,13 +74,14 @@ public class LocalDynamoTestUtil {
     ListTablesRequest list = new ListTablesRequest(ingestPrefix, 50);
     dynamodb.listTables(list)
             .getTableNames()
+            .parallelStream().peek(name -> LOG.info("Deleting table: " + name))
             .forEach(name -> dynamodb.deleteTable(name));
 
     if (storeTableCreated) {
       dynamodb.deleteTable(storeTableName);
     } else {
-      assertEquals("Created tables when didn't use store", 0,
-        dynamodb.listTables().getTableNames().size());
+      List<String> tables = dynamodb.listTables().getTableNames();
+      assertEquals("Created tables when didn't use store", new ArrayList<>(), tables);
     }
 
     // get the next table name

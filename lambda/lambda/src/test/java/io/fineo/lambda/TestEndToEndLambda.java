@@ -1,13 +1,7 @@
 package io.fineo.lambda;
 
 import io.fineo.internal.customer.Metric;
-import io.fineo.lambda.avro.FirehoseBatchWriter;
 import io.fineo.lambda.avro.LambdaClientProperties;
-import io.fineo.lambda.avro.LambdaRawRecordToAvro;
-import io.fineo.lambda.storage.AvroToDynamoWriter;
-import io.fineo.lambda.storage.LambdaAvroToStorage;
-import io.fineo.lambda.storage.MultiWriteFailures;
-import io.fineo.lambda.storage.TestableLambda;
 import io.fineo.schema.avro.AvroRecordDecoder;
 import io.fineo.schema.avro.AvroSchemaEncoder;
 import io.fineo.schema.store.SchemaStore;
@@ -15,13 +9,7 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.junit.Test;
-import org.mockito.Mockito;
-import org.schemarepo.InMemoryRepository;
-import org.schemarepo.ValidatorFactory;
 
-import java.io.IOException;
-import java.lang.reflect.Method;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -57,7 +45,7 @@ public class TestEndToEndLambda {
     props.setProperty(LambdaClientProperties.FIREHOSE_STAGED_STREAM_NAME, archived);
 
     // between stage stream
-    props.setProperty(LambdaClientProperties.PARSED_STREAM_NAME, AVRO_TO_STORAGE_STREAM_NAME);
+    props.setProperty(LambdaClientProperties.KINESIS_PARSED_RAW_OUT_STREAM_NAME, AVRO_TO_STORAGE_STREAM_NAME);
 
     // Run
     // -----

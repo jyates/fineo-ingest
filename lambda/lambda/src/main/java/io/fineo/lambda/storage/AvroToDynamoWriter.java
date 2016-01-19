@@ -1,6 +1,5 @@
 package io.fineo.lambda.storage;
 
-import com.amazonaws.handlers.AsyncHandler;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
@@ -8,6 +7,9 @@ import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
 import com.google.common.base.Joiner;
 import io.fineo.internal.customer.BaseFields;
 import io.fineo.lambda.avro.LambdaClientProperties;
+import io.fineo.lambda.aws.AwsAsyncRequest;
+import io.fineo.lambda.aws.AwsAsyncSubmitter;
+import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.schema.avro.AvroRecordDecoder;
 import io.fineo.schema.avro.AvroSchemaEncoder;
 import org.apache.avro.Schema;
@@ -17,11 +19,10 @@ import org.apache.commons.logging.LogFactory;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Phaser;
+import java.util.stream.Collectors;
 
 /**
  * Write {@link BaseFields} based avro-records into dynamo.
@@ -47,8 +48,11 @@ import java.util.concurrent.Phaser;
  * Generally, this is fine as this writer is called from a short-running lambda function that
  * only handles a very small number of requests.
  * </p>
- * <p>
- * This writer is only <b>partially thread-safe</b>; each method will describe its thread safety
+ * <p/>
+ * All writes are accumulated until a call to {@link #flush()}, which is <b>blocks until all
+ * requests have completed</b>. This is merely a simple wrapper around an {@link AwsAsyncSubmitter}
+ *
+ * @see AwsAsyncSubmitter for more information about thread safety
  * </p>
  */
 public class AvroToDynamoWriter {
@@ -65,19 +69,13 @@ public class AvroToDynamoWriter {
   // TODO replace with a schema ID so we can lookup the schema on read, if necessary
   private static final String MARKER = "marker";
 
-  private final long retries;
   private final DynamoTableManager tables;
-  private final AmazonDynamoDBAsyncClient client;
-
-  private final Phaser phase = new Phaser();
-  private final List<UpdateItemHandler> actions = Collections.synchronizedList(new ArrayList<>());
-  private final List<UpdateItemHandler> failed = Collections.synchronizedList(new ArrayList<>(0));
+  private final AwsAsyncSubmitter<UpdateItemRequest, UpdateItemResult, GenericRecord> submitter;
 
   private AvroToDynamoWriter(AmazonDynamoDBAsyncClient client, String dynamoIngestTablePrefix, long
     writeMax, long readMax, long maxRetries) {
-    this.client = client;
+    this.submitter = new AwsAsyncSubmitter<>(maxRetries, client::updateItemAsync);
     this.tables = new DynamoTableManager(client, dynamoIngestTablePrefix, readMax, writeMax);
-    this.retries = maxRetries;
   }
 
   public static AvroToDynamoWriter create(LambdaClientProperties props) {
@@ -92,24 +90,13 @@ public class AvroToDynamoWriter {
    *
    * @param record record to write to dynamo. Expected to have at least a {@link BaseFields} field
    */
-  public void write(GenericRecord record)  {
-    UpdateItemHandler request = getUpdateForTable(record);
-
-    // submit the request for the update items into a future. Handler does all the heavy lifting
-    // of resubmission, etc.
-    actions.add(request);
-    phase.register();
-    submit(request);
+  public void write(GenericRecord record) {
+    AwsAsyncRequest<GenericRecord, UpdateItemRequest> request = getUpdateForTable(record);
+    this.submitter.submit(request);
   }
 
-  private void submit(UpdateItemHandler handler) {
-    if (handler.attempts >= retries) {
-      this.actions.remove(handler);
-      this.failed.add(handler);
-      phase.arriveAndDeregister();
-      return;
-    }
-    client.updateItemAsync(handler.request, handler);
+  public MultiWriteFailures<GenericRecord> flush() {
+    return this.submitter.flush();
   }
 
   /**
@@ -119,7 +106,8 @@ public class AvroToDynamoWriter {
    * @param record to parse
    * @return
    */
-  private UpdateItemHandler getUpdateForTable(GenericRecord record) {
+  private AwsAsyncRequest<GenericRecord, UpdateItemRequest> getUpdateForTable(
+    GenericRecord record) {
     AvroRecordDecoder decoder = new AvroRecordDecoder(record);
     AvroRecordDecoder.RecordMetadata metadata = decoder.getMetadata();
 
@@ -167,7 +155,7 @@ public class AvroToDynamoWriter {
       LOG.debug("Using expression values: " + request.getExpressionAttributeValues());
     }
 
-    return new UpdateItemHandler(request, record);
+    return new AwsAsyncRequest<>(record, request);
   }
 
   private AttributeValue convertField(Schema.Field field, Object value) {
@@ -214,50 +202,10 @@ public class AvroToDynamoWriter {
     return new AttributeValue(metadata.getOrgID() + metadata.getMetricCannonicalType());
   }
 
-  /**
-   * Blocking flush waiting on outstanding record updates. Assumes access to the writer is
-   * <b>single threaded</b>. The {@link MultiWriteFailures} returned from this method is not
-   * synchronized or thread-safe in any way.
-   */
-  public MultiWriteFailures flush() {
-    phase.register();
-    phase.awaitAdvance(phase.arriveAndDeregister());
-    assert actions.size() == 0 :
-      "Some outstanding actions, but phaser is done. Actions: " + actions;
-    LOG.debug("All update actions completed!");
-    return new MultiWriteFailures(failed);
-  }
-
-  class UpdateItemHandler implements AsyncHandler<UpdateItemRequest, UpdateItemResult> {
-
-    private int attempts = 0;
-
-    private GenericRecord baseRecord;
-    private final UpdateItemRequest request;
-
-    public UpdateItemHandler(UpdateItemRequest request, GenericRecord base) {
-      this.baseRecord = base;
-      this.request = request;
-    }
-
-    @Override
-    public void onError(Exception exception) {
-      LOG.error("Failed to make an update.", exception);
-      attempts++;
-      submit(this);
-    }
-
-    @Override
-    public void onSuccess(UpdateItemRequest request, UpdateItemResult updateItemResult) {
-      // remove the request from the pending list because we were successful
-      LOG.debug("Update success: " + this);
-      actions.remove(this);
-      phase.arriveAndDeregister();
-
-    }
-
-    public GenericRecord getBaseRecord() {
-      return baseRecord;
-    }
+  public static List<GenericRecord> getFailedRecords(MultiWriteFailures<GenericRecord>
+    failures) {
+    return failures.getActions().parallelStream()
+                   .map(handler -> handler.getBaseRecord())
+                   .collect(Collectors.toList());
   }
 }

@@ -4,6 +4,7 @@ import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
 import com.google.common.annotations.VisibleForTesting;
 import io.fineo.lambda.avro.FirehoseBatchWriter;
 import io.fineo.lambda.avro.LambdaClientProperties;
+import io.fineo.lambda.aws.MultiWriteFailures;
 import org.apache.avro.file.FirehoseRecordReader;
 import org.apache.avro.file.FirehoseRecordWriter;
 import org.apache.avro.generic.GenericRecord;
@@ -62,10 +63,10 @@ public class LambdaAvroToStorage implements TestableLambda {
     this.archiveAllRecords.flush();
 
     // get any failed writes and flush them into the right firehose for failures
-    MultiWriteFailures failures = this.dynamo.flush();
+    MultiWriteFailures<GenericRecord> failures = this.dynamo.flush();
     if (failures.any()) {
       FirehoseRecordWriter writer = new FirehoseRecordWriter();
-      for (GenericRecord failed : failures.getFailedRecords()) {
+      for (GenericRecord failed : AvroToDynamoWriter.getFailedRecords(failures)) {
         dynamoErrors.addToBatch(writer.write(failed));
       }
       dynamoErrors.flush();

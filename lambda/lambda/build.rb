@@ -20,6 +20,7 @@ $config.verbose = false
 $options = {
   :kinesis => Pair.new("kinesis.us-east-1.amazonaws.com", "kinesis.url"),
   :parsed => Pair.new("fineo-parsed-records", "kinesis.parsed"),
+  :kinesis_retries => Pair.new("3", "kinesis.retries"),
 
   :firehose => Pair.new("https://firehose.us-east-1.amazonaws.com", "firehose.url"),
   :malformed => Pair.new("fineo-raw-error-records", "firehose.raw.error"),
@@ -31,7 +32,7 @@ $options = {
   :ingest_prefix => Pair.new("customer-ingest", "dynamo.ingest.prefix"),
   :write_max => Pair.new("5", "dynamo.limit.write"),
   :read_max => Pair.new("7", "dynamo.limit.read"),
-  :retries => Pair.new("3", "dynamo.limit.retries")
+  :dynamo_retries => Pair.new("3", "dynamo.limit.retries")
 }
 
 # set pair value at option[ref]
@@ -50,6 +51,10 @@ parser = OptionParser.new do|opts|
   end
   opts.on('-p', '--parsed-stream stream name', 'Parsed Avro record Kinesis stream name') do |name|
     set :parsed, name
+  end
+  opts.on('--kinesis-max-retries limit', 'Max amount of retries to attempt before failing '+
+    'the request') do |name|
+      set :kinesis_retries, name
   end
 
   opts.separator "Firehose Options:"
@@ -85,9 +90,9 @@ parser = OptionParser.new do|opts|
     'single table')do |name|
       set :write_max, name
     end
-  opts.on('-l', '--dynamo-max-retries limit', 'Max amount of retries to attempt before failing '+
+  opts.on('--dynamo-max-retries limit', 'Max amount of retries to attempt before failing '+
     'the request') do |name|
-      set :retries, name
+      set :dynamo_retries, name
   end
 
   opts.separator ""

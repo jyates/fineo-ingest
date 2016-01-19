@@ -1,6 +1,5 @@
 package io.fineo.lambda.avro;
 
-import com.amazonaws.services.kinesis.producer.KinesisProducer;
 import com.amazonaws.services.kinesisfirehose.AmazonKinesisFirehoseClient;
 import com.amazonaws.services.kinesisfirehose.model.PutRecordBatchRequest;
 import com.amazonaws.services.kinesisfirehose.model.PutRecordBatchResponseEntry;
@@ -15,6 +14,7 @@ import io.fineo.schema.avro.AvroSchemaEncoder;
 import io.fineo.schema.store.SchemaStore;
 import javafx.util.Pair;
 import org.apache.avro.file.FirehoseRecordReader;
+import org.apache.avro.file.FirehoseRecordWriter;
 import org.apache.avro.file.SeekableByteArrayInput;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.logging.Log;
@@ -111,9 +111,8 @@ public class TestLambdaToAvroWithLocalSchemaStore {
 
     // kinesis write verification, beyond the added records tracking... just in case
     Mockito.verify(producer, Mockito.times(records.length))
-           .addUserRecord(Mockito.anyString(), Mockito.anyString(), Mockito.any(ByteBuffer.class));
-    Mockito.verify(producer, Mockito.times(events.size())).flushSync();
-    usedStore();
+           .add(Mockito.anyString(), Mockito.anyString(), Mockito.any(GenericRecord.class));
+    Mockito.verify(producer, Mockito.times(events.size())).flush();
   }
 
   private Pair<KinesisEvent, SchemaStore> createStoreAndSingleEvent(Map<String, Object>[] records)
@@ -164,7 +163,6 @@ public class TestLambdaToAvroWithLocalSchemaStore {
     Mockito.verify(client, Mockito.times(2))
            .putRecordBatch(Mockito.any(PutRecordBatchRequest.class));
     Mockito.verify(result, Mockito.times(2)).getFailedPutCount();
-    didNotUseStore();
   }
 
   private Map<String, Object>[] createMalformedRecords(int count) {
@@ -246,13 +244,20 @@ public class TestLambdaToAvroWithLocalSchemaStore {
     // verify the mocks
     Mockito.verify(client, Mockito.times(2))
            .putRecordBatch(Mockito.any(PutRecordBatchRequest.class));
-    Mockito.verify(producer).flushSync();
-    didNotUseStore();
+    Mockito.verify(producer).flush();
   }
 
   private void verifyParsedRecords(List<KinesisRequest> requests, Map<String, Object>[] records)
     throws IOException {
-    byte[] data = combineRecords(requests.stream().map(request -> request.buff));
+    FirehoseRecordWriter writer = FirehoseRecordWriter.create();
+    byte[] data = combineRecords(requests.stream()
+                                         .map(request -> {
+                                           try {
+                                             return writer.write(request.buff);
+                                           } catch (IOException e) {
+                                             throw new RuntimeException(e);
+                                           }
+                                         }));
 
     FirehoseRecordReader<GenericRecord> reader =
       new FirehoseRecordReader<>(new SeekableByteArrayInput(data));
@@ -328,11 +333,11 @@ public class TestLambdaToAvroWithLocalSchemaStore {
            });
 
     List<KinesisRequest> parsedRequests = new ArrayList<>();
-    Mockito.when(producer.addUserRecord(Mockito.anyString(), Mockito.anyString(), Mockito.any
-      (ByteBuffer.class))).then(invoke -> {
+    Mockito.doAnswer(invoke -> {
       parsedRequests.add(new KinesisRequest(invoke.getArguments()));
       return Futures.immediateFuture(null);
-    });
+    }).when(producer).add(Mockito.anyString(), Mockito.anyString(),
+      Mockito.any(GenericRecord.class));
 
     // actually run the test
     for (KinesisEvent event : events) {
@@ -348,18 +353,18 @@ public class TestLambdaToAvroWithLocalSchemaStore {
   }
 
   private class KinesisRequest {
-    ByteBuffer buff;
+    GenericRecord buff;
     String stream;
     String key;
 
-    public KinesisRequest(String stream, String key, ByteBuffer buff) {
+    public KinesisRequest(String stream, String key, GenericRecord buff) {
       this.buff = buff;
       this.stream = stream;
       this.key = key;
     }
 
     public KinesisRequest(Object[] arguments) {
-      this((String) arguments[0], (String) arguments[1], (ByteBuffer) arguments[2]);
+      this((String) arguments[0], (String) arguments[1], (GenericRecord) arguments[2]);
     }
   }
 
@@ -374,9 +379,9 @@ public class TestLambdaToAvroWithLocalSchemaStore {
     if (store == null) {
       store = props.createSchemaStore();
     }
-    try{
+    try {
       LambdaTestUtils.updateSchemaStore(store, event);
-    }catch (IllegalArgumentException e){
+    } catch (IllegalArgumentException e) {
       return null;
     }
     return store;
@@ -390,16 +395,8 @@ public class TestLambdaToAvroWithLocalSchemaStore {
   protected Properties getMockProps() {
     Properties props = new Properties();
     props.put(LambdaClientProperties.FIREHOSE_URL, "url");
-    props.put(LambdaClientProperties.PARSED_STREAM_NAME, "stream");
+    props.put(LambdaClientProperties.KINESIS_PARSED_RAW_OUT_STREAM_NAME, "stream");
     props.put(LambdaClientProperties.FIREHOSE_MALFORMED_STREAM_NAME, "malformed");
     return props;
-  }
-
-  private void usedStore() {
-    this.storeTableCreated = true;
-  }
-
-  private void didNotUseStore() {
-    this.storeTableCreated = false;
   }
 }

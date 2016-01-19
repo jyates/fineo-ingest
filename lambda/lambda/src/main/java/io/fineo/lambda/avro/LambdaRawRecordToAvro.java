@@ -1,7 +1,5 @@
 package io.fineo.lambda.avro;
 
-import com.amazonaws.services.kinesis.AmazonKinesisClient;
-import com.amazonaws.services.kinesis.producer.KinesisProducer;
 import com.amazonaws.services.kinesisfirehose.AmazonKinesisFirehoseClient;
 import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
 import com.fasterxml.jackson.databind.util.ByteBufferBackedInputStream;
@@ -43,7 +41,7 @@ public class LambdaRawRecordToAvro implements StreamProducer, TestableLambda {
   private FirehoseBatchWriter malformedRecords;
   private LambdaClientProperties props;
   private SchemaStore store;
-  private AmazonKinesisClient convertedRecords;
+  private KinesisProducer convertedRecords;
 
   public void handler(KinesisEvent event) throws IOException {
     try {
@@ -88,10 +86,8 @@ public class LambdaRawRecordToAvro implements StreamProducer, TestableLambda {
       // write the record to a ByteBuffer
       GenericRecord outRecord = bridge.encode(new MapRecord(values));
       LOG.info("Encoded the record");
-      FirehoseRecordWriter writer = FirehoseRecordWriter.create();
       // add the record
-      this.convertedRecords.addUserRecord(props.getParsedStreamName(), orgId,
-        writer.write(outRecord));
+      this.convertedRecords.add(props.getParsedStreamName(), orgId, outRecord);
       LOG.info("Wrote the record");
     }
 
@@ -100,7 +96,7 @@ public class LambdaRawRecordToAvro implements StreamProducer, TestableLambda {
     LOG.info("Flushed malformed records");
 
     LOG.debug("Waiting on kinesis to finish writing all converted records");
-    convertedRecords.flushSync();
+    convertedRecords.flush();
     LOG.debug("Finished writing record batches");
   }
 
@@ -133,7 +129,7 @@ public class LambdaRawRecordToAvro implements StreamProducer, TestableLambda {
     this.store = props.createSchemaStore();
 
     LOG.debug("Setting up producer");
-    this.convertedRecords = props.getKinesisClient();
+    this.convertedRecords = new KinesisProducer(props.getKinesisClient(), props.getKinesisRetries());
 
     LOG.debug("Setting up batch writer");
     malformedRecords = new FirehoseBatchWriter(props, transform, props
@@ -142,7 +138,7 @@ public class LambdaRawRecordToAvro implements StreamProducer, TestableLambda {
 
   @VisibleForTesting
   public void setupForTesting(LambdaClientProperties props, AmazonKinesisFirehoseClient client,
-    SchemaStore store, AmazonKinesisClient producer, FirehoseBatchWriter malformed) {
+    SchemaStore store, KinesisProducer producer, FirehoseBatchWriter malformed) {
     this.props = props;
     this.malformedRecords =
       malformed != null?
@@ -153,7 +149,7 @@ public class LambdaRawRecordToAvro implements StreamProducer, TestableLambda {
   }
 
   @Override
-  public void setDownstreamForTesting(AmazonKinesisClient producer) {
+  public void setDownstreamForTesting(KinesisProducer producer) {
     this.convertedRecords = producer;
   }
 }

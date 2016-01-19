@@ -2,14 +2,12 @@ package io.fineo.lambda.avro;
 
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
-import com.amazonaws.regions.Region;
 import com.amazonaws.regions.RegionUtils;
-import com.amazonaws.regions.Regions;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
-import com.amazonaws.services.kinesis.AmazonKinesisClient;
+import com.amazonaws.services.kinesis.AmazonKinesisAsyncClient;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import io.fineo.schema.aws.dynamodb.DynamoDBRepository;
@@ -31,14 +29,16 @@ public class LambdaClientProperties {
   private static final String PROP_FILE_NAME = "fineo-lambda.properties";
 
   private final java.lang.String KINESIS_URL = "fineo.kinesis.url";
-  public static final String PARSED_STREAM_NAME = "fineo.kinesis.parsed";
+  public static final String KINESIS_PARSED_RAW_OUT_STREAM_NAME = "fineo.kinesis.parsed";
+  private final String KINESIS_RETRIES = "fineo.kinesis.retries";
 
   static final String FIREHOSE_URL = "fineo.firehose.url";
   public static final String FIREHOSE_MALFORMED_STREAM_NAME = "fineo.firehose.raw.error";
   public static final String FIREHOSE_STAGED_STREAM_NAME = "fineo.firehose.staged";
   public static final String FIREHOSE_STAGED_DYANMO_ERROR_STREAM_NAME = "firehose.staged.error";
 
-  public static final String DYNAMO_ENDPOINT = "fineo.dynamo.region";
+  public static final String DYNAMO_REGION = "fineo.dynamo.region";
+  public static final String DYNAMO_URL_FOR_TESTING = "fineo.dynamo.testing.url";
   public static final String DYNAMO_SCHEMA_STORE_TABLE = "fineo.dynamo.schema-store";
   public static final String DYNAMO_INGEST_TABLE_PREFIX = "fineo.dynamo.ingest.prefix";
   public static final String DYNAMO_READ_LIMIT = "fineo.dynamo.limit.read";
@@ -77,7 +77,13 @@ public class LambdaClientProperties {
     LOG.info("Creating dynamo with provider: "+provider);
     AmazonDynamoDBAsyncClient client = new AmazonDynamoDBAsyncClient(provider);
     LOG.info("Got client, setting endpoint");
-    client.setRegion(RegionUtils.getRegion(props.getProperty(DYNAMO_ENDPOINT)));
+    String region = props.getProperty(DYNAMO_REGION);
+    if( region != null){
+      client.setRegion(RegionUtils.getRegion(region));
+    }else{
+      client.setEndpoint(props.getProperty(DYNAMO_URL_FOR_TESTING));
+    }
+
     return client;
   }
 
@@ -95,8 +101,8 @@ public class LambdaClientProperties {
     return new SchemaStore(repo);
   }
 
-  public AmazonKinesisClient getKinesisClient(){
-    AmazonKinesisClient client =  new AmazonKinesisClient(provider);
+  public AmazonKinesisAsyncClient getKinesisClient(){
+    AmazonKinesisAsyncClient client =  new AmazonKinesisAsyncClient(provider);
     client.setEndpoint(this.getKinesisEndpoint());
     return client;
   }
@@ -106,7 +112,7 @@ public class LambdaClientProperties {
   }
 
   public String getParsedStreamName() {
-    return props.getProperty(PARSED_STREAM_NAME);
+    return props.getProperty(KINESIS_PARSED_RAW_OUT_STREAM_NAME);
   }
 
 
@@ -157,5 +163,9 @@ public class LambdaClientProperties {
 
   public long getDynamoMaxRetries() {
     return Long.valueOf(props.getProperty(DYNAMO_RETRIES));
+  }
+
+  public long getKinesisRetries() {
+    return Long.valueOf(props.getProperty(KINESIS_RETRIES));
   }
 }

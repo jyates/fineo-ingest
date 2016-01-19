@@ -1,10 +1,13 @@
 package io.fineo.lambda;
 
-import com.amazonaws.services.kinesis.producer.KinesisProducer;
 import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
 import com.google.common.base.Preconditions;
+import io.fineo.lambda.avro.FirehoseBatchWriter;
+import io.fineo.lambda.avro.KinesisProducer;
 import io.fineo.lambda.storage.TestableLambda;
 import io.fineo.schema.store.SchemaStore;
+import org.apache.avro.file.FirehoseRecordWriter;
+import org.apache.avro.generic.GenericRecord;
 import org.mockito.Mockito;
 import org.schemarepo.InMemoryRepository;
 import org.schemarepo.ValidatorFactory;
@@ -87,15 +90,15 @@ public class IngestUtil {
     // setup the 'stream' handling
     Map<String, List<ByteBuffer>> events = new HashMap<>();
     KinesisProducer producer = Mockito.mock(KinesisProducer.class);
-    Mockito.when(producer.addUserRecord(Mockito.anyString(), Mockito.anyString(), Mockito.any()))
-           .thenAnswer(invocation ->
-           {
-             String stream = (String) invocation.getArguments()[0];
-             ByteBuffer datum = (ByteBuffer) invocation.getArguments()[2];
-             List<ByteBuffer> data = EndToEndTestUtil.get(events, stream);
-             data.add(datum);
-             return null;
-           });
+    Mockito.doAnswer(invocation ->
+    {
+      String stream = (String) invocation.getArguments()[0];
+      GenericRecord record = (GenericRecord) invocation.getArguments()[2];
+      ByteBuffer datum = FirehoseRecordWriter.create().write(record);
+      List<ByteBuffer> data = EndToEndTestUtil.get(events, stream);
+      data.add(datum);
+      return null;
+    }).when(producer).add(Mockito.anyString(), Mockito.anyString(), Mockito.any());
 
     // setup the stages to send to the specified listener
     for (List<Lambda> stages : this.stages.values()) {

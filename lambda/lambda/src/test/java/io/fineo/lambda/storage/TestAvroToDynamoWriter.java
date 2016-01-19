@@ -13,6 +13,7 @@ import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
 import com.google.common.collect.Lists;
 import io.fineo.aws.AwsDependentTests;
 import io.fineo.lambda.avro.LambdaClientProperties;
+import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.schema.avro.AvroRecordDecoder;
 import io.fineo.schema.avro.SchemaTestUtils;
 import org.apache.avro.generic.GenericRecord;
@@ -32,6 +33,10 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 
+/**
+ * Test writing avro records to dynamo. Also covers happy path and failure testing for the
+ * {@link io.fineo.lambda.aws.AwsAsyncRequest}, which is omitted for time.
+ */
 @Category(AwsDependentTests.class)
 public class TestAvroToDynamoWriter {
 
@@ -68,9 +73,9 @@ public class TestAvroToDynamoWriter {
     AvroToDynamoWriter writer = AvroToDynamoWriter.create(props);
     GenericRecord record = SchemaTestUtils.createRandomRecord();
     writer.write(record);
-    MultiWriteFailures failures = writer.flush();
+    MultiWriteFailures<GenericRecord> failures = writer.flush();
     assertTrue(failures.any());
-    List<GenericRecord> failed = failures.getFailedRecords();
+    List<GenericRecord> failed = AvroToDynamoWriter.getFailedRecords(failures);
     assertEquals(Lists.newArrayList(record), failed);
   }
 
