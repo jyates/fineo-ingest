@@ -1,12 +1,12 @@
-package io.fineo.lambda;
+package io.fineo.lambda.util;
 
 import com.google.common.collect.Lists;
-import io.fineo.lambda.avro.FirehoseBatchWriter;
-import io.fineo.lambda.avro.LambdaClientProperties;
-import io.fineo.lambda.avro.LambdaRawRecordToAvro;
-import io.fineo.lambda.storage.AvroToDynamoWriter;
-import io.fineo.lambda.storage.LambdaAvroToStorage;
+import io.fineo.lambda.LambdaAvroToStorage;
+import io.fineo.lambda.LambdaClientProperties;
+import io.fineo.lambda.LambdaRawRecordToAvro;
 import io.fineo.lambda.aws.MultiWriteFailures;
+import io.fineo.lambda.dynamo.AvroToDynamoWriter;
+import io.fineo.lambda.firehose.FirehoseBatchWriter;
 import io.fineo.schema.store.SchemaStore;
 import org.apache.avro.generic.GenericRecord;
 import org.mockito.Mockito;

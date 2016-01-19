@@ -1,10 +1,10 @@
-package io.fineo.lambda.storage;
+package io.fineo.lambda.dynamo;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
 import io.fineo.aws.rule.AwsCredentialResource;
-import io.fineo.lambda.avro.LambdaClientProperties;
-import io.fineo.lambda.avro.LocalDynamoTestUtil;
+import io.fineo.lambda.LambdaClientProperties;
+import io.fineo.lambda.dynamo.LocalDynamoTestUtil;
 import org.junit.rules.ExternalResource;
 
 import java.util.Properties;

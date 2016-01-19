@@ -1,4 +1,4 @@
-package io.fineo.lambda.avro;
+package io.fineo.lambda;
 
 import com.amazonaws.services.kinesisfirehose.AmazonKinesisFirehoseClient;
 import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
@@ -6,8 +6,9 @@ import com.fasterxml.jackson.databind.util.ByteBufferBackedInputStream;
 import com.fasterxml.jackson.jr.ob.JSON;
 import com.google.common.annotations.VisibleForTesting;
 import io.fineo.internal.customer.Malformed;
-import io.fineo.lambda.StreamProducer;
-import io.fineo.lambda.storage.TestableLambda;
+import io.fineo.lambda.firehose.FirehoseBatchWriter;
+import io.fineo.lambda.kinesis.KinesisProducer;
+import io.fineo.lambda.test.TestableLambda;
 import io.fineo.schema.MapRecord;
 import io.fineo.schema.avro.AvroSchemaEncoder;
 import io.fineo.schema.store.SchemaStore;
@@ -140,10 +141,10 @@ public class LambdaRawRecordToAvro implements StreamProducer, TestableLambda {
   public void setupForTesting(LambdaClientProperties props, AmazonKinesisFirehoseClient client,
     SchemaStore store, KinesisProducer producer, FirehoseBatchWriter malformed) {
     this.props = props;
-    this.malformedRecords =
-      malformed != null?
-      malformed:
-      new FirehoseBatchWriter(transform, props.getFirehoseMalformedStreamName(), client);
+    this.malformedRecords = malformed != null ?
+      malformed :
+      FirehoseBatchWriter
+        .createWriterForTesting(transform, props.getFirehoseMalformedStreamName(), client);
     this.store = store;
     setDownstreamForTesting(producer);
   }

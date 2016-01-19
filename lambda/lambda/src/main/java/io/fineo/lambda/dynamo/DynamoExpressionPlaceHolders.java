@@ -1,4 +1,4 @@
-package io.fineo.lambda.storage;
+package io.fineo.lambda.dynamo;
 
 import com.google.common.annotations.VisibleForTesting;
 

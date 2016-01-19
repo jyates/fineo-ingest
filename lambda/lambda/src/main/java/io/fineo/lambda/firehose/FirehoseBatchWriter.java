@@ -1,4 +1,4 @@
-package io.fineo.lambda.avro;
+package io.fineo.lambda.firehose;
 
 import com.amazonaws.services.kinesisfirehose.AmazonKinesisFirehoseClient;
 import com.amazonaws.services.kinesisfirehose.model.PutRecordBatchRequest;
@@ -7,6 +7,7 @@ import com.amazonaws.services.kinesisfirehose.model.PutRecordBatchResult;
 import com.amazonaws.services.kinesisfirehose.model.Record;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
+import io.fineo.lambda.LambdaClientProperties;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -45,12 +46,6 @@ public class FirehoseBatchWriter {
     streamName) {
     this(recordToOutputConverter, FirehoseUtils.createFireHose(props), streamName);
     FirehoseUtils.checkHoseStatus(client, streamName);
-  }
-
-  @VisibleForTesting
-  FirehoseBatchWriter(Function<ByteBuffer, ByteBuffer> transform,
-    String firehoseMalformedStreamName, AmazonKinesisFirehoseClient client) {
-    this(transform, client, firehoseMalformedStreamName);
   }
 
   public void addToBatch(ByteBuffer record) {
@@ -112,5 +107,12 @@ public class FirehoseBatchWriter {
     assert retries.size() > 0;
     batch.setRecords(retries);
     writeBatch(batch);
+  }
+
+  @VisibleForTesting
+  public static FirehoseBatchWriter createWriterForTesting(
+    Function<ByteBuffer, ByteBuffer> transform,
+    String firehoseMalformedStreamName, AmazonKinesisFirehoseClient client) {
+    return new FirehoseBatchWriter(transform, client, firehoseMalformedStreamName);
   }
 }

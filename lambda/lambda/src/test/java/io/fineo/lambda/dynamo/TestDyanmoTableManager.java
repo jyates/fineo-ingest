@@ -1,4 +1,4 @@
-package io.fineo.lambda.storage;
+package io.fineo.lambda.dynamo;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import io.fineo.aws.AwsDependentTests;

@@ -1,4 +1,4 @@
-package io.fineo.lambda.avro;
+package io.fineo.lambda;
 
 import com.amazonaws.services.kinesisfirehose.AmazonKinesisFirehoseClient;
 import com.amazonaws.services.kinesisfirehose.model.PutRecordBatchRequest;
@@ -9,7 +9,8 @@ import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.Futures;
 import io.fineo.internal.customer.Malformed;
-import io.fineo.lambda.LambdaTestUtils;
+import io.fineo.lambda.kinesis.KinesisProducer;
+import io.fineo.lambda.util.LambdaTestUtils;
 import io.fineo.schema.avro.AvroSchemaEncoder;
 import io.fineo.schema.store.SchemaStore;
 import javafx.util.Pair;

@@ -1,4 +1,4 @@
-package io.fineo.lambda;
+package io.fineo.lambda.util;
 
 
 import com.amazonaws.services.lambda.runtime.events.KinesisEvent;

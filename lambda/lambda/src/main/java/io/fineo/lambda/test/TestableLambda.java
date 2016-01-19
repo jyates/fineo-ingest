@@ -1,4 +1,4 @@
-package io.fineo.lambda.storage;
+package io.fineo.lambda.test;
 
 import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
 import com.google.common.annotations.VisibleForTesting;

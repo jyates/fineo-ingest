@@ -1,4 +1,4 @@
-package io.fineo.lambda.avro;
+package io.fineo.lambda;
 
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;

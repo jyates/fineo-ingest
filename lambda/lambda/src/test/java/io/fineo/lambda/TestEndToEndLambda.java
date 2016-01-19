@@ -1,7 +1,8 @@
 package io.fineo.lambda;
 
 import io.fineo.internal.customer.Metric;
-import io.fineo.lambda.avro.LambdaClientProperties;
+import io.fineo.lambda.util.EndToEndTestUtil;
+import io.fineo.lambda.util.LambdaTestUtils;
 import io.fineo.schema.avro.AvroRecordDecoder;
 import io.fineo.schema.avro.AvroSchemaEncoder;
 import io.fineo.schema.store.SchemaStore;

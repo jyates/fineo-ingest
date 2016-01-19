@@ -1,10 +1,10 @@
-package io.fineo.lambda;
+package io.fineo.lambda.util;
 
 import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
 import com.google.common.base.Preconditions;
-import io.fineo.lambda.avro.FirehoseBatchWriter;
-import io.fineo.lambda.avro.KinesisProducer;
-import io.fineo.lambda.storage.TestableLambda;
+import io.fineo.lambda.StreamProducer;
+import io.fineo.lambda.kinesis.KinesisProducer;
+import io.fineo.lambda.test.TestableLambda;
 import io.fineo.schema.store.SchemaStore;
 import org.apache.avro.file.FirehoseRecordWriter;
 import org.apache.avro.generic.GenericRecord;

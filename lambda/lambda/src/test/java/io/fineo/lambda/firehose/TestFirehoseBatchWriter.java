@@ -1,4 +1,4 @@
-package io.fineo.lambda.avro;
+package io.fineo.lambda.firehose;
 
 
 import com.amazonaws.services.kinesisfirehose.AmazonKinesisFirehoseClient;
@@ -46,7 +46,8 @@ public class TestFirehoseBatchWriter {
   private void writeReadRecordsOneBatch(ByteBuffer... data) throws IOException {
     String stream = "streamname";
     AmazonKinesisFirehoseClient client = Mockito.mock(AmazonKinesisFirehoseClient.class);
-    FirehoseBatchWriter writer = new FirehoseBatchWriter(ByteBuffer::duplicate, stream, client);
+    FirehoseBatchWriter writer =
+      FirehoseBatchWriter.createWriterForTesting(ByteBuffer::duplicate, stream, client);
 
     for (ByteBuffer datum : data) {
       writer.addToBatch(datum);
@@ -74,7 +75,8 @@ public class TestFirehoseBatchWriter {
     ByteBuffer[] data = createData(500);
     String stream = "streamname";
     AmazonKinesisFirehoseClient client = Mockito.mock(AmazonKinesisFirehoseClient.class);
-    FirehoseBatchWriter writer = new FirehoseBatchWriter(ByteBuffer::duplicate, stream, client);
+    FirehoseBatchWriter writer =
+      FirehoseBatchWriter.createWriterForTesting(ByteBuffer::duplicate, stream, client);
 
     PutRecordBatchResult result = Mockito.mock(PutRecordBatchResult.class);
     List<PutRecordBatchRequest> requests = new ArrayList<>();
@@ -140,7 +142,8 @@ public class TestFirehoseBatchWriter {
            });
 
     String stream = "streamname";
-    FirehoseBatchWriter writer = new FirehoseBatchWriter(ByteBuffer::duplicate, stream, client);
+    FirehoseBatchWriter writer =
+      FirehoseBatchWriter.createWriterForTesting(ByteBuffer::duplicate, stream, client);
     for (ByteBuffer datum : data) {
       writer.addToBatch(datum);
     }

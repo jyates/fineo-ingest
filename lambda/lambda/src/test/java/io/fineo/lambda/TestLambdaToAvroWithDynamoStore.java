@@ -1,8 +1,9 @@
-package io.fineo.lambda.avro;
+package io.fineo.lambda;
 
 import com.amazonaws.services.dynamodbv2.util.TableUtils;
 import io.fineo.aws.AwsDependentTests;
-import io.fineo.lambda.storage.AwsDynamoResource;
+import io.fineo.lambda.dynamo.LocalDynamoTestUtil;
+import io.fineo.lambda.dynamo.AwsDynamoResource;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;

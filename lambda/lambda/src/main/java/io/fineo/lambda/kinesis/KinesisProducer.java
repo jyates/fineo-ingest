@@ -1,4 +1,4 @@
-package io.fineo.lambda.avro;
+package io.fineo.lambda.kinesis;
 
 import com.amazonaws.services.kinesis.AmazonKinesisAsyncClient;
 import com.amazonaws.services.kinesis.model.PutRecordRequest;

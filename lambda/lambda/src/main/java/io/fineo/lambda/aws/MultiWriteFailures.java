@@ -1,10 +1,6 @@
 package io.fineo.lambda.aws;
 
-import io.fineo.lambda.storage.AvroToDynamoWriter;
-import org.apache.avro.generic.GenericRecord;
-
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Any failures that have accumulated since the last time that 'flush' was called

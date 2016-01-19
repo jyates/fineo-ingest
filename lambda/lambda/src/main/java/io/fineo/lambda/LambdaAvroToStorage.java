@@ -1,10 +1,11 @@
-package io.fineo.lambda.storage;
+package io.fineo.lambda;
 
 import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
 import com.google.common.annotations.VisibleForTesting;
-import io.fineo.lambda.avro.FirehoseBatchWriter;
-import io.fineo.lambda.avro.LambdaClientProperties;
+import io.fineo.lambda.dynamo.AvroToDynamoWriter;
+import io.fineo.lambda.firehose.FirehoseBatchWriter;
 import io.fineo.lambda.aws.MultiWriteFailures;
+import io.fineo.lambda.test.TestableLambda;
 import org.apache.avro.file.FirehoseRecordReader;
 import org.apache.avro.file.FirehoseRecordWriter;
 import org.apache.avro.generic.GenericRecord;

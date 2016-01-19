@@ -1,4 +1,4 @@
-package io.fineo.lambda.storage;
+package io.fineo.lambda.dynamo;
 
 import com.amazonaws.handlers.AsyncHandler;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
@@ -12,7 +12,7 @@ import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
 import com.google.common.collect.Lists;
 import io.fineo.aws.AwsDependentTests;
-import io.fineo.lambda.avro.LambdaClientProperties;
+import io.fineo.lambda.LambdaClientProperties;
 import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.schema.avro.AvroRecordDecoder;
 import io.fineo.schema.avro.SchemaTestUtils;
@@ -27,10 +27,10 @@ import java.util.List;
 import java.util.Properties;
 import java.util.UUID;
 
+import static junit.framework.TestCase.assertTrue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
 
 
 /**

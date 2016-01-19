@@ -1,12 +1,10 @@
-package io.fineo.lambda.storage;
+package io.fineo.lambda.dynamo;
 
-import com.google.common.collect.Lists;
 import org.junit.Test;
 
-import java.util.List;
 import java.util.Random;
 
-import static io.fineo.lambda.storage.DynamoExpressionPlaceHolders.asExpressionAttributeValue;
+import static io.fineo.lambda.dynamo.DynamoExpressionPlaceHolders.asExpressionAttributeValue;
 import static org.junit.Assert.assertTrue;
 
 public class TestDynamoExpressionPlaceHolders {
@@ -33,12 +31,12 @@ public class TestDynamoExpressionPlaceHolders {
   private void validate(String value) {
     String attrib = asExpressionAttributeValue(random());
     String suffix = "\n Start: " + value + "\n Attrib: " + attrib;
-    assertTrue("Conversion does not start properly."+suffix,
+    assertTrue("Conversion does not start properly." + suffix,
       attrib.startsWith(":n"));
     char[] rest = attrib.substring(2).toCharArray();
     for (int j = 0; j < rest.length; j++) {
-      assertTrue("Conversion is not alphanumer after start."+suffix, Character.isLetterOrDigit
-        (rest[j]));
+        assertTrue("Conversion is not alphanumer after start." + suffix, Character.isLetterOrDigit
+          (rest[j]));
     }
   }
 
