@@ -14,6 +14,6 @@ public interface TestableLambda {
   void handleEventInternal(KinesisEvent event) throws IOException;
 
   static Method getHandler(TestableLambda lambda) throws NoSuchMethodException {
-    return  lambda.getClass().getDeclaredMethod("handleEventInternal", KinesisEvent.class);
+    return  lambda.getClass().getMethod("handleEventInternal", KinesisEvent.class);
   }
 }

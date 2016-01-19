@@ -1,22 +1,21 @@
 package io.fineo.lambda;
 
-import com.amazonaws.auth.AWSCredentials;
-import com.amazonaws.auth.AWSCredentialsProvider;
-import com.amazonaws.auth.BasicAWSCredentials;
-import com.amazonaws.services.dynamodbv2.model.DeleteTableRequest;
-import com.amazonaws.services.dynamodbv2.model.ListTablesRequest;
 import com.amazonaws.services.dynamodbv2.model.ListTablesResult;
+import com.amazonaws.services.kinesisfirehose.AmazonKinesisFirehoseClient;
+import com.amazonaws.services.kinesisfirehose.model.CompressionFormat;
+import com.amazonaws.services.kinesisfirehose.model.CreateDeliveryStreamRequest;
+import com.amazonaws.services.kinesisfirehose.model.DeleteDeliveryStreamRequest;
+import com.amazonaws.services.kinesisfirehose.model.S3DestinationConfiguration;
 import com.amazonaws.services.lambda.AWSLambdaClient;
 import com.amazonaws.services.lambda.model.InvocationType;
 import com.amazonaws.services.lambda.model.InvokeRequest;
 import com.amazonaws.services.lambda.model.InvokeResult;
 import com.amazonaws.services.lambda.model.LogType;
-import com.fasterxml.jackson.jr.ob.JSON;
+import com.google.common.collect.Lists;
 import io.fineo.aws.AwsDependentTests;
 import io.fineo.aws.rule.AwsCredentialResource;
-import io.fineo.lambda.avro.LambdaClientProperties;
+import io.fineo.lambda.util.LambdaTestUtils;
 import io.fineo.schema.OldSchemaException;
-import io.fineo.schema.avro.SchemaTestUtils;
 import io.fineo.schema.store.SchemaStore;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -25,16 +24,16 @@ import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.yaml.snakeyaml.Yaml;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Map;
+import java.util.stream.Stream;
+
+import static org.junit.Assert.assertNull;
 
 /**
  * Similar to the local TestEndToEndLambda, but leverages actual AWS services to support
@@ -48,9 +47,6 @@ public class TestEndToEndLambdaAws {
   @ClassRule
   public static AwsCredentialResource awsCredentials = new AwsCredentialResource();
   private final String region = System.getProperty("aws-region", "us-east-1");
-
-  private static final String START_ARN =
-    "arn:aws:lambda:us-east-1:766732214526:function:RawToAvro";
 
   private static final String TEST_EVENT =
     "{"
@@ -76,10 +72,18 @@ public class TestEndToEndLambdaAws {
     + "";
   private LambdaClientProperties props;
 
+  private static final String FUNCTION_ARN =
+    "arn:aws:lambda:us-east-1:766732214526:function:RawToAvro";
+  /**
+   * test role for the Firehose stream -> S3 bucket
+   */
+  private String firehoseToS3RoleArn = "arn:aws:iam::766732214526:role/test-lambda-functions";
+  private String s3Bucket = "arn:aws:s3:::test.fineo.io";
+
   @Test
   public void testConnect() throws Exception {
     Map<String, Object> json = LambdaTestUtils.createRecords(1, 1)[0];
-    setupSchema(json);
+    setupAws(json);
 
     LOG.info("------ > Making request ----->");
     makeRequest(json);
@@ -88,22 +92,55 @@ public class TestEndToEndLambdaAws {
   }
 
   @Before
-  public void connect() throws Exception{
+  public void connect() throws Exception {
     this.props = LambdaClientProperties.load();
     props.setAwsCredentialProviderForTesting(awsCredentials.getProvider());
   }
 
   @After
-  public void cleanup() throws Exception{
+  public void cleanup() throws Exception {
+    // dynamo
     ListTablesResult tables = props.getDynamo().listTables("test-schema");
-    for(String name: tables.getTableNames()){
+    for (String name : tables.getTableNames()) {
       props.getDynamo().deleteTable(name);
     }
+
+    // firehose
+    AmazonKinesisFirehoseClient firehoseClient = new AmazonKinesisFirehoseClient(awsCredentials
+      .getProvider());
+    Stream.of(props.getFirehoseMalformedStreamName(),
+      props.getFirehoseStagedStreamName()).forEach(stream ->{
+      DeleteDeliveryStreamRequest delete = new DeleteDeliveryStreamRequest()
+        .withDeliveryStreamName(stream);
+      firehoseClient.deleteDeliveryStream(delete);
+    });
   }
 
-  private void setupSchema(Map<String, Object> json) throws Exception {
+  private void setupAws(Map<String, Object> json) throws Exception {
+    // setup the schema store
     SchemaStore store = props.createSchemaStore();
     LambdaTestUtils.updateSchemaStore(store, json);
+
+    // setup the firehose connections
+    String prefix = LocalDateTime.now().toString();
+    createFirehose(props.getFirehoseStagedStreamName(), prefix);
+    createFirehose(props.getFirehoseMalformedStreamName(), prefix);
+  }
+
+  private void createFirehose(String stream, String prefix) {
+    AmazonKinesisFirehoseClient firehoseClient = new AmazonKinesisFirehoseClient(awsCredentials
+      .getProvider());
+    CreateDeliveryStreamRequest createDeliveryStreamRequest = new CreateDeliveryStreamRequest();
+    createDeliveryStreamRequest.setDeliveryStreamName(stream);
+
+    S3DestinationConfiguration s3DestinationConfiguration = new S3DestinationConfiguration();
+    s3DestinationConfiguration.setBucketARN(s3Bucket);
+    s3DestinationConfiguration.setPrefix(prefix);
+    // Could also specify GZIP, ZIP, or SNAPPY
+    s3DestinationConfiguration.setCompressionFormat(CompressionFormat.UNCOMPRESSED);
+    s3DestinationConfiguration.setRoleARN(firehoseToS3RoleArn);
+    createDeliveryStreamRequest.setS3DestinationConfiguration(s3DestinationConfiguration);
+    firehoseClient.createDeliveryStream(createDeliveryStreamRequest);
   }
 
   private void makeRequest(Map<String, Object> json) throws IOException, OldSchemaException {
@@ -113,7 +150,7 @@ public class TestEndToEndLambdaAws {
     LOG.info("Data: " + data);
 
     InvokeRequest request = new InvokeRequest();
-    request.setFunctionName(START_ARN);
+    request.setFunctionName(FUNCTION_ARN);
     request.withPayload(String.format(TEST_EVENT, data, region));
     request.setInvocationType(InvocationType.RequestResponse);
     request.setLogType(LogType.Tail);
@@ -123,6 +160,7 @@ public class TestEndToEndLambdaAws {
     LOG.info("Status: " + result.getStatusCode());
     LOG.info("Error:" + result.getFunctionError());
     LOG.info("Log:" + new String(Base64.getDecoder().decode(result.getLogResult())));
+    assertNull(result.getFunctionError());
   }
 
   private void validate() {

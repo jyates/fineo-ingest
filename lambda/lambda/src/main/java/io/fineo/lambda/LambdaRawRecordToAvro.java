@@ -6,9 +6,9 @@ import com.fasterxml.jackson.databind.util.ByteBufferBackedInputStream;
 import com.fasterxml.jackson.jr.ob.JSON;
 import com.google.common.annotations.VisibleForTesting;
 import io.fineo.internal.customer.Malformed;
+import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.lambda.firehose.FirehoseBatchWriter;
 import io.fineo.lambda.kinesis.KinesisProducer;
-import io.fineo.lambda.test.TestableLambda;
 import io.fineo.schema.MapRecord;
 import io.fineo.schema.avro.AvroSchemaEncoder;
 import io.fineo.schema.store.SchemaStore;
@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 
 /**
@@ -36,78 +37,70 @@ import java.util.function.Function;
  * records' Firehose Kinesis stream.
  * </p>
  */
-public class LambdaRawRecordToAvro implements StreamProducer, TestableLambda {
+public class LambdaRawRecordToAvro extends BaseLambda implements StreamProducer {
 
   private static final Log LOG = LogFactory.getLog(LambdaRawRecordToAvro.class);
   private FirehoseBatchWriter malformedRecords;
-  private LambdaClientProperties props;
   private SchemaStore store;
   private KinesisProducer convertedRecords;
 
-  public void handler(KinesisEvent event) throws IOException {
-    try {
-      setup();
-      handleEventInternal(event);
-    } catch (Exception e) {
-      LOG.error("Failed to write event!", e);
-      malformedEvent(event);
-    }
-    LOG.info("Finished!");
-  }
 
   @VisibleForTesting
   @Override
-  public void handleEventInternal(KinesisEvent event) throws IOException {
-    LOG.info("Entering handler");
-    for (KinesisEvent.KinesisEventRecord rec : event.getRecords()) {
-      LOG.trace("Got message");
-      ByteBuffer data = rec.getKinesis().getData();
-      data.mark();
-      // parse out the json
-      JSON configuredJson = JSON.std.with(JSON.Feature.READ_ONLY).with(JSON.Feature
-        .USE_DEFERRED_MAPS);
-      Map<String, Object> values =
-        configuredJson.mapFrom(new ByteBufferBackedInputStream(rec.getKinesis().getData()));
-      LOG.info("Parsed json: "+values);
-      // parse out the necessary values
-      MapRecord record = new MapRecord(values);
-      // this is an ugly reach into the bridge, logic for the org ID, specially as we pull it out
-      // when we create the schema bridge, but that requires a bit more refactoring than I want
-      // to do right now for the schema bridge. Maybe an easy improvement later.
-      String orgId = record.getStringByField(AvroSchemaEncoder.ORG_ID_KEY);
-      AvroSchemaEncoder bridge;
-      try {
-        bridge = AvroSchemaEncoder.create(store, record);
-      } catch (IllegalArgumentException e) {
-        malformedRecords.addToBatch(data);
-        continue;
-      }
-      LOG.info("Got the encoder");
+  public void handleEvent(KinesisEvent.KinesisEventRecord rec) throws IOException {
+    ByteBuffer data = rec.getKinesis().getData();
+    data.mark();
+    // parse out the json
+    JSON configuredJson = JSON.std.with(JSON.Feature.READ_ONLY).with(JSON.Feature
+      .USE_DEFERRED_MAPS);
+    Map<String, Object> values =
+      configuredJson.mapFrom(new ByteBufferBackedInputStream(rec.getKinesis().getData()));
+    LOG.trace("Parsed json: " + values);
+    // parse out the necessary values
+    MapRecord record = new MapRecord(values);
+    // this is an ugly reach into the bridge, logic for the org ID, specially as we pull it out
+    // when we create the schema bridge, but that requires a bit more refactoring than I want
+    // to do right now for the schema bridge. Maybe an easy improvement later.
+    String orgId = record.getStringByField(AvroSchemaEncoder.ORG_ID_KEY);
+    AvroSchemaEncoder bridge;
+    // sometimes this throws illegal argument, e.g. record not valid, so we fall back on the
+    // error handler
+    bridge = AvroSchemaEncoder.create(store, record);
+    LOG.trace("Got the encoder");
 
-      // write the record to a ByteBuffer
-      GenericRecord outRecord = bridge.encode(new MapRecord(values));
-      LOG.info("Encoded the record");
-      // add the record
-      this.convertedRecords.add(props.getParsedStreamName(), orgId, outRecord);
-      LOG.info("Wrote the record");
-    }
-
-    LOG.info("Flushing malformed records");
-    malformedRecords.flush();
-    LOG.info("Flushed malformed records");
-
-    LOG.debug("Waiting on kinesis to finish writing all converted records");
-    convertedRecords.flush();
-    LOG.debug("Finished writing record batches");
+    // write the record to a ByteBuffer
+    GenericRecord outRecord = bridge.encode(new MapRecord(values));
+    LOG.trace("Encoded the record");
+    // add the record
+    this.convertedRecords.add(props.getParsedStreamName(), orgId, outRecord);
+    LOG.trace("Wrote the record");
   }
 
-  private void malformedEvent(KinesisEvent event) throws IOException {
-    for (KinesisEvent.KinesisEventRecord record : event.getRecords()) {
-      malformedRecords.addToBatch(record.getKinesis().getData());
-    }
-    LOG.trace("Putting message to firehose");
-    malformedRecords.flush();
-    LOG.trace("Successfully put message to firehose");
+  public MultiWriteFailures<GenericRecord> commit() throws IOException {
+    LOG.trace("Flushing converted records to kinesis");
+    return convertedRecords.flush();
+  }
+
+  @Override
+  protected void setup() throws IOException {
+    LOG.debug("Creating store");
+    this.store = props.createSchemaStore();
+
+    LOG.debug("Setting up producer");
+    this.convertedRecords =
+      new KinesisProducer(props.getKinesisClient(), props.getKinesisRetries());
+  }
+
+  @Override
+  Supplier<FirehoseBatchWriter> getFailedEventHandler() {
+    return malformedRecords != null ? () -> malformedRecords :
+           props.lazyFirehoseBatchWriter(props.getFirehoseRawErrorStreamName());
+  }
+
+  @Override
+  Supplier<FirehoseBatchWriter> getErrorEventHandler() {
+    return malformedRecords != null ? () -> malformedRecords :
+           props.lazyFirehoseBatchWriter(props.getFirehoseRawMalformedStreamName(), transform);
   }
 
   private Function<ByteBuffer, ByteBuffer> transform = data -> {
@@ -122,29 +115,11 @@ public class LambdaRawRecordToAvro implements StreamProducer, TestableLambda {
     }
   };
 
-
-  private void setup() throws IOException {
-    LOG.debug("Setting up");
-    props = LambdaClientProperties.load();
-    LOG.debug("Creating store");
-    this.store = props.createSchemaStore();
-
-    LOG.debug("Setting up producer");
-    this.convertedRecords = new KinesisProducer(props.getKinesisClient(), props.getKinesisRetries());
-
-    LOG.debug("Setting up batch writer");
-    malformedRecords = new FirehoseBatchWriter(props, transform, props
-      .getFirehoseMalformedStreamName());
-  }
-
   @VisibleForTesting
-  public void setupForTesting(LambdaClientProperties props, AmazonKinesisFirehoseClient client,
+  public void setupForTesting(LambdaClientProperties props,
     SchemaStore store, KinesisProducer producer, FirehoseBatchWriter malformed) {
     this.props = props;
-    this.malformedRecords = malformed != null ?
-      malformed :
-      FirehoseBatchWriter
-        .createWriterForTesting(transform, props.getFirehoseMalformedStreamName(), client);
+    this.malformedRecords = malformed;
     this.store = store;
     setDownstreamForTesting(producer);
   }

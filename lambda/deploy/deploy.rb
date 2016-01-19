@@ -18,15 +18,15 @@ functions = [
   {
     function_name: "RawToAvro",
     description: "Convert raw JSON records to avro encoded records",
-    handler: "io.fineo.lambda.avro.LambdaRawRecordToAvro::handler",
+    handler: "io.fineo.lambda.LambdaRawRecordToAvro::handler",
     role: "arn:aws:iam::766732214526:role/Lambda-Raw-To-Avro-Ingest-Role",
-    timeout: 20, # seconds
+    timeout: 30, # seconds
     memory_size: 198 # MB
   },
   {
     function_name: "AvroToStorage",
     description: "Stores the avro-formated bytes into Dynamo and S3",
-    handler: "io.fineo.lambda.storage.LambdaAvroToStorage::handler",
+    handler: "io.fineo.lambda.LambdaAvroToStorage::handler",
     role: "arn:aws:iam::766732214526:role/Lambda-Dynamo-Ingest-Role",
     timeout: 10, # seconds
     memory_size: 128 # MB

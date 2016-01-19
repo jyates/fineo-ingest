@@ -23,9 +23,11 @@ $options = {
   :kinesis_retries => Pair.new("3", "kinesis.retries"),
 
   :firehose => Pair.new("https://firehose.us-east-1.amazonaws.com", "firehose.url"),
-  :malformed => Pair.new("fineo-raw-error-records", "firehose.raw.error"),
+  :raw_error => Pair.new("fineo-raw-error-records", "firehose.raw.error"),
+  :raw_malformed => Pair.new("fineo-raw-malformed-records", "firehose.raw.malformed"),
   :staged => Pair.new("fineo-staged-records", "firehose.staged"),
   :staged_error => Pair.new("fineo-staged-error-recods", "firehose.staged.error"),
+  :staged_error_dynamo => Pair.new("fineo-staged-dynamo-error-recods", "firehose.staged.error.dynamo"),
 
   :dynamo => Pair.new("us-east-1", "dynamo.region"),
   :schema_table => Pair.new("schema-customer", "dynamo.schema-store"),
@@ -49,7 +51,7 @@ parser = OptionParser.new do|opts|
   opts.on('-k', '--kinesis-url kinesis-url', 'Kinesis address - not a URL') do |url|
     set :kinesis, url
   end
-  opts.on('-p', '--parsed-stream stream name', 'Parsed Avro record Kinesis stream name') do |name|
+  opts.on('--parsed-stream stream name', 'Parsed Avro record Kinesis stream name') do |name|
     set :parsed, name
   end
   opts.on('--kinesis-max-retries limit', 'Max amount of retries to attempt before failing '+
@@ -58,35 +60,42 @@ parser = OptionParser.new do|opts|
   end
 
   opts.separator "Firehose Options:"
-  opts.on('-f', '--firehose-url firehose-url', 'Firehose Url') do |url|
+  opts.on('--firehose-url firehose-url', 'Firehose Url') do |url|
     set :firehose, url
   end
-  opts.on('-m', '--malformed-stream stream-name', 'Malformed event Kinesis Firehose stream name') do |name|
-    set :malformed, name
+  opts.on('--raw-malformed-stream stream-name', 'Malformed event Kinesis Firehose stream name') do |name|
+    set :raw_malformed, name
   end
-  opts.on('-t', '--staged-stream stream-name', 'Staged avro event Kinesis Firehose stream name') do |name|
+  opts.on('--raw-failed-stream stream-name', 'Malformed event Kinesis Firehose stream name') do |name|
+    set :raw_error, name
+  end
+  opts.on('--staged-stream stream-name', 'Staged avro event Kinesis Firehose stream name') do |name|
     set :staged, name
   end
-  opts.on('-e', '--staged-dynamo-error-stream stream-name', 'Kinesis Firehose stream' +
-    'name for messages that could not be written dynamo')  do |name|
+  opts.on('--staged-error-stream stream-name', 'Kinesis Firehose stream' +
+    'name for messages that could not be handled properly')  do |name|
       set :staged_error, name
+  end
+  opts.on('--staged-dynamo-error-stream stream-name', 'Kinesis Firehose stream' +
+    'name for messages that could not be written dynamo')  do |name|
+      set :staged_error_dynamo, name
   end
 
   opts.separator "Dynamo Options:"
   opts.on('-d', '--dynamo-url dynamo-url', 'DynamoDB Endpoint Url') do |url|
     set :dynamo, url
   end
-  opts.on('-s', '--dynamo-schema-table table-name', 'DynamoDB schema repository table name') do |name|
+  opts.on('--dynamo-schema-table table-name', 'DynamoDB schema repository table name') do |name|
     set :schema_table, name
   end
-  opts.on('-i', '--dynamo-ingest-prefix table-prefix', 'DynamoDB ingest table name prefix') do |name|
+  opts.on('--dynamo-ingest-prefix table-prefix', 'DynamoDB ingest table name prefix') do |name|
     set :ingest_prefix, name
   end
-  opts.on('-r', '--dynamo-read-limit limit', 'Max amount of read units to allocate to a '+
+  opts.on('--dynamo-read-limit limit', 'Max amount of read units to allocate to a '+
     'single table') do |name|
       set :read_max, name
     end
-  opts.on('-w', '--dynamo-write-limit limit', 'Max amount of write units to allocate to a ' +
+  opts.on('--dynamo-write-limit limit', 'Max amount of write units to allocate to a ' +
     'single table')do |name|
       set :write_max, name
     end
@@ -126,9 +135,11 @@ end
 
 unless $config.test.nil?
   set :parsed, test_fix(:parsed)
-  set :malformed, test_fix(:malformed)
+  set :raw_error, test_fix(:raw_error)
+  set :raw_malformed, test_fix(:raw_malformed)
   set :staged, test_fix(:staged)
   set :staged_error, test_fix(:staged_error)
+  set :staged_error_dynamo, test_fix(:staged_error_dynamo)
   set :schema_table, test_fix(:schema_table)
   set :ingest_prefix, test_fix(:ingest_prefix)
 end

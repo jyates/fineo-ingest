@@ -40,7 +40,7 @@ public class TestEndToEndLambda {
     Properties props = new Properties();
     // firehose outputs
     String malformed = "mal", dynamoErrors = "dynamoErrors", archived = "archived";
-    props.setProperty(LambdaClientProperties.FIREHOSE_MALFORMED_STREAM_NAME, malformed);
+    props.setProperty(LambdaClientProperties.FIREHOSE_RAW_MALFORMED_STREAM_NAME, malformed);
     props
       .setProperty(LambdaClientProperties.FIREHOSE_STAGED_DYANMO_ERROR_STREAM_NAME, dynamoErrors);
     props.setProperty(LambdaClientProperties.FIREHOSE_STAGED_STREAM_NAME, archived);

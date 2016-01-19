@@ -10,6 +10,7 @@ import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.amazonaws.services.kinesis.AmazonKinesisAsyncClient;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
+import io.fineo.lambda.firehose.FirehoseBatchWriter;
 import io.fineo.schema.aws.dynamodb.DynamoDBRepository;
 import io.fineo.schema.store.SchemaStore;
 import org.apache.commons.logging.Log;
@@ -18,7 +19,10 @@ import org.schemarepo.ValidatorFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
 import java.util.Properties;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * Simple wrapper around java properties
@@ -33,9 +37,12 @@ public class LambdaClientProperties {
   private final String KINESIS_RETRIES = "fineo.kinesis.retries";
 
   static final String FIREHOSE_URL = "fineo.firehose.url";
-  public static final String FIREHOSE_MALFORMED_STREAM_NAME = "fineo.firehose.raw.error";
+  public static final String FIREHOSE_RAW_ERROR_STREAM_NAME = "fineo.firehose.raw.error";
+  public static final String FIREHOSE_RAW_MALFORMED_STREAM_NAME = "fineo.firehose.raw.malformed";
   public static final String FIREHOSE_STAGED_STREAM_NAME = "fineo.firehose.staged";
-  public static final String FIREHOSE_STAGED_DYANMO_ERROR_STREAM_NAME = "firehose.staged.error";
+  public static final String FIREHOSE_STAGED_DYANMO_ERROR_STREAM_NAME =
+    "firehose.staged.error.dynamo";
+  public static final String FIREHOSE_STAGED_ERROR_STREAM_NAME = "firehose.staged.error";
 
   public static final String DYNAMO_REGION = "fineo.dynamo.region";
   public static final String DYNAMO_URL_FOR_TESTING = "fineo.dynamo.testing.url";
@@ -50,7 +57,8 @@ public class LambdaClientProperties {
   private final Properties props;
 
   /**
-   * Use the static {@link #load()} to createTable properties. This is only exposed <b>FOR TESTING</b>
+   * Use the static {@link #load()} to createTable properties. This is only exposed <b>FOR
+   * TESTING</b>
    *
    * @param props
    */
@@ -74,13 +82,13 @@ public class LambdaClientProperties {
   }
 
   public AmazonDynamoDBAsyncClient getDynamo() {
-    LOG.info("Creating dynamo with provider: "+provider);
+    LOG.debug("Creating dynamo with provider: " + provider);
     AmazonDynamoDBAsyncClient client = new AmazonDynamoDBAsyncClient(provider);
-    LOG.info("Got client, setting endpoint");
+    LOG.debug("Got client, setting endpoint");
     String region = props.getProperty(DYNAMO_REGION);
-    if( region != null){
+    if (region != null) {
       client.setRegion(RegionUtils.getRegion(region));
-    }else{
+    } else {
       client.setEndpoint(props.getProperty(DYNAMO_URL_FOR_TESTING));
     }
 
@@ -93,16 +101,17 @@ public class LambdaClientProperties {
     CreateTableRequest create =
       DynamoDBRepository.getBaseTableCreate(props.getProperty(DYNAMO_SCHEMA_STORE_TABLE));
     create.setProvisionedThroughput(new ProvisionedThroughput()
-    .withReadCapacityUnits(getDynamoReadMax())
-    .withWriteCapacityUnits(getDynamoWriteMax()));
+      .withReadCapacityUnits(getDynamoReadMax())
+      .withWriteCapacityUnits(getDynamoWriteMax()));
+    LOG.debug("Creating schema repository");
     DynamoDBRepository repo =
       new DynamoDBRepository(new ValidatorFactory.Builder().build(), client, create);
     LOG.debug("created schema repository");
     return new SchemaStore(repo);
   }
 
-  public AmazonKinesisAsyncClient getKinesisClient(){
-    AmazonKinesisAsyncClient client =  new AmazonKinesisAsyncClient(provider);
+  public AmazonKinesisAsyncClient getKinesisClient() {
+    AmazonKinesisAsyncClient client = new AmazonKinesisAsyncClient(provider);
     client.setEndpoint(this.getKinesisEndpoint());
     return client;
   }
@@ -120,37 +129,28 @@ public class LambdaClientProperties {
     return props.getProperty(FIREHOSE_URL);
   }
 
-  public String getFirehoseMalformedStreamName() {
-    return props.getProperty(FIREHOSE_MALFORMED_STREAM_NAME);
+  public String getFirehoseRawMalformedStreamName() {
+    return props.getProperty(FIREHOSE_RAW_MALFORMED_STREAM_NAME);
   }
 
-  @VisibleForTesting
-  public void setAwsCredentialProviderForTesting(AWSCredentialsProvider provider) throws Exception {
-    this.provider = provider;
-  }
-
-  public static LambdaClientProperties createForTesting(Properties props,
-    SchemaStore schemaStore) {
-    LambdaClientProperties client = new LambdaClientProperties(props) {
-      @Override
-      public SchemaStore createSchemaStore() {
-        return schemaStore;
-      }
-    };
-
-    return client;
+  public String getFirehoseRawErrorStreamName() {
+    return props.getProperty(FIREHOSE_RAW_ERROR_STREAM_NAME);
   }
 
   public String getFirehoseStagedStreamName() {
     return props.getProperty(FIREHOSE_STAGED_STREAM_NAME);
   }
 
-  public String getDynamoIngestTablePrefix() {
-    return props.getProperty(DYNAMO_INGEST_TABLE_PREFIX);
+  public String getFirehoseStagedFailedStreamName() {
+    return props.getProperty(FIREHOSE_STAGED_ERROR_STREAM_NAME);
   }
 
-  public String getFirehoseStagedDyanmoErrorsName() {
+  public String getFirehoseStagedDyanmoErrorStreamName() {
     return props.getProperty(FIREHOSE_STAGED_DYANMO_ERROR_STREAM_NAME);
+  }
+
+  public String getDynamoIngestTablePrefix() {
+    return props.getProperty(DYNAMO_INGEST_TABLE_PREFIX);
   }
 
   public Long getDynamoWriteMax() {
@@ -167,5 +167,36 @@ public class LambdaClientProperties {
 
   public long getKinesisRetries() {
     return Long.valueOf(props.getProperty(KINESIS_RETRIES));
+  }
+
+  public Supplier<FirehoseBatchWriter> lazyFirehoseBatchWriter(String stream) {
+    return curriedFirehose.apply(stream).apply(ByteBuffer::duplicate);
+  }
+
+  public Supplier<FirehoseBatchWriter> lazyFirehoseBatchWriter(String stream,
+    Function<ByteBuffer, ByteBuffer> transform) {
+    return curriedFirehose.apply(stream).apply(transform);
+  }
+
+  private Function<String, Function<Function<ByteBuffer, ByteBuffer>,
+    Supplier<FirehoseBatchWriter>>>
+    curriedFirehose =
+    name -> func -> () -> new FirehoseBatchWriter(LambdaClientProperties.this, func, name);
+
+  @VisibleForTesting
+  public void setAwsCredentialProviderForTesting(AWSCredentialsProvider provider) throws Exception {
+    this.provider = provider;
+  }
+
+  public static LambdaClientProperties createForTesting(Properties props,
+    SchemaStore schemaStore) {
+    LambdaClientProperties client = new LambdaClientProperties(props) {
+      @Override
+      public SchemaStore createSchemaStore() {
+        return schemaStore;
+      }
+    };
+
+    return client;
   }
 }

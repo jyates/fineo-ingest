@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
@@ -41,7 +42,7 @@ public class TestLambdaAvroToStorage {
 
     // actually do the write
     LambdaAvroToStorage storage = new LambdaAvroToStorage();
-    storage.setupForTesting(records, error, dynamo);
+    storage.setupForTesting(props(), records, error, dynamo);
     storage.handleEventInternal(event);
 
     // verify that we wrote the record the proper places
@@ -75,7 +76,7 @@ public class TestLambdaAvroToStorage {
 
     // actually do the write
     LambdaAvroToStorage storage = new LambdaAvroToStorage();
-    storage.setupForTesting(records, error, dynamo);
+    storage.setupForTesting(props(), records, error, dynamo);
     storage.handleEventInternal(event);
 
     // verify that we wrote the record the proper places
@@ -95,5 +96,9 @@ public class TestLambdaAvroToStorage {
     throws IOException {
     Mockito.verify(writer).addToBatch(buff);
     Mockito.verify(writer).flush();
+  }
+
+  private LambdaClientProperties props(){
+    return LambdaClientProperties.createForTesting(new Properties(), null);
   }
 }

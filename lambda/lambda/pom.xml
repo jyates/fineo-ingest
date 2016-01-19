@@ -30,7 +30,7 @@
 
     <!-- Other -->
     <fineo-schema-mgmt.version>1.0-SNAPSHOT</fineo-schema-mgmt.version>
-    <jackson-jr.version>2.6.3</jackson-jr.version>
+    <jackson-jr.version>2.7.0</jackson-jr.version>
 
     <!-- Test dependencies -->
     <surefire.version>2.19</surefire.version>

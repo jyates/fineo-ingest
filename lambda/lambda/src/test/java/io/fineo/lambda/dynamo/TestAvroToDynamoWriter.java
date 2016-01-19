@@ -13,6 +13,7 @@ import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
 import com.google.common.collect.Lists;
 import io.fineo.aws.AwsDependentTests;
 import io.fineo.lambda.LambdaClientProperties;
+import io.fineo.lambda.FailureHandler;
 import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.schema.avro.AvroRecordDecoder;
 import io.fineo.schema.avro.SchemaTestUtils;
@@ -75,7 +76,7 @@ public class TestAvroToDynamoWriter {
     writer.write(record);
     MultiWriteFailures<GenericRecord> failures = writer.flush();
     assertTrue(failures.any());
-    List<GenericRecord> failed = AvroToDynamoWriter.getFailedRecords(failures);
+    List<GenericRecord> failed = FailureHandler.getFailedRecords(failures);
     assertEquals(Lists.newArrayList(record), failed);
   }
 

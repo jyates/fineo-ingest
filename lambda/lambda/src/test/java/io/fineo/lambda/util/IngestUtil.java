@@ -3,6 +3,7 @@ package io.fineo.lambda.util;
 import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
 import com.google.common.base.Preconditions;
 import io.fineo.lambda.StreamProducer;
+import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.lambda.kinesis.KinesisProducer;
 import io.fineo.lambda.test.TestableLambda;
 import io.fineo.schema.store.SchemaStore;
@@ -14,6 +15,7 @@ import org.schemarepo.ValidatorFactory;
 
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -99,6 +101,9 @@ public class IngestUtil {
       data.add(datum);
       return null;
     }).when(producer).add(Mockito.anyString(), Mockito.anyString(), Mockito.any());
+    // never have a failure to write
+    Mockito.when(producer.flush()).thenReturn(new MultiWriteFailures<>(Collections.emptyList()));
+
 
     // setup the stages to send to the specified listener
     for (List<Lambda> stages : this.stages.values()) {

@@ -45,12 +45,12 @@ public class EndToEndTestUtil {
     // setup each stage
     this.store = new SchemaStore(new InMemoryRepository(ValidatorFactory.EMPTY));
     LambdaRawRecordToAvro start = new LambdaRawRecordToAvro();
-    start.setupForTesting(props, null, store, null,
-      firehoses.get(props.getFirehoseMalformedStreamName()));
+    start.setupForTesting(props, store, null,
+      firehoses.get(props.getFirehoseRawMalformedStreamName()));
 
     LambdaAvroToStorage storage = new LambdaAvroToStorage();
-    storage.setupForTesting(firehoses.get(props.getFirehoseStagedStreamName()),
-      firehoses.get(props.getFirehoseStagedDyanmoErrorsName()), dynamo);
+    storage.setupForTesting(props, firehoses.get(props.getFirehoseStagedStreamName()),
+      firehoses.get(props.getFirehoseStagedDyanmoErrorStreamName()), dynamo);
 
     // setup the flow
     this.util = IngestUtil.builder(store).start(start)
@@ -67,8 +67,8 @@ public class EndToEndTestUtil {
     Mockito.when(dynamo.flush()).thenReturn(new MultiWriteFailures(Collections.emptyList()));
 
     Lists.newArrayList(
-      props.getFirehoseMalformedStreamName(),
-      props.getFirehoseStagedDyanmoErrorsName(),
+      props.getFirehoseRawMalformedStreamName(),
+      props.getFirehoseStagedDyanmoErrorStreamName(),
       props.getFirehoseStagedStreamName())
          .forEach(name -> {
            FirehoseBatchWriter firehose = Mockito.mock(FirehoseBatchWriter.class);

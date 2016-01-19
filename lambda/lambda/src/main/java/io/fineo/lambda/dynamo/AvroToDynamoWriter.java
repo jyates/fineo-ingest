@@ -201,11 +201,4 @@ public class AvroToDynamoWriter {
   private AttributeValue getPartitionKey(AvroRecordDecoder.RecordMetadata metadata) {
     return new AttributeValue(metadata.getOrgID() + metadata.getMetricCannonicalType());
   }
-
-  public static List<GenericRecord> getFailedRecords(MultiWriteFailures<GenericRecord>
-    failures) {
-    return failures.getActions().parallelStream()
-                   .map(handler -> handler.getBaseRecord())
-                   .collect(Collectors.toList());
-  }
 }

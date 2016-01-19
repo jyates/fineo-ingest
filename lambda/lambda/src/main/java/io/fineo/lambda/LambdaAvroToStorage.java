@@ -5,15 +5,12 @@ import com.google.common.annotations.VisibleForTesting;
 import io.fineo.lambda.dynamo.AvroToDynamoWriter;
 import io.fineo.lambda.firehose.FirehoseBatchWriter;
 import io.fineo.lambda.aws.MultiWriteFailures;
-import io.fineo.lambda.test.TestableLambda;
 import org.apache.avro.file.FirehoseRecordReader;
-import org.apache.avro.file.FirehoseRecordWriter;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.function.Supplier;
 
 /**
  * Writes avro encoded files into the correct storage locations.
@@ -31,67 +28,64 @@ import java.nio.ByteBuffer;
  * </ol>
  * </p>
  */
-public class LambdaAvroToStorage implements TestableLambda {
+public class LambdaAvroToStorage extends BaseLambda {
 
-  private static final Log LOG = LogFactory.getLog(LambdaAvroToStorage.class);
-  private LambdaClientProperties props;
   private FirehoseBatchWriter archiveAllRecords;
-  private FirehoseBatchWriter dynamoErrors;
+  private FirehoseBatchWriter dynamoErrorsForTesting;
   private AvroToDynamoWriter dynamo;
 
-  public void handler(KinesisEvent event) throws IOException {
-    setup();
-    handleEventInternal(event);
+  @Override
+  void handleEvent(KinesisEvent.KinesisEventRecord record) throws IOException {
+    ByteBuffer data = record.getKinesis().getData();
+    this.archiveAllRecords.addToBatch(data);
+
+    // convert the raw bytes to a GenericRecord and let the writer deal with writing it
+    FirehoseRecordReader<GenericRecord> recordReader = FirehoseRecordReader.create(data);
+    GenericRecord reuse = recordReader.next();
+    while (reuse != null) {
+      this.dynamo.write(reuse);
+      reuse = recordReader.next(reuse);
+    }
   }
 
-  @VisibleForTesting
   @Override
-  public void handleEventInternal(KinesisEvent event) throws IOException {
-    for (KinesisEvent.KinesisEventRecord record : event.getRecords()) {
-      ByteBuffer data = record.getKinesis().getData();
-      this.archiveAllRecords.addToBatch(data);
-
-      // convert the raw bytes to a GenericRecord and let the writer deal with writing it
-      FirehoseRecordReader<GenericRecord> recordReader = FirehoseRecordReader.create(data);
-      GenericRecord reuse = recordReader.next();
-      while (reuse != null) {
-        this.dynamo.write(reuse);
-        reuse = recordReader.next(reuse);
-      }
-    }
-
+  MultiWriteFailures<GenericRecord> commit() throws IOException {
     // flush the records to the appropriate firehose location
     this.archiveAllRecords.flush();
 
     // get any failed writes and flush them into the right firehose for failures
-    MultiWriteFailures<GenericRecord> failures = this.dynamo.flush();
-    if (failures.any()) {
-      FirehoseRecordWriter writer = new FirehoseRecordWriter();
-      for (GenericRecord failed : AvroToDynamoWriter.getFailedRecords(failures)) {
-        dynamoErrors.addToBatch(writer.write(failed));
-      }
-      dynamoErrors.flush();
-    }
+    return this.dynamo.flush();
   }
 
-  private void setup() throws IOException {
-    props = LambdaClientProperties.load();
-
-    this.archiveAllRecords = getFirehose(props.getFirehoseStagedStreamName());
-    this.dynamoErrors = getFirehose(props.getFirehoseStagedDyanmoErrorsName());
-
+  @Override
+  protected void setup() throws IOException {
+    this.archiveAllRecords =
+      props.lazyFirehoseBatchWriter(props.getFirehoseStagedStreamName()).get();
     this.dynamo = AvroToDynamoWriter.create(props);
   }
 
-  private FirehoseBatchWriter getFirehose(String name) {
-    return new FirehoseBatchWriter(props, ByteBuffer::duplicate, name);
+  @Override
+  Supplier<FirehoseBatchWriter> getFailedEventHandler() {
+    return dynamoErrorsForTesting != null ?
+           () -> dynamoErrorsForTesting :
+           props.lazyFirehoseBatchWriter(props.getFirehoseStagedDyanmoErrorStreamName());
   }
 
+  @Override
+  Supplier<FirehoseBatchWriter> getErrorEventHandler() {
+    return dynamoErrorsForTesting != null ?
+           () -> dynamoErrorsForTesting :
+           props.lazyFirehoseBatchWriter(props.getFirehoseStagedFailedStreamName());
+  }
+
+
   @VisibleForTesting
-  public void setupForTesting(FirehoseBatchWriter records, FirehoseBatchWriter errors,
-    AvroToDynamoWriter dynamo){
+  public void setupForTesting(LambdaClientProperties props, FirehoseBatchWriter records,
+    FirehoseBatchWriter errors,
+    AvroToDynamoWriter dynamo) {
+    this.props = props;
     this.archiveAllRecords = records;
-    this.dynamoErrors = errors;
+    this.dynamoErrorsForTesting = errors;
     this.dynamo = dynamo;
   }
 }
