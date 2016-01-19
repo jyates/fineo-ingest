@@ -2,10 +2,14 @@ package io.fineo.lambda.avro;
 
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
+import com.amazonaws.regions.Region;
+import com.amazonaws.regions.RegionUtils;
+import com.amazonaws.regions.Regions;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
+import com.amazonaws.services.kinesis.AmazonKinesisClient;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import io.fineo.schema.aws.dynamodb.DynamoDBRepository;
@@ -34,7 +38,7 @@ public class LambdaClientProperties {
   public static final String FIREHOSE_STAGED_STREAM_NAME = "fineo.firehose.staged";
   public static final String FIREHOSE_STAGED_DYANMO_ERROR_STREAM_NAME = "firehose.staged.error";
 
-  public static final String DYNAMO_ENDPOINT = "fineo.dynamo.url";
+  public static final String DYNAMO_ENDPOINT = "fineo.dynamo.region";
   public static final String DYNAMO_SCHEMA_STORE_TABLE = "fineo.dynamo.schema-store";
   public static final String DYNAMO_INGEST_TABLE_PREFIX = "fineo.dynamo.ingest.prefix";
   public static final String DYNAMO_READ_LIMIT = "fineo.dynamo.limit.read";
@@ -73,12 +77,13 @@ public class LambdaClientProperties {
     LOG.info("Creating dynamo with provider: "+provider);
     AmazonDynamoDBAsyncClient client = new AmazonDynamoDBAsyncClient(provider);
     LOG.info("Got client, setting endpoint");
-    client.setEndpoint(props.getProperty(DYNAMO_ENDPOINT));
+    client.setRegion(RegionUtils.getRegion(props.getProperty(DYNAMO_ENDPOINT)));
     return client;
   }
 
   public SchemaStore createSchemaStore() {
     AmazonDynamoDBClient client = getDynamo();
+    LOG.debug("Got dynamo client");
     CreateTableRequest create =
       DynamoDBRepository.getBaseTableCreate(props.getProperty(DYNAMO_SCHEMA_STORE_TABLE));
     create.setProvisionedThroughput(new ProvisionedThroughput()
@@ -86,8 +91,14 @@ public class LambdaClientProperties {
     .withWriteCapacityUnits(getDynamoWriteMax()));
     DynamoDBRepository repo =
       new DynamoDBRepository(new ValidatorFactory.Builder().build(), client, create);
-    LOG.info("created repository");
+    LOG.debug("created schema repository");
     return new SchemaStore(repo);
+  }
+
+  public AmazonKinesisClient getKinesisClient(){
+    AmazonKinesisClient client =  new AmazonKinesisClient(provider);
+    client.setEndpoint(this.getKinesisEndpoint());
+    return client;
   }
 
   public String getKinesisEndpoint() {

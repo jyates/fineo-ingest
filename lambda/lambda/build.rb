@@ -26,7 +26,7 @@ $options = {
   :staged => Pair.new("fineo-staged-records", "firehose.staged"),
   :staged_error => Pair.new("fineo-staged-error-recods", "firehose.staged.error"),
 
-  :dynamo => Pair.new("https://dynamodb.us-east-1.amazonaws.com", "dynamo.url"),
+  :dynamo => Pair.new("us-east-1", "dynamo.region"),
   :schema_table => Pair.new("schema-customer", "dynamo.schema-store"),
   :ingest_prefix => Pair.new("customer-ingest", "dynamo.ingest.prefix"),
   :write_max => Pair.new("5", "dynamo.limit.write"),

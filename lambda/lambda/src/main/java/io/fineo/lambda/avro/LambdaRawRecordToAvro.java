@@ -1,7 +1,7 @@
 package io.fineo.lambda.avro;
 
+import com.amazonaws.services.kinesis.AmazonKinesisClient;
 import com.amazonaws.services.kinesis.producer.KinesisProducer;
-import com.amazonaws.services.kinesis.producer.KinesisProducerConfiguration;
 import com.amazonaws.services.kinesisfirehose.AmazonKinesisFirehoseClient;
 import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
 import com.fasterxml.jackson.databind.util.ByteBufferBackedInputStream;
@@ -43,7 +43,7 @@ public class LambdaRawRecordToAvro implements StreamProducer, TestableLambda {
   private FirehoseBatchWriter malformedRecords;
   private LambdaClientProperties props;
   private SchemaStore store;
-  private KinesisProducer convertedRecords;
+  private AmazonKinesisClient convertedRecords;
 
   public void handler(KinesisEvent event) throws IOException {
     try {
@@ -127,24 +127,22 @@ public class LambdaRawRecordToAvro implements StreamProducer, TestableLambda {
 
 
   private void setup() throws IOException {
-    LOG.info("Setting up");
+    LOG.debug("Setting up");
     props = LambdaClientProperties.load();
-    LOG.info("Creating store");
+    LOG.debug("Creating store");
     this.store = props.createSchemaStore();
 
-    LOG.info("Setting up producer");
-    KinesisProducerConfiguration conf = new KinesisProducerConfiguration()
-      .setCustomEndpoint(props.getKinesisEndpoint());
-    this.convertedRecords = new KinesisProducer(conf);
+    LOG.debug("Setting up producer");
+    this.convertedRecords = props.getKinesisClient();
 
-    LOG.info("Setting up batch writer");
+    LOG.debug("Setting up batch writer");
     malformedRecords = new FirehoseBatchWriter(props, transform, props
       .getFirehoseMalformedStreamName());
   }
 
   @VisibleForTesting
   public void setupForTesting(LambdaClientProperties props, AmazonKinesisFirehoseClient client,
-    SchemaStore store, KinesisProducer producer, FirehoseBatchWriter malformed) {
+    SchemaStore store, AmazonKinesisClient producer, FirehoseBatchWriter malformed) {
     this.props = props;
     this.malformedRecords =
       malformed != null?
@@ -155,7 +153,7 @@ public class LambdaRawRecordToAvro implements StreamProducer, TestableLambda {
   }
 
   @Override
-  public void setDownstreamForTesting(KinesisProducer producer) {
+  public void setDownstreamForTesting(AmazonKinesisClient producer) {
     this.convertedRecords = producer;
   }
 }

@@ -3,6 +3,9 @@ package io.fineo.lambda;
 import com.amazonaws.auth.AWSCredentials;
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.services.dynamodbv2.model.DeleteTableRequest;
+import com.amazonaws.services.dynamodbv2.model.ListTablesRequest;
+import com.amazonaws.services.dynamodbv2.model.ListTablesResult;
 import com.amazonaws.services.lambda.AWSLambdaClient;
 import com.amazonaws.services.lambda.model.InvocationType;
 import com.amazonaws.services.lambda.model.InvokeRequest;
@@ -17,6 +20,8 @@ import io.fineo.schema.avro.SchemaTestUtils;
 import io.fineo.schema.store.SchemaStore;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -69,21 +74,34 @@ public class TestEndToEndLambdaAws {
     + "  ]"
     + "}"
     + "";
+  private LambdaClientProperties props;
 
   @Test
   public void testConnect() throws Exception {
     Map<String, Object> json = LambdaTestUtils.createRecords(1, 1)[0];
     setupSchema(json);
 
+    LOG.info("------ > Making request ----->");
     makeRequest(json);
 
     validate();
   }
 
-  private void setupSchema(Map<String, Object> json) throws Exception {
-    LambdaClientProperties props = LambdaClientProperties.load();
+  @Before
+  public void connect() throws Exception{
+    this.props = LambdaClientProperties.load();
     props.setAwsCredentialProviderForTesting(awsCredentials.getProvider());
-    LOG.info("Start");
+  }
+
+  @After
+  public void cleanup() throws Exception{
+    ListTablesResult tables = props.getDynamo().listTables("test-schema");
+    for(String name: tables.getTableNames()){
+      props.getDynamo().deleteTable(name);
+    }
+  }
+
+  private void setupSchema(Map<String, Object> json) throws Exception {
     SchemaStore store = props.createSchemaStore();
     LambdaTestUtils.updateSchemaStore(store, json);
   }

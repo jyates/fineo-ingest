@@ -115,7 +115,7 @@ options.names = []
 options.force = false
 options.verbose = false
 options.test = false
-options.test_log
+options.test_log = false
 
 parser = OptionParser.new do |opts|
   opts.banner = "Usage: #{file} [options]"
