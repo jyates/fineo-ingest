@@ -1,6 +1,5 @@
 package io.fineo.lambda.util;
 
-import com.google.common.collect.Lists;
 import io.fineo.lambda.LambdaAvroToStorage;
 import io.fineo.lambda.LambdaClientProperties;
 import io.fineo.lambda.LambdaRawRecordToAvro;
@@ -20,6 +19,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.stream.Stream;
 
 /**
  * Helper utility to implement an end-to-end test of the lambda architecture
@@ -45,16 +45,22 @@ public class EndToEndTestUtil {
     // setup each stage
     this.store = new SchemaStore(new InMemoryRepository(ValidatorFactory.EMPTY));
     LambdaRawRecordToAvro start = new LambdaRawRecordToAvro();
-    start.setupForTesting(props, store, null,
-      firehoses.get(props.getFirehoseRawMalformedStreamName()));
+    start
+      .setupForTesting(props, store, null,
+        firehoses.get(props.getFirehoseRawArchiveStreamName()),
+        firehoses.get(props.getFirehoseRawProcessErrorStreamName()),
+        firehoses.get(props.getFirehoseRawCommitFailureStreamName()));
 
     LambdaAvroToStorage storage = new LambdaAvroToStorage();
-    storage.setupForTesting(props, firehoses.get(props.getFirehoseStagedArchiveStreamName()),
-      firehoses.get(props.getFirehoseStagedDyanmoErrorStreamName()), dynamo);
+    storage
+      .setupForTesting(props, dynamo,
+        firehoses.get(props.getFirehoseStagedArchiveStreamName()),
+        firehoses.get(props.getFirehoseStagedDyanmoErrorStreamName()),
+        firehoses.get(props.getFirehoseStagedFailedCommitStreamName()));
 
     // setup the flow
     this.util = IngestUtil.builder(store).start(start)
-                          .then(props.getParsedStreamName(), storage)
+                          .then(props.getRawToStagedKinesisStreamName(), storage)
                           .build();
   }
 
@@ -66,10 +72,13 @@ public class EndToEndTestUtil {
     }).when(dynamo).write(Mockito.any(GenericRecord.class));
     Mockito.when(dynamo.flush()).thenReturn(new MultiWriteFailures(Collections.emptyList()));
 
-    Lists.newArrayList(
-      props.getFirehoseRawMalformedStreamName(),
+    Stream.of(
+      props.getFirehoseRawArchiveStreamName(),
+      props.getFirehoseRawCommitFailureStreamName(),
+      props.getFirehoseRawProcessErrorStreamName(),
+      props.getFirehoseStagedArchiveStreamName(),
       props.getFirehoseStagedDyanmoErrorStreamName(),
-      props.getFirehoseStagedArchiveStreamName())
+      props.getFirehoseStagedFailedCommitStreamName())
          .forEach(name -> {
            FirehoseBatchWriter firehose = Mockito.mock(FirehoseBatchWriter.class);
            firehoses.put(name, firehose);

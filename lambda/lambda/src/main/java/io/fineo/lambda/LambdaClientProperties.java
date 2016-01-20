@@ -10,7 +10,6 @@ import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.amazonaws.services.kinesis.AmazonKinesisAsyncClient;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
-import io.fineo.lambda.firehose.FirehoseBatchWriter;
 import io.fineo.schema.aws.dynamodb.DynamoDBRepository;
 import io.fineo.schema.store.SchemaStore;
 import org.apache.commons.logging.Log;
@@ -19,10 +18,7 @@ import org.schemarepo.ValidatorFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.ByteBuffer;
 import java.util.Properties;
-import java.util.function.Function;
-import java.util.function.Supplier;
 
 /**
  * Simple wrapper around java properties
@@ -36,15 +32,6 @@ public class LambdaClientProperties {
   public static final String KINESIS_PARSED_RAW_OUT_STREAM_NAME = "fineo.kinesis.parsed";
   private final String KINESIS_RETRIES = "fineo.kinesis.retries";
 
-  static final String FIREHOSE_URL = "fineo.firehose.url";
-  public static final String FIREHOSE_RAW_ARCHIVE_STREAM_NAME = "fineo.firehose.raw.archive";
-  public static final String FIREHOSE_RAW_ERROR_STREAM_NAME = "fineo.firehose.raw.error";
-  public static final String FIREHOSE_RAW_MALFORMED_STREAM_NAME = "fineo.firehose.raw.malformed";
-  public static final String FIREHOSE_STAGED_STREAM_NAME = "fineo.firehose.staged.archive";
-  public static final String FIREHOSE_STAGED_DYANMO_ERROR_STREAM_NAME =
-    "firehose.staged.error.dynamo";
-  public static final String FIREHOSE_STAGED_ERROR_STREAM_NAME = "firehose.staged.error";
-
   public static final String DYNAMO_REGION = "fineo.dynamo.region";
   public static final String DYNAMO_URL_FOR_TESTING = "fineo.dynamo.testing.url";
   public static final String DYNAMO_SCHEMA_STORE_TABLE = "fineo.dynamo.schema-store";
@@ -56,6 +43,24 @@ public class LambdaClientProperties {
   private AWSCredentialsProvider provider;
 
   private final Properties props;
+
+  static final String FIREHOSE_URL = "fineo.firehose.url";
+  /* These prefixes combine with the StreamType below to generate the full property names */
+  static final String RAW_PREFIX = "fineo.firehose.raw";
+  static final String STAGED_PREFIX = "fineo.firehose.staged";
+  enum StreamType {
+    ARCHIVE("archive"), PROCESSING_ERROR("error"), COMMIT_ERROR("error.commit");
+
+    private final String suffix;
+
+    StreamType(String suffix) {
+      this.suffix = suffix;
+    }
+
+    String getPropertyKey(String prefix) {
+      return prefix + "." + suffix;
+    }
+  }
 
   /**
    * Use the static {@link #load()} to createTable properties. This is only exposed <b>FOR
@@ -121,33 +126,16 @@ public class LambdaClientProperties {
     return props.getProperty(KINESIS_URL);
   }
 
-  public String getParsedStreamName() {
+  public String getRawToStagedKinesisStreamName() {
     return props.getProperty(KINESIS_PARSED_RAW_OUT_STREAM_NAME);
   }
-
 
   public String getFirehoseUrl() {
     return props.getProperty(FIREHOSE_URL);
   }
 
-  public String getFirehoseRawMalformedStreamName() {
-    return props.getProperty(FIREHOSE_RAW_MALFORMED_STREAM_NAME);
-  }
-
-  public String getFirehoseRawErrorStreamName() {
-    return props.getProperty(FIREHOSE_RAW_ERROR_STREAM_NAME);
-  }
-
-  public String getFirehoseStagedArchiveStreamName() {
-    return props.getProperty(FIREHOSE_STAGED_STREAM_NAME);
-  }
-
-  public String getFirehoseStagedFailedStreamName() {
-    return props.getProperty(FIREHOSE_STAGED_ERROR_STREAM_NAME);
-  }
-
-  public String getFirehoseStagedDyanmoErrorStreamName() {
-    return props.getProperty(FIREHOSE_STAGED_DYANMO_ERROR_STREAM_NAME);
+  public String getFirehoseStream(String phaseName, StreamType type) {
+    return props.getProperty(type.getPropertyKey(phaseName));
   }
 
   public String getDynamoIngestTablePrefix() {
@@ -169,20 +157,6 @@ public class LambdaClientProperties {
   public long getKinesisRetries() {
     return Long.valueOf(props.getProperty(KINESIS_RETRIES));
   }
-
-  public Supplier<FirehoseBatchWriter> lazyFirehoseBatchWriter(String stream) {
-    return curriedFirehose.apply(stream).apply(ByteBuffer::duplicate);
-  }
-
-  public Supplier<FirehoseBatchWriter> lazyFirehoseBatchWriter(String stream,
-    Function<ByteBuffer, ByteBuffer> transform) {
-    return curriedFirehose.apply(stream).apply(transform);
-  }
-
-  private Function<String, Function<Function<ByteBuffer, ByteBuffer>,
-    Supplier<FirehoseBatchWriter>>>
-    curriedFirehose =
-    name -> func -> () -> new FirehoseBatchWriter(LambdaClientProperties.this, func, name);
 
   @VisibleForTesting
   public void setAwsCredentialProviderForTesting(AWSCredentialsProvider provider) throws Exception {

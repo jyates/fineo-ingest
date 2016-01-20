@@ -23,12 +23,14 @@ $options = {
   :kinesis_retries => Pair.new("3", "kinesis.retries"),
 
   :firehose => Pair.new("https://firehose.us-east-1.amazonaws.com", "firehose.url"),
+  # raw processing params
   :raw_archive => Pair.new("fineo-raw-archive", "firehose.raw.archive"),
-  :raw_error => Pair.new("fineo-raw-error", "firehose.raw.error"),
-  :raw_malformed => Pair.new("fineo-raw-malformed", "firehose.raw.malformed"),
+  :raw_malformed => Pair.new("fineo-raw-malformed", "firehose.raw.error"),
+  :raw_error => Pair.new("fineo-raw-commit-failure", "firehose.raw.error.commit"),
+  # parsed record - "staged" - params
   :staged_archive => Pair.new("fineo-staged-archive", "firehose.staged.archive"),
-  :staged_error => Pair.new("fineo-staged-error", "firehose.staged.error"),
-  :staged_error_dynamo => Pair.new("fineo-staged-dynamo-error", "firehose.staged.error.dynamo"),
+  :staged_error_dynamo => Pair.new("fineo-staged-dynamo-error", "firehose.staged.error"),
+  :staged_error => Pair.new("fineo-staged-commit-failure", "firehose.staged.error.commit"),
 
   :dynamo => Pair.new("us-east-1", "dynamo.region"),
   :schema_table => Pair.new("schema-customer", "dynamo.schema-store"),

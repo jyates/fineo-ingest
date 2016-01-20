@@ -1,6 +1,5 @@
 package io.fineo.lambda;
 
-import com.amazonaws.services.kinesisfirehose.AmazonKinesisFirehoseClient;
 import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
 import com.fasterxml.jackson.databind.util.ByteBufferBackedInputStream;
 import com.fasterxml.jackson.jr.ob.JSON;
@@ -37,19 +36,20 @@ import java.util.function.Supplier;
  * records' Firehose Kinesis stream.
  * </p>
  */
-public class LambdaRawRecordToAvro extends BaseLambda implements StreamProducer {
+public class LambdaRawRecordToAvro extends IngestBaseLambda implements StreamProducer {
 
   private static final Log LOG = LogFactory.getLog(LambdaRawRecordToAvro.class);
-  private FirehoseBatchWriter malformedRecords;
   private SchemaStore store;
   private KinesisProducer convertedRecords;
 
 
+  public LambdaRawRecordToAvro(){
+    super(LambdaClientProperties.RAW_PREFIX);
+  }
+
   @VisibleForTesting
   @Override
   public void handleEvent(KinesisEvent.KinesisEventRecord rec) throws IOException {
-    ByteBuffer data = rec.getKinesis().getData();
-    data.mark();
     // parse out the json
     JSON configuredJson = JSON.std.with(JSON.Feature.READ_ONLY).with(JSON.Feature
       .USE_DEFERRED_MAPS);
@@ -72,7 +72,7 @@ public class LambdaRawRecordToAvro extends BaseLambda implements StreamProducer 
     GenericRecord outRecord = bridge.encode(new MapRecord(values));
     LOG.trace("Encoded the record");
     // add the record
-    this.convertedRecords.add(props.getParsedStreamName(), orgId, outRecord);
+    this.convertedRecords.add(props.getRawToStagedKinesisStreamName(), orgId, outRecord);
     LOG.trace("Wrote the record");
   }
 
@@ -91,16 +91,11 @@ public class LambdaRawRecordToAvro extends BaseLambda implements StreamProducer 
       new KinesisProducer(props.getKinesisClient(), props.getKinesisRetries());
   }
 
-  @Override
-  Supplier<FirehoseBatchWriter> getFailedEventHandler() {
-    return malformedRecords != null ? () -> malformedRecords :
-           props.lazyFirehoseBatchWriter(props.getFirehoseRawErrorStreamName());
-  }
 
   @Override
-  Supplier<FirehoseBatchWriter> getErrorEventHandler() {
-    return malformedRecords != null ? () -> malformedRecords :
-           props.lazyFirehoseBatchWriter(props.getFirehoseRawMalformedStreamName(), transform);
+  protected Supplier<FirehoseBatchWriter> getProcessingErrorStream() {
+    return this.lazyFirehoseBatchWriter(props.getFirehoseStream(this.phaseName,
+      LambdaClientProperties.StreamType.PROCESSING_ERROR), transform);
   }
 
   private Function<ByteBuffer, ByteBuffer> transform = data -> {
@@ -116,10 +111,11 @@ public class LambdaRawRecordToAvro extends BaseLambda implements StreamProducer 
   };
 
   @VisibleForTesting
-  public void setupForTesting(LambdaClientProperties props,
-    SchemaStore store, KinesisProducer producer, FirehoseBatchWriter malformed) {
+  public void setupForTesting(LambdaClientProperties props, SchemaStore store,
+    KinesisProducer producer, FirehoseBatchWriter archive, FirehoseBatchWriter error,
+    FirehoseBatchWriter failure) {
+    super.setupForTesting(archive, error, failure);
     this.props = props;
-    this.malformedRecords = malformed;
     this.store = store;
     setDownstreamForTesting(producer);
   }
