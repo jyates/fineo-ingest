@@ -46,9 +46,9 @@ public class LambdaClientProperties {
 
   static final String FIREHOSE_URL = "fineo.firehose.url";
   /* These prefixes combine with the StreamType below to generate the full property names */
-  static final String RAW_PREFIX = "fineo.firehose.raw";
-  static final String STAGED_PREFIX = "fineo.firehose.staged";
-  enum StreamType {
+  public static final String RAW_PREFIX = "fineo.firehose.raw";
+  public static final String STAGED_PREFIX = "fineo.firehose.staged";
+  public enum StreamType {
     ARCHIVE("archive"), PROCESSING_ERROR("error"), COMMIT_ERROR("error.commit");
 
     private final String suffix;
@@ -135,7 +135,12 @@ public class LambdaClientProperties {
   }
 
   public String getFirehoseStream(String phaseName, StreamType type) {
-    return props.getProperty(type.getPropertyKey(phaseName));
+    return props.getProperty(getFirehoseStreamProperty(phaseName, type));
+  }
+
+  @VisibleForTesting
+  public static String getFirehoseStreamProperty(String phase, StreamType type){
+    return type.getPropertyKey(phase);
   }
 
   public String getDynamoIngestTablePrefix() {

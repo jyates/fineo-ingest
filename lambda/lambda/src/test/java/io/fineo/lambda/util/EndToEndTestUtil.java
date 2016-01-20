@@ -21,6 +21,10 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.stream.Stream;
 
+import static io.fineo.lambda.LambdaClientProperties.StreamType;
+import static io.fineo.lambda.LambdaClientProperties.RAW_PREFIX;
+import static io.fineo.lambda.LambdaClientProperties.STAGED_PREFIX;
+
 /**
  * Helper utility to implement an end-to-end test of the lambda architecture
  */
@@ -47,16 +51,16 @@ public class EndToEndTestUtil {
     LambdaRawRecordToAvro start = new LambdaRawRecordToAvro();
     start
       .setupForTesting(props, store, null,
-        firehoses.get(props.getFirehoseRawArchiveStreamName()),
-        firehoses.get(props.getFirehoseRawProcessErrorStreamName()),
-        firehoses.get(props.getFirehoseRawCommitFailureStreamName()));
+        firehoses.get(props.getFirehoseStream(RAW_PREFIX, StreamType.ARCHIVE)),
+        firehoses.get(props.getFirehoseStream(RAW_PREFIX, StreamType.PROCESSING_ERROR)),
+        firehoses.get(props.getFirehoseStream(RAW_PREFIX, StreamType.COMMIT_ERROR)));
 
     LambdaAvroToStorage storage = new LambdaAvroToStorage();
     storage
       .setupForTesting(props, dynamo,
-        firehoses.get(props.getFirehoseStagedArchiveStreamName()),
-        firehoses.get(props.getFirehoseStagedDyanmoErrorStreamName()),
-        firehoses.get(props.getFirehoseStagedFailedCommitStreamName()));
+        firehoses.get(props.getFirehoseStream(STAGED_PREFIX, StreamType.ARCHIVE)),
+        firehoses.get(props.getFirehoseStream(STAGED_PREFIX, StreamType.PROCESSING_ERROR)),
+        firehoses.get(props.getFirehoseStream(STAGED_PREFIX, StreamType.COMMIT_ERROR)));
 
     // setup the flow
     this.util = IngestUtil.builder(store).start(start)
@@ -73,20 +77,20 @@ public class EndToEndTestUtil {
     Mockito.when(dynamo.flush()).thenReturn(new MultiWriteFailures(Collections.emptyList()));
 
     Stream.of(
-      props.getFirehoseRawArchiveStreamName(),
-      props.getFirehoseRawCommitFailureStreamName(),
-      props.getFirehoseRawProcessErrorStreamName(),
-      props.getFirehoseStagedArchiveStreamName(),
-      props.getFirehoseStagedDyanmoErrorStreamName(),
-      props.getFirehoseStagedFailedCommitStreamName())
+      props.getFirehoseStream(RAW_PREFIX, StreamType.ARCHIVE),
+      props.getFirehoseStream(RAW_PREFIX, StreamType.COMMIT_ERROR),
+      props.getFirehoseStream(RAW_PREFIX, StreamType.PROCESSING_ERROR),
+      props.getFirehoseStream(STAGED_PREFIX, StreamType.ARCHIVE),
+      props.getFirehoseStream(STAGED_PREFIX, StreamType.COMMIT_ERROR),
+      props.getFirehoseStream(STAGED_PREFIX, StreamType.PROCESSING_ERROR))
          .forEach(name -> {
-           FirehoseBatchWriter firehose = Mockito.mock(FirehoseBatchWriter.class);
-           firehoses.put(name, firehose);
-           Mockito.doAnswer(invocation -> {
-             get(firehoseWrites, name).add((ByteBuffer) invocation.getArguments()[0]);
-             return null;
-           }).when(firehose).addToBatch(Mockito.any());
-         });
+      FirehoseBatchWriter firehose = Mockito.mock(FirehoseBatchWriter.class);
+      firehoses.put(name, firehose);
+      Mockito.doAnswer(invocation -> {
+        get(firehoseWrites, name).add((ByteBuffer) invocation.getArguments()[0]);
+        return null;
+      }).when(firehose).addToBatch(Mockito.any());
+    });
   }
 
   public void run(Map<String, Object> json) throws Exception {

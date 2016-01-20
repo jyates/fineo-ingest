@@ -20,6 +20,11 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import static io.fineo.lambda.LambdaClientProperties.StreamType.*;
+import static io.fineo.lambda.LambdaClientProperties.RAW_PREFIX;
+import static io.fineo.lambda.LambdaClientProperties.getFirehoseStreamProperty;
+import static io.fineo.lambda.LambdaClientProperties.STAGED_PREFIX;
+
 /**
  * Test the end-to-end workflow of the lambda architecture.
  */
@@ -40,13 +45,13 @@ public class TestEndToEndLambda {
     Properties props = new Properties();
     // firehose outputs
     String malformed = "mal", dynamoErrors = "dynamoErrors", archived = "archived";
-    props.setProperty(LambdaClientProperties.FIREHOSE_RAW_MALFORMED_STREAM_NAME, malformed);
-    props
-      .setProperty(LambdaClientProperties.FIREHOSE_STAGED_DYANMO_ERROR_STREAM_NAME, dynamoErrors);
-    props.setProperty(LambdaClientProperties.FIREHOSE_STAGED_STREAM_NAME, archived);
+    props.setProperty(getFirehoseStreamProperty(RAW_PREFIX, PROCESSING_ERROR), malformed);
+    props.setProperty(getFirehoseStreamProperty(STAGED_PREFIX, PROCESSING_ERROR), dynamoErrors);
+    props.setProperty(getFirehoseStreamProperty(STAGED_PREFIX, ARCHIVE), archived);
 
     // between stage stream
-    props.setProperty(LambdaClientProperties.KINESIS_PARSED_RAW_OUT_STREAM_NAME, AVRO_TO_STORAGE_STREAM_NAME);
+    props.setProperty(LambdaClientProperties.KINESIS_PARSED_RAW_OUT_STREAM_NAME,
+      AVRO_TO_STORAGE_STREAM_NAME);
 
     // Run
     // -----
@@ -65,7 +70,7 @@ public class TestEndToEndLambda {
     assertTrue(test.getFirehoseWrites(archived).get(0).hasRemaining());
 
     List<GenericRecord> records = test.getDynamoWrites();
-    assertEquals("Got unexpected records: "+records, 1, records.size());
+    assertEquals("Got unexpected records: " + records, 1, records.size());
     GenericRecord record = records.get(0);
     SchemaStore store = test.getStore();
 

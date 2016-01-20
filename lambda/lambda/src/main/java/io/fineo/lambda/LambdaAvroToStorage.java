@@ -17,7 +17,7 @@ import java.nio.ByteBuffer;
  * Avro files are written to two locations:
  * <ol>
  * <li>Firehose Staging: avro records are encoded one at a time and written to the configured
- * AWS Kinesis Firehose stream for 'staged' records. These are processed at a later time for
+ * AWS Kinesis Firehose stream for 'archived' records. These are processed at a later time for
  * schema + bulk ingest. They can be processed with the standard
  * {@link FirehoseRecordReader}
  * </li>
@@ -26,12 +26,14 @@ import java.nio.ByteBuffer;
  * </li>
  * </ol>
  * </p>
+ *
+ * @see AvroToDynamoWriter for dynamo particulars
  */
 public class LambdaAvroToStorage extends IngestBaseLambda {
 
   private AvroToDynamoWriter dynamo;
 
-  public LambdaAvroToStorage(){
+  public LambdaAvroToStorage() {
     super(LambdaClientProperties.STAGED_PREFIX);
   }
 
@@ -60,8 +62,9 @@ public class LambdaAvroToStorage extends IngestBaseLambda {
 
   @VisibleForTesting
   public void setupForTesting(LambdaClientProperties props, AvroToDynamoWriter dynamo,
-    FirehoseBatchWriter archive, FirehoseBatchWriter errors, FirehoseBatchWriter failures) {
-    super.setupForTesting(archive, errors, failures);
+    FirehoseBatchWriter archive, FirehoseBatchWriter processingErrors,
+    FirehoseBatchWriter commitFailures) {
+    super.setupForTesting(archive, processingErrors, commitFailures);
     this.props = props;
     this.dynamo = dynamo;
   }

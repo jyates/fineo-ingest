@@ -13,7 +13,11 @@ import java.nio.ByteBuffer;
 import java.util.List;
 
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
+/**
+ * Verify that the {@link FirehoseRecordWriter} and {@link FirehoseRecordReader} work together
+ */
 public class TestFirehoseReadWrite {
 
   private static final Log LOG = LogFactory.getLog(TestFirehoseReadWrite.class);
@@ -56,10 +60,9 @@ public class TestFirehoseReadWrite {
     }
 
     out.close();
-    byte[] raw = out.toByteArray();
     // read back in the record
-    SeekableByteArrayInput is = new SeekableByteArrayInput(raw);
-    FirehoseRecordReader<GenericRecord> reader = new FirehoseRecordReader<>(is);
+    byte[] raw = out.toByteArray();
+    FirehoseRecordReader<GenericRecord> reader = FirehoseRecordReader.create(ByteBuffer.wrap(raw));
     List<GenericRecord> recordList = Lists.newArrayList(records);
     LOG.info("Starting with expected records: " + recordList);
     for (int i = 0; i < records.length; i++) {
@@ -70,4 +73,24 @@ public class TestFirehoseReadWrite {
     }
   }
 
+  /**
+   * Ensure that we read from the correct position in the byte buffer, which in this test should
+   * cause a failure in the reading
+   *
+   * @throws Exception
+   */
+  @Test
+  public void failReadMalformedByteBuffer() throws Exception {
+    GenericRecord record = SchemaTestUtils.createRandomRecord();
+    FirehoseRecordWriter writer = new FirehoseRecordWriter();
+    ByteBuffer buff = writer.write(record);
+    ByteBuffer malformed = ByteBufferUtils.skipFirstByteCopy(buff);
+    FirehoseRecordReader reader = FirehoseRecordReader.create(malformed);
+    try {
+      reader.next();
+      fail("Should not have been able to parse a record!");
+    }catch (IOException e){
+      // expected
+    }
+  }
 }

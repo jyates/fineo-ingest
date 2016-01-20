@@ -112,9 +112,9 @@ public class LambdaRawRecordToAvro extends IngestBaseLambda implements StreamPro
 
   @VisibleForTesting
   public void setupForTesting(LambdaClientProperties props, SchemaStore store,
-    KinesisProducer producer, FirehoseBatchWriter archive, FirehoseBatchWriter error,
-    FirehoseBatchWriter failure) {
-    super.setupForTesting(archive, error, failure);
+    KinesisProducer producer, FirehoseBatchWriter archive, FirehoseBatchWriter processingErrors,
+    FirehoseBatchWriter commitFailure) {
+    super.setupForTesting(archive, processingErrors, commitFailure);
     this.props = props;
     this.store = store;
     setDownstreamForTesting(producer);

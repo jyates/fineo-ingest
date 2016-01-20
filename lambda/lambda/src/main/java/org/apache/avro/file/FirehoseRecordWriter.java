@@ -14,12 +14,23 @@ import java.util.zip.Deflater;
 
 /**
  * Writes an Avro {@link org.apache.avro.generic.GenericRecord} to a format that we can read back
- * from the firehose
+ * from the firehose via the {@link FirehoseRecordReader}.
+ *<p>
+ * Actual file layout is as follows:
+ * <pre>
+ *   4 bytes - intenger length of record formatted by DataFileWriter
+ *  ---> DataFile format
+ *   4 bytes - DataFile magic
+ *   [map of parts]
+ *   [content]
+ *  ---> END DataFile format
+ * </pre>
+ *</p>
  */
 public class FirehoseRecordWriter {
 
   private static final Log LOG = LogFactory.getLog(FirehoseRecordWriter.class);
-  private static final byte[] intSpace = new byte[]{0, 0, 0, 0};
+  private static final byte[] recordLengthSpacer = new byte[]{0, 0, 0, 0};
   private CodecFactory codec;
 
   public FirehoseRecordWriter() {
@@ -35,7 +46,7 @@ public class FirehoseRecordWriter {
     // read in just that amount
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     OutputStream out = new BufferedOutputStream(baos);
-    out.write(intSpace);
+    out.write(recordLengthSpacer);
 
     GenericDatumWriter<GenericRecord> writer = new GenericDatumWriter<>(record.getSchema());
     DataFileWriter<GenericRecord> fileWriter = new DataFileWriter<>(writer);
@@ -50,7 +61,7 @@ public class FirehoseRecordWriter {
     byte[] data = baos.toByteArray();
     // write out the actual length of the data
     ByteBuffer bb = ByteBuffer.wrap(data);
-    int len = bb.limit() - 4;
+    int len = bb.limit() - recordLengthSpacer.length;
     bb.putInt(0, len);
 
     return bb;

@@ -9,6 +9,7 @@ import io.fineo.lambda.firehose.FirehoseBatchWriter;
 import io.fineo.lambda.aws.AwsAsyncRequest;
 import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.schema.avro.SchemaTestUtils;
+import org.apache.avro.file.ByteBufferUtils;
 import org.apache.avro.file.FirehoseRecordReader;
 import org.apache.avro.file.FirehoseRecordWriter;
 import org.apache.avro.generic.GenericRecord;
@@ -35,56 +36,85 @@ public class TestLambdaAvroToStorage {
 
     // setup mocks
     FirehoseBatchWriter records = Mockito.mock(FirehoseBatchWriter.class);
-    FirehoseBatchWriter error = Mockito.mock(FirehoseBatchWriter.class);
     AvroToDynamoWriter dynamo = Mockito.mock(AvroToDynamoWriter.class);
     MultiWriteFailures failures = new MultiWriteFailures(Lists.newArrayList());
     Mockito.when(dynamo.flush()).thenReturn(failures);
 
     // actually do the write
     LambdaAvroToStorage storage = new LambdaAvroToStorage();
-    storage.setupForTesting(props(), records, error, dynamo);
+    storage.setupForTesting(props(), dynamo, records, null, null);
     storage.handleEventInternal(event);
 
     // verify that we wrote the record the proper places
     verifyBufferAddedAndFlushed(records, buff);
     Mockito.verify(dynamo).write(Mockito.any());
     Mockito.verify(dynamo).flush();
-    Mockito.verifyZeroInteractions(error);
   }
 
   @Test
-  public void testFailedWrite() throws Exception {
+  public void testMalformedAvroRecord() throws Exception {
+    GenericRecord record = SchemaTestUtils.createRandomRecord();
+    FirehoseRecordWriter writer = FirehoseRecordWriter.create();
+    ByteBuffer buff = writer.write(record);
+    // create a malformed record, missing the first byte
+    ByteBuffer malformed = ByteBufferUtils.skipFirstByteCopy(buff);
+    KinesisEvent event = LambdaTestUtils.getKinesisEvent(malformed);
+
+    // setup mocks
+    OutputFirehoseManager manager = new OutputFirehoseManager().withProcessingErrors();
+    AvroToDynamoWriter dynamo = Mockito.mock(AvroToDynamoWriter.class);
+    Mockito.when(dynamo.flush()).thenReturn(new MultiWriteFailures<>(new ArrayList<>(0)));
+
+    List<ByteBuffer> errors = manager.listenForProcesssingErrors();
+
+    // actually do the write
+    LambdaAvroToStorage storage = new LambdaAvroToStorage();
+    storage
+      .setupForTesting(props(), dynamo, manager.archive(), manager.process(), manager.commit());
+    storage.handleEventInternal(event);
+
+    // verify that we wrote the record the proper places
+    verifyBufferAddedAndFlushed(manager.archive(), malformed);
+    manager.verifyErrors();
+
+    // verify the record we failed
+    assertEquals(Lists.newArrayList(malformed), errors);
+  }
+
+  /**
+   * Test that we send the data to the 'processing error' writer if we cannot write to dynamo
+   *
+   * @throws Exception
+   */
+  @Test
+  public void testFailedDynamoWrite() throws Exception {
     GenericRecord record = SchemaTestUtils.createRandomRecord();
     FirehoseRecordWriter writer = FirehoseRecordWriter.create();
     ByteBuffer buff = writer.write(record);
     KinesisEvent event = LambdaTestUtils.getKinesisEvent(buff);
 
     // setup mocks
-    FirehoseBatchWriter records = Mockito.mock(FirehoseBatchWriter.class);
-    FirehoseBatchWriter error = Mockito.mock(FirehoseBatchWriter.class);
+    OutputFirehoseManager manager = new OutputFirehoseManager().withCommitErrors();
     AvroToDynamoWriter dynamo = Mockito.mock(AvroToDynamoWriter.class);
 
     MultiWriteFailures<GenericRecord> failures = new MultiWriteFailures<>(Lists.newArrayList(new
       AwsAsyncRequest<>(record, AmazonWebServiceRequest.NOOP)));
     Mockito.when(dynamo.flush()).thenReturn(failures);
 
-    List<ByteBuffer> errors = new ArrayList<>();
-    Mockito.doAnswer(invocation -> {
-      errors.add((ByteBuffer) invocation.getArguments()[0]);
-      return null;
-    }).when(error).addToBatch(Mockito.any(ByteBuffer.class));
+    List<ByteBuffer> errors = manager.listenForCommitErrors();
 
     // actually do the write
     LambdaAvroToStorage storage = new LambdaAvroToStorage();
-    storage.setupForTesting(props(), records, error, dynamo);
+    storage
+      .setupForTesting(props(), dynamo, manager.archive(), manager.process(), manager.commit());
     storage.handleEventInternal(event);
 
     // verify that we wrote the record the proper places
-    verifyBufferAddedAndFlushed(records, buff);
+    verifyBufferAddedAndFlushed(manager.archive(), buff);
     Mockito.verify(dynamo).write(Mockito.any());
     Mockito.verify(dynamo).flush();
-    Mockito.verify(error).addToBatch(Mockito.any());
-    Mockito.verify(error).flush();
+    manager.verifyErrors();
+
     // verify the record we failed
     assertEquals(1, errors.size());
     FirehoseRecordReader<GenericRecord> recordReader = FirehoseRecordReader.create(errors.get(0));
@@ -98,7 +128,7 @@ public class TestLambdaAvroToStorage {
     Mockito.verify(writer).flush();
   }
 
-  private LambdaClientProperties props(){
+  private LambdaClientProperties props() {
     return LambdaClientProperties.createForTesting(new Properties(), null);
   }
 }

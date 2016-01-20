@@ -4,7 +4,6 @@ import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.Futures;
 import io.fineo.lambda.aws.MultiWriteFailures;
-import io.fineo.lambda.firehose.FirehoseBatchWriter;
 import io.fineo.lambda.kinesis.KinesisProducer;
 import io.fineo.lambda.util.LambdaTestUtils;
 import io.fineo.schema.Pair;
@@ -96,17 +95,13 @@ public class TestLambdaToAvroWithLocalSchemaStore {
     Mockito.when(producer.flush()).thenReturn(new MultiWriteFailures<>(new ArrayList<>()));
 
     // do the writing
-    Pair<List<KinesisRequest>, List<ByteBuffer>> requests =
-      doSetupAndWrite(props, null, producer, store,
-        events.toArray(new KinesisEvent[events.size()]));
+    OutputFirehoseManager out = new OutputFirehoseManager();
+    List<KinesisRequest> requests =
+      doSetupAndWrite(props, out, producer, store, events.toArray(new KinesisEvent[events.size()]));
 
-    List<ByteBuffer> malformed = requests.getValue();
-    assertEquals("There were some malformed requests: " + malformed, 0, malformed.size());
-
-    List<KinesisRequest> parsed = requests.getKey();
-    assertEquals("Got wrong number of parsed records. Received: " + parsed, records.length,
-      parsed.size());
-    verifyParsedRecords(parsed, records);
+    assertEquals("Got wrong number of parsed records. Received: " + requests, records.length,
+      requests.size());
+    verifyParsedRecords(requests, records);
 
     // kinesis write verification, beyond the added records tracking... just in case
     Mockito.verify(producer, Mockito.times(records.length))
@@ -141,7 +136,6 @@ public class TestLambdaToAvroWithLocalSchemaStore {
 
     // setup the mocks/fakes
     LambdaClientProperties props = getClientProperties();
-    FirehoseBatchWriter errors = Mockito.mock(FirehoseBatchWriter.class);
     KinesisProducer producer = Mockito.mock(KinesisProducer.class);
     // no failures when we write to firehose/kinesis
     Mockito.when(producer.flush()).thenReturn(new MultiWriteFailures<>(new ArrayList<>()));
@@ -150,19 +144,21 @@ public class TestLambdaToAvroWithLocalSchemaStore {
     KinesisEvent event = created.getKey();
     SchemaStore store = created.getValue();
 
-    Pair<List<KinesisRequest>, List<ByteBuffer>> requests =
-      doSetupAndWrite(props, errors, producer, store, event);
-    assertEquals(0, requests.getKey().size());
+    OutputFirehoseManager out = new OutputFirehoseManager().withProcessingErrors();
+    List<ByteBuffer> malformed = out.listenForProcesssingErrors();
+    List<KinesisRequest> requests =
+      doSetupAndWrite(props, out, producer, store, event);
+    assertEquals(0, requests.size());
 
-    assertEquals(recordCount, requests.getValue().size());
+    assertEquals(recordCount, malformed.size());
     byte[] data =
-      combineRecords(requests.getValue().stream().peek(buff -> assertTrue(buff.hasRemaining())));
+      combineRecords(malformed.stream().peek(buff -> assertTrue(buff.hasRemaining())));
     byte[] expected =
       combineRecords(event.getRecords().stream().map(e -> e.getKinesis().getData()));
     assertArrayEquals(expected, data);
 
     // verify the mocks
-    Mockito.verify(errors, Mockito.times(2)).addToBatch(Mockito.any());
+    Mockito.verify(out.process(), Mockito.times(2)).addToBatch(Mockito.any());
   }
 
   private Map<String, Object>[] createMalformedRecords(int count) {
@@ -191,8 +187,7 @@ public class TestLambdaToAvroWithLocalSchemaStore {
                                            }
                                          }));
 
-    FirehoseRecordReader<GenericRecord> reader =
-      new FirehoseRecordReader<>(new SeekableByteArrayInput(data));
+    FirehoseRecordReader<GenericRecord> reader = FirehoseRecordReader.create(ByteBuffer.wrap(data));
     for (int i = 0; i < records.length; i++) {
       LOG.info("Reading and verifying record: " + i);
       // verify that we read the next record in order of it being written
@@ -225,23 +220,13 @@ public class TestLambdaToAvroWithLocalSchemaStore {
     return bos.toByteArray();
   }
 
-  private Pair<List<KinesisRequest>, List<ByteBuffer>> doSetupAndWrite(
-    LambdaClientProperties props, FirehoseBatchWriter errors, KinesisProducer producer,
+  private List<KinesisRequest> doSetupAndWrite(
+    LambdaClientProperties props, OutputFirehoseManager firehose, KinesisProducer producer,
     SchemaStore store, KinesisEvent... events) throws IOException {
-    boolean noClient = false;
-    if (errors == null) {
-      noClient = true;
-      errors = Mockito.mock(FirehoseBatchWriter.class);
-    }
-
     LambdaRawRecordToAvro writer = new LambdaRawRecordToAvro();
     // update the writer with the test properties
-    writer.setupForTesting(props, store, producer, errors);
-
-    List<ByteBuffer> malformedRequests = new ArrayList<>();
-    Mockito.doAnswer(invocationOnMock -> malformedRequests.add(
-      ((ByteBuffer) invocationOnMock.getArguments()[0]).duplicate())).when(errors).addToBatch
-      (Mockito.any());
+    writer.setupForTesting(props, store, producer, firehose.archive(), firehose.process(),
+      firehose.commit());
 
     List<KinesisRequest> parsedRequests = new ArrayList<>();
     Mockito.doAnswer(invoke -> {
@@ -255,10 +240,7 @@ public class TestLambdaToAvroWithLocalSchemaStore {
       writer.handleEventInternal(event);
     }
 
-    if (noClient)
-      Mockito.verifyZeroInteractions(errors);
-
-    return new Pair<>(parsedRequests, malformedRequests);
+    return parsedRequests;
   }
 
   private class KinesisRequest {
@@ -305,7 +287,6 @@ public class TestLambdaToAvroWithLocalSchemaStore {
     Properties props = new Properties();
     props.put(LambdaClientProperties.FIREHOSE_URL, "url");
     props.put(LambdaClientProperties.KINESIS_PARSED_RAW_OUT_STREAM_NAME, "stream");
-    props.put(LambdaClientProperties.FIREHOSE_RAW_MALFORMED_STREAM_NAME, "malformed");
     return props;
   }
 }

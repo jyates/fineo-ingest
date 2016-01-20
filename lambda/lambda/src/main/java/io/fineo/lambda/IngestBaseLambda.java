@@ -48,7 +48,7 @@ public abstract class IngestBaseLambda implements TestableLambda {
         archive.addToBatch(data);
         data.reset();
         handleEvent(rec);
-      } catch (RuntimeException e) {
+      } catch (RuntimeException | IOException e) {
         addRecordError(rec);
       }
     }
