@@ -23,11 +23,12 @@ $options = {
   :kinesis_retries => Pair.new("3", "kinesis.retries"),
 
   :firehose => Pair.new("https://firehose.us-east-1.amazonaws.com", "firehose.url"),
-  :raw_error => Pair.new("fineo-raw-error-records", "firehose.raw.error"),
-  :raw_malformed => Pair.new("fineo-raw-malformed-records", "firehose.raw.malformed"),
-  :staged => Pair.new("fineo-staged-records", "firehose.staged"),
-  :staged_error => Pair.new("fineo-staged-error-recods", "firehose.staged.error"),
-  :staged_error_dynamo => Pair.new("fineo-staged-dynamo-error-recods", "firehose.staged.error.dynamo"),
+  :raw_archive => Pair.new("fineo-raw-archive", "firehose.raw.archive"),
+  :raw_error => Pair.new("fineo-raw-error", "firehose.raw.error"),
+  :raw_malformed => Pair.new("fineo-raw-malformed", "firehose.raw.malformed"),
+  :staged_archive => Pair.new("fineo-staged-archive", "firehose.staged.archive"),
+  :staged_error => Pair.new("fineo-staged-error", "firehose.staged.error"),
+  :staged_error_dynamo => Pair.new("fineo-staged-dynamo-error", "firehose.staged.error.dynamo"),
 
   :dynamo => Pair.new("us-east-1", "dynamo.region"),
   :schema_table => Pair.new("schema-customer", "dynamo.schema-store"),
@@ -69,8 +70,8 @@ parser = OptionParser.new do|opts|
   opts.on('--raw-failed-stream stream-name', 'Malformed event Kinesis Firehose stream name') do |name|
     set :raw_error, name
   end
-  opts.on('--staged-stream stream-name', 'Staged avro event Kinesis Firehose stream name') do |name|
-    set :staged, name
+  opts.on('--staged-stream stream-name', 'Name of Firehose stream to archive all staged records') do |name|
+    set :staged_archive, name
   end
   opts.on('--staged-error-stream stream-name', 'Kinesis Firehose stream' +
     'name for messages that could not be handled properly')  do |name|

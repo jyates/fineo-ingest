@@ -49,7 +49,7 @@ public class EndToEndTestUtil {
       firehoses.get(props.getFirehoseRawMalformedStreamName()));
 
     LambdaAvroToStorage storage = new LambdaAvroToStorage();
-    storage.setupForTesting(props, firehoses.get(props.getFirehoseStagedStreamName()),
+    storage.setupForTesting(props, firehoses.get(props.getFirehoseStagedArchiveStreamName()),
       firehoses.get(props.getFirehoseStagedDyanmoErrorStreamName()), dynamo);
 
     // setup the flow
@@ -69,7 +69,7 @@ public class EndToEndTestUtil {
     Lists.newArrayList(
       props.getFirehoseRawMalformedStreamName(),
       props.getFirehoseStagedDyanmoErrorStreamName(),
-      props.getFirehoseStagedStreamName())
+      props.getFirehoseStagedArchiveStreamName())
          .forEach(name -> {
            FirehoseBatchWriter firehose = Mockito.mock(FirehoseBatchWriter.class);
            firehoses.put(name, firehose);

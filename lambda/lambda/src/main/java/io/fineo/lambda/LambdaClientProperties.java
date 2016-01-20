@@ -37,9 +37,10 @@ public class LambdaClientProperties {
   private final String KINESIS_RETRIES = "fineo.kinesis.retries";
 
   static final String FIREHOSE_URL = "fineo.firehose.url";
+  public static final String FIREHOSE_RAW_ARCHIVE_STREAM_NAME = "fineo.firehose.raw.archive";
   public static final String FIREHOSE_RAW_ERROR_STREAM_NAME = "fineo.firehose.raw.error";
   public static final String FIREHOSE_RAW_MALFORMED_STREAM_NAME = "fineo.firehose.raw.malformed";
-  public static final String FIREHOSE_STAGED_STREAM_NAME = "fineo.firehose.staged";
+  public static final String FIREHOSE_STAGED_STREAM_NAME = "fineo.firehose.staged.archive";
   public static final String FIREHOSE_STAGED_DYANMO_ERROR_STREAM_NAME =
     "firehose.staged.error.dynamo";
   public static final String FIREHOSE_STAGED_ERROR_STREAM_NAME = "firehose.staged.error";
@@ -137,7 +138,7 @@ public class LambdaClientProperties {
     return props.getProperty(FIREHOSE_RAW_ERROR_STREAM_NAME);
   }
 
-  public String getFirehoseStagedStreamName() {
+  public String getFirehoseStagedArchiveStreamName() {
     return props.getProperty(FIREHOSE_STAGED_STREAM_NAME);
   }
 

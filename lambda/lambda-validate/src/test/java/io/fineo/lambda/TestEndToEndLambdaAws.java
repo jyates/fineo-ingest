@@ -108,8 +108,7 @@ public class TestEndToEndLambdaAws {
     // firehose
     AmazonKinesisFirehoseClient firehoseClient = new AmazonKinesisFirehoseClient(awsCredentials
       .getProvider());
-    Stream.of(props.getFirehoseMalformedStreamName(),
-      props.getFirehoseStagedStreamName()).forEach(stream ->{
+    Stream.of(props.getFirehoseStagedStreamName()).forEach(stream ->{
       DeleteDeliveryStreamRequest delete = new DeleteDeliveryStreamRequest()
         .withDeliveryStreamName(stream);
       firehoseClient.deleteDeliveryStream(delete);
@@ -124,7 +123,6 @@ public class TestEndToEndLambdaAws {
     // setup the firehose connections
     String prefix = LocalDateTime.now().toString();
     createFirehose(props.getFirehoseStagedStreamName(), prefix);
-    createFirehose(props.getFirehoseMalformedStreamName(), prefix);
   }
 
   private void createFirehose(String stream, String prefix) {

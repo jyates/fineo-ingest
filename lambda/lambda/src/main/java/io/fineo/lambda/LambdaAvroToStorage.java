@@ -60,7 +60,7 @@ public class LambdaAvroToStorage extends BaseLambda {
   @Override
   protected void setup() throws IOException {
     this.archiveAllRecords =
-      props.lazyFirehoseBatchWriter(props.getFirehoseStagedStreamName()).get();
+      props.lazyFirehoseBatchWriter(props.getFirehoseStagedArchiveStreamName()).get();
     this.dynamo = AvroToDynamoWriter.create(props);
   }
 
