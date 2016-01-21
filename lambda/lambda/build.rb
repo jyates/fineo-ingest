@@ -133,10 +133,16 @@ end
 parser.parse!
 
 def test_fix(name)
-  "test-"+$options[name].one+"-#{$config.test}"
+  "#{$test_prefix}"+$options[name].one
 end
 
 unless $config.test.nil?
+  $test_prefix = "test-#{$config.test}-"
+
+  # store the test prefix so we can use it for testing
+  $options["integration.test.prefix"] = $test_prefix
+
+  # update the parameters
   set :parsed, test_fix(:parsed)
   set :raw_error, test_fix(:raw_error)
   set :raw_malformed, test_fix(:raw_malformed)

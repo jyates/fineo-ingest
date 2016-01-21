@@ -27,6 +27,7 @@ public class LambdaClientProperties {
 
   private static final Log LOG = LogFactory.getLog(LambdaClientProperties.class);
   private static final String PROP_FILE_NAME = "fineo-lambda.properties";
+  private static final String TEST_PREFIX = "fineo.integration.test.prefix";
 
   private final java.lang.String KINESIS_URL = "fineo.kinesis.url";
   public static final String KINESIS_PARSED_RAW_OUT_STREAM_NAME = "fineo.kinesis.parsed";
@@ -178,5 +179,10 @@ public class LambdaClientProperties {
     };
 
     return client;
+  }
+
+  @VisibleForTesting
+  public String getTestPrefix(){
+    return props.getProperty(TEST_PREFIX);
   }
 }
