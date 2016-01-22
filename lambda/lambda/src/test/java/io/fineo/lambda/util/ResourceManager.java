@@ -11,7 +11,7 @@ import java.util.Map;
  *
  */
 public interface ResourceManager {
-  void setup(LambdaClientProperties props) throws NoSuchMethodException;
+  void setup(LambdaClientProperties props) throws Exception;
 
   byte[] send(Map<String, Object> json) throws Exception;
 

@@ -41,7 +41,7 @@ public class EndToEndTestRunner {
   private final Progress progress;
 
   public EndToEndTestRunner(LambdaClientProperties props, ResourceManager manager)
-    throws NoSuchMethodException {
+    throws Exception {
     this.props = props;
     this.manager = manager;
     manager.setup(props);
