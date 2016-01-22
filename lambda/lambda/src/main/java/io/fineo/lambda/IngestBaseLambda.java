@@ -109,15 +109,15 @@ public abstract class IngestBaseLambda implements TestableLambda {
   }
 
   private String getArchiveStreamName() {
-    return props.getFirehoseStream(phaseName, StreamType.ARCHIVE);
+    return props.getFirehoseStreamName(phaseName, StreamType.ARCHIVE);
   }
 
   protected Supplier<FirehoseBatchWriter> getCommitFailureStream() {
-    return lazyFirehoseBatchWriter(props.getFirehoseStream(phaseName, StreamType.COMMIT_ERROR));
+    return lazyFirehoseBatchWriter(props.getFirehoseStreamName(phaseName, StreamType.COMMIT_ERROR));
   }
 
   protected Supplier<FirehoseBatchWriter> getProcessingErrorStream() {
-    return lazyFirehoseBatchWriter(props.getFirehoseStream(phaseName, StreamType.COMMIT_ERROR));
+    return lazyFirehoseBatchWriter(props.getFirehoseStreamName(phaseName, StreamType.COMMIT_ERROR));
   }
 
   protected Supplier<FirehoseBatchWriter> lazyFirehoseBatchWriter(String stream) {

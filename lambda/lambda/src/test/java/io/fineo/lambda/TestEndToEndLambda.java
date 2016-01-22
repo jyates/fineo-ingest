@@ -1,37 +1,23 @@
 package io.fineo.lambda;
 
-import io.fineo.internal.customer.Metric;
-import io.fineo.lambda.util.EndToEndTestUtil;
+import io.fineo.lambda.util.EndToEndTestRunner;
 import io.fineo.lambda.util.LambdaTestUtils;
-import io.fineo.schema.avro.AvroRecordDecoder;
-import io.fineo.schema.avro.AvroSchemaEncoder;
-import io.fineo.schema.store.SchemaStore;
-import org.apache.avro.generic.GenericRecord;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import io.fineo.lambda.util.mock.MockResourceManager;
 import org.junit.Test;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-
-import static io.fineo.lambda.LambdaClientProperties.StreamType.*;
 import static io.fineo.lambda.LambdaClientProperties.RAW_PREFIX;
-import static io.fineo.lambda.LambdaClientProperties.getFirehoseStreamProperty;
 import static io.fineo.lambda.LambdaClientProperties.STAGED_PREFIX;
+import static io.fineo.lambda.LambdaClientProperties.StreamType.ARCHIVE;
+import static io.fineo.lambda.LambdaClientProperties.StreamType.PROCESSING_ERROR;
+import static io.fineo.lambda.LambdaClientProperties.getFirehoseStreamProperty;
 
 /**
  * Test the end-to-end workflow of the lambda architecture.
  */
 public class TestEndToEndLambda {
-
-  private static final Log LOG = LogFactory.getLog(TestEndToEndLambda.class);
-  public static final String AVRO_TO_STORAGE_STREAM_NAME = "parsed-stream";
 
   /**
    * Path where there are no issues with records.
@@ -44,37 +30,21 @@ public class TestEndToEndLambda {
     //-------
     Properties props = new Properties();
     // firehose outputs
-    String malformed = "mal", dynamoErrors = "dynamoErrors", archived = "archived";
-    props.setProperty(getFirehoseStreamProperty(RAW_PREFIX, PROCESSING_ERROR), malformed);
-    props.setProperty(getFirehoseStreamProperty(STAGED_PREFIX, PROCESSING_ERROR), dynamoErrors);
-    props.setProperty(getFirehoseStreamProperty(STAGED_PREFIX, ARCHIVE), archived);
+    props.setProperty(getFirehoseStreamProperty(RAW_PREFIX, ARCHIVE), "raw-archived");
+    props.setProperty(getFirehoseStreamProperty(STAGED_PREFIX, ARCHIVE), "staged-archive");
 
     // between stage stream
     props.setProperty(LambdaClientProperties.KINESIS_PARSED_RAW_OUT_STREAM_NAME,
-      AVRO_TO_STORAGE_STREAM_NAME);
+      "kinesis-parsed-records");
 
-    // Run
-    // -----
-    EndToEndTestUtil test = new EndToEndTestUtil(props);
+    EndToEndTestRunner runner =
+      new EndToEndTestRunner(new LambdaClientProperties(props), new MockResourceManager());
+
     Map<String, Object> json = LambdaTestUtils.createRecords(1, 1)[0];
-    test.run(json);
+    runner.run(json);
 
-    // Validation
-    // -----------
-    // ensure that we didn't write any errors
-    assertNull(test.getFirehoseWrites(malformed));
-    assertNull(test.getFirehoseWrites(dynamoErrors));
+    runner.validate();
 
-    // ensure that we archived a single message
-    assertEquals(1, test.getFirehoseWrites(archived).size());
-    assertTrue(test.getFirehoseWrites(archived).get(0).hasRemaining());
-
-    List<GenericRecord> records = test.getDynamoWrites();
-    assertEquals("Got unexpected records: " + records, 1, records.size());
-    GenericRecord record = records.get(0);
-
-    // org/schema naming
-    LambdaTestUtils.verifyRecordMatchesExpectedNaming(record);
-    EndToEndTestUtil.verifyRecordMatchesJson(test.getStore(), json, record);
+    runner.cleanup();
   }
 }

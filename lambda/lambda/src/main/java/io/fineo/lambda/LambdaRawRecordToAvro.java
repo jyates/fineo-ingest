@@ -94,7 +94,7 @@ public class LambdaRawRecordToAvro extends IngestBaseLambda implements StreamPro
 
   @Override
   protected Supplier<FirehoseBatchWriter> getProcessingErrorStream() {
-    return this.lazyFirehoseBatchWriter(props.getFirehoseStream(this.phaseName,
+    return this.lazyFirehoseBatchWriter(props.getFirehoseStreamName(this.phaseName,
       LambdaClientProperties.StreamType.PROCESSING_ERROR), transform);
   }
 

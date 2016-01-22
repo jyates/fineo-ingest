@@ -135,12 +135,12 @@ public class LambdaClientProperties {
     return props.getProperty(FIREHOSE_URL);
   }
 
-  public String getFirehoseStream(String phaseName, StreamType type) {
+  public String getFirehoseStreamName(String phaseName, StreamType type) {
     return props.getProperty(getFirehoseStreamProperty(phaseName, type));
   }
 
   @VisibleForTesting
-  public static String getFirehoseStreamProperty(String phase, StreamType type){
+  static String getFirehoseStreamProperty(String phase, StreamType type){
     return type.getPropertyKey(phase);
   }
 

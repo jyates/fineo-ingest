@@ -5,6 +5,7 @@ import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.Futures;
 import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.lambda.kinesis.KinesisProducer;
+import io.fineo.lambda.util.EndToEndTestRunner;
 import io.fineo.lambda.util.LambdaTestUtils;
 import io.fineo.schema.Pair;
 import io.fineo.schema.avro.AvroSchemaEncoder;
@@ -270,7 +271,7 @@ public class TestLambdaToAvroWithLocalSchemaStore {
       store = props.createSchemaStore();
     }
     try {
-      LambdaTestUtils.updateSchemaStore(store, event);
+      EndToEndTestRunner.updateSchemaStore(store, event);
     } catch (IllegalArgumentException e) {
       return null;
     }

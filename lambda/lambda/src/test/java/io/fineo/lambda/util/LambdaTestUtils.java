@@ -42,15 +42,15 @@ public class LambdaTestUtils {
     return event;
   }
 
-  public static ByteBuffer asBytes(Map<String, Object> fields) throws IOException {
+  public static byte[] asBytes(Map<String, Object> fields) throws IOException {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     JSON.std.write(fields, baos);
     baos.close();
-    return ByteBuffer.wrap(baos.toByteArray());
+    return baos.toByteArray();
   }
 
   public static KinesisEvent getKinesisEvent(Map<String, Object> fields) throws IOException {
-    return getKinesisEvent(asBytes(fields));
+    return getKinesisEvent(ByteBuffer.wrap(asBytes(fields)));
   }
 
   public static Map<String, Object>[] createRecords(int count) {
@@ -70,17 +70,6 @@ public class LambdaTestUtils {
       records[i] = map;
     }
     return (Map<String, Object>[]) records;
-  }
-
-  public static void updateSchemaStore(SchemaStore store, Map<String, Object> event)
-    throws Exception {
-    String orgId = (String) event.get(AvroSchemaEncoder.ORG_ID_KEY);
-    String metricType = (String) event.get(AvroSchemaEncoder.ORG_METRIC_TYPE_KEY);
-    Preconditions.checkArgument(orgId != null && metricType != null);
-    // collect the fields that are not the base fields
-    List<String> otherFields = event.keySet().stream().filter(AvroSchemaEncoder
-      .IS_BASE_FIELD.negate()).collect(Collectors.toList());
-    SchemaTestUtils.addNewOrg(store, orgId, metricType, otherFields.toArray(new String[0]));
   }
 
   public static void verifyRecordMatchesExpectedNaming(GenericRecord record) {
