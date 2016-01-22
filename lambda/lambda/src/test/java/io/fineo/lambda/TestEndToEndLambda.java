@@ -72,34 +72,9 @@ public class TestEndToEndLambda {
     List<GenericRecord> records = test.getDynamoWrites();
     assertEquals("Got unexpected records: " + records, 1, records.size());
     GenericRecord record = records.get(0);
-    SchemaStore store = test.getStore();
 
     // org/schema naming
-    LambdaTestUtils.verifyRecordMatchesExpectedNaming(store, record);
-    LOG.debug("Comparing \nJSON: " + json + "\nRecord: " + record);
-
-    // rest of the field validation
-    AvroRecordDecoder decoder = new AvroRecordDecoder(record);
-    Metric metric = store.getMetricMetadata(decoder.getMetadata());
-    Map<String, List<String>> names =
-      metric.getMetadata().getCanonicalNamesToAliases();
-    json.entrySet()
-        .stream()
-        .filter(entry -> AvroSchemaEncoder.IS_BASE_FIELD.negate().test(entry.getKey()))
-        .forEach(entry -> {
-          // search through each of the aliases to find a matching name in the record
-          String aliasName = entry.getKey();
-          String cname = null;
-          for (Map.Entry<String, List<String>> nameToAliases : names.entrySet()) {
-            if (nameToAliases.getValue().contains(aliasName)) {
-              cname = nameToAliases.getKey();
-              break;
-            }
-          }
-          // ensure the value matches
-          assertNotNull(cname);
-          assertEquals("JSON: " + json + "\nRecord: " + record,
-            entry.getValue(), record.get(cname));
-        });
+    LambdaTestUtils.verifyRecordMatchesExpectedNaming(record);
+    EndToEndTestUtil.verifyRecordMatchesJson(test.getStore(), json, record);
   }
 }

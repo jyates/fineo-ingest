@@ -83,7 +83,7 @@ public class LambdaTestUtils {
     SchemaTestUtils.addNewOrg(store, orgId, metricType, otherFields.toArray(new String[0]));
   }
 
-  public static void verifyRecordMatchesExpectedNaming(SchemaStore store, GenericRecord record) {
+  public static void verifyRecordMatchesExpectedNaming(GenericRecord record) {
     AvroRecordDecoder decoder = new AvroRecordDecoder(record);
     String orgId = decoder.getMetadata().getOrgID();
     String expectedPrefix = SchemaNameUtils.getCustomerNamespace(orgId);

@@ -15,6 +15,7 @@ $config = OpenStruct.new
 $config.skip = ""
 $config.test = nil
 $config.verbose = false
+$config.verbose2 = false
 
 # Populate the options with default values and the correct key suffix
 $options = {
@@ -39,6 +40,9 @@ $options = {
   :read_max => Pair.new("7", "dynamo.limit.read"),
   :dynamo_retries => Pair.new("3", "dynamo.limit.retries")
 }
+
+test_properties = [:schema_table, :ingest_prefix, :parsed, :raw_archive, :raw_error, :raw_malformed,
+:staged_archive, :staged_error_dynamo, :staged_error]
 
 # set pair value at option[ref]
 def set(ref, value)
@@ -133,24 +137,22 @@ end
 parser.parse!
 
 def test_fix(name)
-  "#{$test_prefix}"+$options[name].one
+  val = $options[name].one
+  "#{$test_prefix}#{val}"
 end
 
 unless $config.test.nil?
   $test_prefix = "test-#{$config.test}-"
 
   # store the test prefix so we can use it for testing
-  $options["integration.test.prefix"] = $test_prefix
+  test_key = :"integration.test.prefix"
+  puts "Setting #{test} = #{$test_prefix}" if $config.verbose2
+  $options[test_key] = Pair.new($test_prefix, test_key)
 
   # update the parameters
-  set :parsed, test_fix(:parsed)
-  set :raw_error, test_fix(:raw_error)
-  set :raw_malformed, test_fix(:raw_malformed)
-  set :staged, test_fix(:staged)
-  set :staged_error, test_fix(:staged_error)
-  set :staged_error_dynamo, test_fix(:staged_error_dynamo)
-  set :schema_table, test_fix(:schema_table)
-  set :ingest_prefix, test_fix(:ingest_prefix)
+  test_properties.each{|property|
+    set property, test_fix(property)
+  }
 end
 
 # create the directories if they don't exist

@@ -11,7 +11,6 @@ import io.fineo.schema.avro.AvroSchemaEncoder;
 import io.fineo.schema.store.SchemaStore;
 import org.apache.avro.file.FirehoseRecordReader;
 import org.apache.avro.file.FirehoseRecordWriter;
-import org.apache.avro.file.SeekableByteArrayInput;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -192,7 +191,7 @@ public class TestLambdaToAvroWithLocalSchemaStore {
       LOG.info("Reading and verifying record: " + i);
       // verify that we read the next record in order of it being written
       GenericRecord avro = reader.next();
-      LambdaTestUtils.verifyRecordMatchesExpectedNaming(store, avro);
+      LambdaTestUtils.verifyRecordMatchesExpectedNaming(avro);
     }
   }
 

@@ -101,5 +101,13 @@ public class AwsAsyncSubmitter<S extends AmazonWebServiceRequest, R, B> {
       actions.remove(this);
       phase.arriveAndDeregister();
     }
+
+    @Override
+    public String toString() {
+      return "UpdateItemHandler{" +
+             "attempts=" + attempts +
+             ", request=" + request +
+             '}';
+    }
   }
 }
