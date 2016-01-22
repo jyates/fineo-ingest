@@ -4,17 +4,14 @@ import com.amazonaws.regions.RegionUtils;
 import com.amazonaws.services.dynamodbv2.model.ListTablesResult;
 import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
 import com.amazonaws.services.kinesis.AmazonKinesisClient;
-import com.amazonaws.services.kinesis.clientlibrary.interfaces.v2.IRecordProcessor;
-import com.amazonaws.services.kinesis.clientlibrary.interfaces.v2.IRecordProcessorFactory;
-import com.amazonaws.services.kinesis.clientlibrary.lib.worker.KinesisClientLibConfiguration;
-import com.amazonaws.services.kinesis.clientlibrary.lib.worker.Worker;
-import com.amazonaws.services.kinesis.clientlibrary.types.InitializationInput;
-import com.amazonaws.services.kinesis.clientlibrary.types.ProcessRecordsInput;
-import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownInput;
 import com.amazonaws.services.kinesis.model.CreateStreamRequest;
 import com.amazonaws.services.kinesis.model.DeleteStreamRequest;
 import com.amazonaws.services.kinesis.model.DescribeStreamRequest;
 import com.amazonaws.services.kinesis.model.DescribeStreamResult;
+import com.amazonaws.services.kinesis.model.GetRecordsRequest;
+import com.amazonaws.services.kinesis.model.GetRecordsResult;
+import com.amazonaws.services.kinesis.model.GetShardIteratorResult;
+import com.amazonaws.services.kinesis.model.Record;
 import com.amazonaws.services.kinesisfirehose.AmazonKinesisFirehoseClient;
 import com.amazonaws.services.kinesisfirehose.model.BufferingHints;
 import com.amazonaws.services.kinesisfirehose.model.CompressionFormat;
@@ -22,7 +19,6 @@ import com.amazonaws.services.kinesisfirehose.model.CreateDeliveryStreamRequest;
 import com.amazonaws.services.kinesisfirehose.model.DeleteDeliveryStreamRequest;
 import com.amazonaws.services.kinesisfirehose.model.DescribeDeliveryStreamRequest;
 import com.amazonaws.services.kinesisfirehose.model.DescribeDeliveryStreamResult;
-import com.amazonaws.services.kinesisfirehose.model.ListDeliveryStreamsRequest;
 import com.amazonaws.services.kinesisfirehose.model.S3DestinationConfiguration;
 import com.amazonaws.services.lambda.AWSLambdaClient;
 import com.amazonaws.services.lambda.model.InvocationType;
@@ -31,6 +27,7 @@ import com.amazonaws.services.lambda.model.InvokeResult;
 import com.amazonaws.services.lambda.model.LogType;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3Client;
+import com.amazonaws.services.s3.model.AmazonS3Exception;
 import com.amazonaws.services.s3.model.GetObjectRequest;
 import com.amazonaws.services.s3.model.ObjectListing;
 import com.amazonaws.services.s3.model.S3Object;
@@ -79,6 +76,7 @@ import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -166,6 +164,23 @@ public class TestEndToEndLambdaAws {
       LOG.debug("Deleting dynamo table: " + name);
       props.getDynamo().deleteTable(name);
     }
+
+    // remove all s3 files with the current test prefix
+    AmazonS3 s3 = new AmazonS3Client(awsCredentials.getProvider());
+    ObjectListing listing = s3.listObjects(s3BucketName, props.getTestPrefix());
+    listing.getObjectSummaries().stream()
+           .peek(s -> LOG.info("Deleting " + s3BucketName + "/" + s.getKey()))
+           .map(summary -> {
+             s3.deleteObject(s3BucketName, summary.getKey());
+             return summary.getKey();
+           }).forEach(key -> waitForResult("Delete s3: " + s3BucketName + "/" + key, () -> {
+      try {
+        return s3.getObjectMetadata(s3BucketName, key);
+      } catch (AmazonS3Exception e) {
+        return null;
+      }
+    }, m -> m == null));
+
 
     // firehose
     AmazonKinesisFirehoseClient firehoseClient =
@@ -399,43 +414,20 @@ public class TestEndToEndLambdaAws {
       + "object: " + summary.getKey() + "\nof potential objects: " + objects,
       progress.rawData, out.toByteArray());
 
-
     // read the event from Kinesis to ensure it parses the record we expect
-    CountDownLatch verified = new CountDownLatch(1);
-    IRecordProcessor processor = new IRecordProcessor() {
-      @Override
-      public void initialize(InitializationInput initializationInput) {
-      }
-
-      @Override
-      public void processRecords(ProcessRecordsInput input) {
-        input.getRecords().forEach(kinesis -> {
-          try {
-            FirehoseRecordReader<GenericRecord> recordReader =
-              FirehoseRecordReader.create(kinesis.getData());
-            GenericRecord record = recordReader.next();
-            EndToEndTestUtil.verifyRecordMatchesJson(progress.store, progress.event, record);
-          } catch (IOException e) {
-            throw new RuntimeException(e);
-          } finally {
-            verified.countDown();
-          }
-        });
-      }
-
-      @Override
-      public void shutdown(ShutdownInput shutdownInput) {
-      }
-    };
-    final KinesisClientLibConfiguration config = new KinesisClientLibConfiguration
-      ("test-lambda-" + props.getTestPrefix(), kinesisStreams.get(0), awsCredentials.getProvider(),
-        props.getTestPrefix() + "-worker-0");
-    final IRecordProcessorFactory recordProcessorFactory = () -> processor;
-    final Worker worker = new Worker.Builder().recordProcessorFactory(recordProcessorFactory)
-                                              .config(config).build();
-    worker.run();
-    verified.await();
-    worker.shutdown();
+    AmazonKinesisClient kinesis = getKinesis();
+    GetShardIteratorResult shard =
+      kinesis.getShardIterator(props.getRawToStagedKinesisStreamName(), "0", "TRIM_HORIZON");
+    String iterator = shard.getShardIterator();
+    GetRecordsResult getResult = kinesis.getRecords(new GetRecordsRequest().withShardIterator
+      (iterator).withLimit(1));
+    List<Record> records = getResult.getRecords();
+    assertEquals(1, records.size());
+    Record record = records.get(0);
+    FirehoseRecordReader<GenericRecord> recordReader =
+      FirehoseRecordReader.create(record.getData());
+    GenericRecord avro = recordReader.next();
+    EndToEndTestUtil.verifyRecordMatchesJson(progress.store, progress.event, avro);
   }
 
   private ZonedDateTime parseFromS3ObjectName(String name, String stream) {
