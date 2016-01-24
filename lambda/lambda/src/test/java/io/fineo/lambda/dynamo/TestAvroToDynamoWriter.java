@@ -15,7 +15,7 @@ import io.fineo.aws.AwsDependentTests;
 import io.fineo.lambda.LambdaClientProperties;
 import io.fineo.lambda.FailureHandler;
 import io.fineo.lambda.aws.MultiWriteFailures;
-import io.fineo.schema.avro.AvroRecordDecoder;
+import io.fineo.schema.Pair;
 import io.fineo.schema.avro.SchemaTestUtils;
 import org.apache.avro.generic.GenericRecord;
 import org.junit.After;
@@ -113,17 +113,12 @@ public class TestAvroToDynamoWriter {
     assertEquals(1, tables.getTableNames().size());
 
     // ensure that the record we wrote matches what we created
-    AvroRecordDecoder decoder = new AvroRecordDecoder(record);
     Table t = new DynamoDB(dynamo.getClient()).getTable(tables.getTableNames().get(0));
-    Item i = t.getItem(AvroToDynamoWriter.PARTITION_KEY_NAME,
-      decoder.getMetadata().getOrgID() + decoder.getMetadata().getMetricCannonicalType(),
-      AvroToDynamoWriter.SORT_KEY_NAME, decoder.getBaseFields().getTimestamp());
-    assertNotNull(i);
-    // check the other fields that are not part of the PK
-    record.getSchema().getFields().stream().filter(field -> field.name().startsWith("n")).forEach
-      ( field -> {
-        String name = field.name();
-        assertEquals(record.get(name), i.get(name));
-      });
+    Item item = DynamoTestUtils.getItem(t, record);
+    assertNotNull("Didn't get an item for record: " + record, item);
+    DynamoTestUtils.validateDynamoRecord(item,
+      record.getSchema().getFields()
+            .stream().map(field -> field.name()).map(name -> new Pair<>(name, record.get(name))),
+      s -> s);
   }
 }

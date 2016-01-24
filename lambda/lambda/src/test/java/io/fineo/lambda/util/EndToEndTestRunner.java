@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static io.fineo.lambda.LambdaClientProperties.RAW_PREFIX;
 import static io.fineo.lambda.LambdaClientProperties.STAGED_PREFIX;
@@ -152,28 +153,22 @@ public class EndToEndTestRunner {
   public static void verifyRecordMatchesJson(SchemaStore store, Map<String, Object> json,
     GenericRecord record) {
     LOG.debug("Comparing \nJSON: " + json + "\nRecord: " + record);
-    AvroRecordDecoder decoder = new AvroRecordDecoder(record);
-    Metric metric = store.getMetricMetadata(decoder.getMetadata());
-    Map<String, List<String>> names =
-      metric.getMetadata().getCanonicalNamesToAliases();
-    json.entrySet()
+    SchemaUtil schema = new SchemaUtil(store, record);
+    filterJson(json).forEach(entry -> {
+      // search through each of the aliases to find a matching name in the record
+      String aliasName = entry.getKey();
+      String cname = schema.getCanonicalName(aliasName);
+      // ensure the value matches
+      assertNotNull("Didn't find a matching canonical name for " + aliasName, cname);
+      assertEquals("JSON: " + json + "\nRecord: " + record,
+        entry.getValue(), record.get(cname));
+    });
+  }
+
+  public static Stream<Map.Entry<String, Object>> filterJson(Map<String, Object> json){
+    return json.entrySet()
         .stream()
-        .filter(entry -> AvroSchemaEncoder.IS_BASE_FIELD.negate().test(entry.getKey()))
-        .forEach(entry -> {
-          // search through each of the aliases to find a matching name in the record
-          String aliasName = entry.getKey();
-          String cname = null;
-          for (Map.Entry<String, List<String>> nameToAliases : names.entrySet()) {
-            if (nameToAliases.getValue().contains(aliasName)) {
-              cname = nameToAliases.getKey();
-              break;
-            }
-          }
-          // ensure the value matches
-          assertNotNull("Didn't find a matching canonical name for " + aliasName, cname);
-          assertEquals("JSON: " + json + "\nRecord: " + record,
-            entry.getValue(), record.get(cname));
-        });
+        .filter(entry -> AvroSchemaEncoder.IS_BASE_FIELD.negate().test(entry.getKey()));
   }
 
   private class Progress {

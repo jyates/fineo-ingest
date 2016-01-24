@@ -10,8 +10,8 @@ import io.fineo.lambda.LambdaClientProperties;
 import io.fineo.lambda.aws.AwsAsyncRequest;
 import io.fineo.lambda.aws.AwsAsyncSubmitter;
 import io.fineo.lambda.aws.MultiWriteFailures;
-import io.fineo.schema.avro.AvroRecordDecoder;
 import io.fineo.schema.avro.AvroSchemaEncoder;
+import io.fineo.schema.avro.RecordMetadata;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.logging.Log;
@@ -22,7 +22,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * Write {@link BaseFields} based avro-records into dynamo.
@@ -108,11 +107,10 @@ public class AvroToDynamoWriter {
    */
   private AwsAsyncRequest<GenericRecord, UpdateItemRequest> getUpdateForTable(
     GenericRecord record) {
-    AvroRecordDecoder decoder = new AvroRecordDecoder(record);
-    AvroRecordDecoder.RecordMetadata metadata = decoder.getMetadata();
+    RecordMetadata metadata = RecordMetadata.getMetadata(record);
 
     UpdateItemRequest request = new UpdateItemRequest();
-    BaseFields fields = decoder.getBaseFields();
+    BaseFields fields = metadata.getBaseFields();
 
     String tableName = tables.getTableAndEnsureExists(fields.getTimestamp());
     request.setTableName(tableName);
@@ -198,7 +196,11 @@ public class AvroToDynamoWriter {
     return new AttributeValue().withN(fields.getTimestamp().toString());
   }
 
-  private AttributeValue getPartitionKey(AvroRecordDecoder.RecordMetadata metadata) {
-    return new AttributeValue(metadata.getOrgID() + metadata.getMetricCannonicalType());
+  private static AttributeValue getPartitionKey(RecordMetadata metadata) {
+    return getPartitionKey(metadata.getOrgID(), metadata.getMetricCanonicalType());
+  }
+
+  public static AttributeValue getPartitionKey(String orgID, String metricCanonicalName) {
+    return new AttributeValue(orgID + metricCanonicalName);
   }
 }

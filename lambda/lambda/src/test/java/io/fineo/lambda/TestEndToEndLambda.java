@@ -26,8 +26,6 @@ public class TestEndToEndLambda {
    */
   @Test
   public void testHappyPath() throws Exception {
-    // Setup
-    //-------
     Properties props = new Properties();
     // firehose outputs
     props.setProperty(getFirehoseStreamProperty(RAW_PREFIX, ARCHIVE), "raw-archived");

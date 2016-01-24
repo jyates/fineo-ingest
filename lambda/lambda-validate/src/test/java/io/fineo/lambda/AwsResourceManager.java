@@ -1,8 +1,12 @@
 package io.fineo.lambda;
 
 import com.amazonaws.regions.RegionUtils;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
+import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.ListTablesResult;
 import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
+import com.amazonaws.services.dynamodbv2.model.ScanRequest;
+import com.amazonaws.services.dynamodbv2.model.ScanResult;
 import com.amazonaws.services.kinesis.AmazonKinesisClient;
 import com.amazonaws.services.kinesis.model.CreateStreamRequest;
 import com.amazonaws.services.kinesis.model.DeleteStreamRequest;
@@ -319,8 +323,18 @@ public class AwsResourceManager implements ResourceManager {
   }
 
   @Override
-  public void verifyDynamoWrites(Map<String, Object> map) {
-
+  public void verifyDynamoWrites(Map<String, Object> json) {
+    String tablePrefix = props.getDynamoIngestTablePrefix();
+    AmazonDynamoDBClient client = new AmazonDynamoDBClient(awsCredentials.getProvider());
+    ListTablesResult tablesResult = client.listTables(tablePrefix);
+    String tableName = tablesResult.getTableNames().get(0);
+    ScanRequest request = new ScanRequest(tableName);
+    ScanResult result = client.scan(request);
+    assertEquals(1, (int) result.getCount());
+    List<Map<String, AttributeValue>> rows = result.getItems();
+    assertEquals(1, rows.size());
+    Map<String, AttributeValue> row = rows.get(0);
+    LOG.info("Got row: "+row);
   }
 
   @Override
