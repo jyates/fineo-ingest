@@ -17,13 +17,17 @@ import io.fineo.lambda.FailureHandler;
 import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.schema.Pair;
 import io.fineo.schema.avro.SchemaTestUtils;
+import io.fineo.schema.store.SchemaStore;
 import org.apache.avro.generic.GenericRecord;
 import org.junit.After;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.mockito.Mockito;
+import org.schemarepo.InMemoryRepository;
+import org.schemarepo.ValidatorFactory;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Properties;
 import java.util.UUID;
@@ -38,16 +42,7 @@ import static org.junit.Assert.assertNotNull;
  * Test writing avro records to dynamo. Also covers happy path and failure testing for the
  * {@link io.fineo.lambda.aws.AwsAsyncRequest}, which is omitted for time.
  */
-@Category(AwsDependentTests.class)
 public class TestAvroToDynamoWriter {
-
-  @ClassRule
-  public static AwsDynamoResource dynamo = new AwsDynamoResource();
-
-  @After
-  public void cleanupTables() throws Exception{
-    dynamo.cleanup();
-  }
 
   @Test
   public void testFailedWriteDynamoUnreachable() throws Exception {
@@ -78,47 +73,5 @@ public class TestAvroToDynamoWriter {
     assertTrue(failures.any());
     List<GenericRecord> failed = FailureHandler.getFailedRecords(failures);
     assertEquals(Lists.newArrayList(record), failed);
-  }
-
-  @Test
-  public void testSingleWrite() throws Exception {
-    // create a basic record to write that is 'avro correct'
-    GenericRecord record = SchemaTestUtils.createRandomRecord();
-    readWriteRecord(record);
-  }
-
-  @Test
-  public void testRecordWithNoFields() throws Exception {
-    GenericRecord record = SchemaTestUtils.createRandomRecord("orgid", "metricId", 10, 1, 0).get(0);
-    readWriteRecord(record);
-  }
-
-  public void readWriteRecord(GenericRecord record) throws Exception{
-    Properties prop = new Properties();
-    dynamo.setConnectionProperties(prop);
-
-    // setup the writer
-    LambdaClientProperties props = new LambdaClientProperties(prop);
-    dynamo.setCredentials(props);
-    AvroToDynamoWriter writer = AvroToDynamoWriter.create(props);
-
-    // write it to dynamo and wait for a response
-    writer.write(record);
-    MultiWriteFailures failures = writer.flush();
-    assertFalse("There was a write failure", failures.any());
-
-    // ensure that the expected table got created
-    AmazonDynamoDBClient client = dynamo.getClient();
-    ListTablesResult tables = client.listTables();
-    assertEquals(1, tables.getTableNames().size());
-
-    // ensure that the record we wrote matches what we created
-    Table t = new DynamoDB(dynamo.getClient()).getTable(tables.getTableNames().get(0));
-    Item item = DynamoTestUtils.getItem(t, record);
-    assertNotNull("Didn't get an item for record: " + record, item);
-    DynamoTestUtils.validateDynamoRecord(item,
-      record.getSchema().getFields()
-            .stream().map(field -> field.name()).map(name -> new Pair<>(name, record.get(name))),
-      s -> s);
   }
 }

@@ -7,6 +7,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import io.fineo.schema.avro.AvroRecordDecoder;
 import io.fineo.schema.avro.AvroSchemaEncoder;
+import io.fineo.schema.avro.RecordMetadata;
 import io.fineo.schema.avro.SchemaNameUtils;
 import io.fineo.schema.avro.SchemaTestUtils;
 import io.fineo.schema.store.SchemaStore;
@@ -70,14 +71,5 @@ public class LambdaTestUtils {
       records[i] = map;
     }
     return (Map<String, Object>[]) records;
-  }
-
-  public static void verifyRecordMatchesExpectedNaming(GenericRecord record) {
-    AvroRecordDecoder decoder = new AvroRecordDecoder(record);
-    String orgId = decoder.getMetadata().getOrgID();
-    String expectedPrefix = SchemaNameUtils.getCustomerNamespace(orgId);
-    String fullName = record.getSchema().getFullName();
-    assertTrue("Expected schema full name (" + fullName + ") to start with " + expectedPrefix,
-      fullName.startsWith(expectedPrefix));
   }
 }

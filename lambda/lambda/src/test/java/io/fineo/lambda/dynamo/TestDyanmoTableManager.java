@@ -19,7 +19,7 @@ public class TestDyanmoTableManager {
   public void testGetTableName() throws Exception {
     AmazonDynamoDBAsyncClient client = Mockito.mock(AmazonDynamoDBAsyncClient.class);
     String prefix = "table-prefix";
-    DynamoTableManager manager = new DynamoTableManager(client, prefix, 10, 10);
+    DynamoTableManager manager = new DynamoTableManager(client, prefix);
 
     long oneWeek = Duration.ofDays(7).toMillis();
     String firstWeek = DynamoTableManager.TABLE_NAME_PARTS_JOINER.join(prefix, "0", oneWeek);
@@ -57,8 +57,8 @@ public class TestDyanmoTableManager {
   public void testCreateTable() throws Exception {
     AmazonDynamoDBAsyncClient client = dynamo.getAsyncClient();
 
-    DynamoTableManager loader = new DynamoTableManager(client, UUID.randomUUID().toString(), 10,
-      10);
+    DynamoTableManager.DynamoTableWriter loader =
+      new DynamoTableManager(client, UUID.randomUUID().toString()).writer(10, 10);
     String prefix = "prefix";
     String name = DynamoTableManager.TABLE_NAME_PARTS_JOINER.join(prefix, "1", "2");
     loader.createTable(name);

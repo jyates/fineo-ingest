@@ -6,13 +6,10 @@ import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.amazonaws.services.dynamodbv2.model.ScanResult;
 
-import java.nio.channels.ClosedChannelException;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 
 /**
  * Run multiple scans against (potentially) multiple dynamo DB tables.
@@ -23,76 +20,70 @@ import java.util.Queue;
  */
 public class MultiDynamoScanIterator implements Iterator<Map<String, AttributeValue>> {
 
-  private Queue<ResultOrException<List<Map<String, AttributeValue>>>> nextQueue;
-  private ResultOrException<List<Map<String, AttributeValue>>> next;
-  private final List<ScanResultChannel<ResultOrException<List<Map<String, AttributeValue>>>>>
-    channels;
+  private ResultOrException<Iterator<Map<String, AttributeValue>>> nextBatch;
+  private Iterator<Map<String, AttributeValue>> next;
+  private final List<ResultOrException<Iterator<Map<String, AttributeValue>>>> results;
 
   public MultiDynamoScanIterator(AmazonDynamoDBAsyncClient client, List<ScanRequest> requests) {
-    channels = new ArrayList<>(requests.size());
+    results = new LinkedList<>();
     for (ScanRequest request : requests) {
-      ScanResultChannel channel = new ScanResultChannel();
-      channels.add(channel);
+      ResultOrException<Iterator<Map<String, AttributeValue>>> result = new ResultOrException<>();
+      results.add(result);
       client.scanAsync(request, new AsyncHandler<ScanRequest, ScanResult>() {
         // TODO support paging results
         @Override
         public void onError(Exception exception) {
-          channel.offer(new ResultOrException<>().withException(exception));
-          channel.close();
+          result.setException(exception);
         }
 
         @Override
         public void onSuccess(ScanRequest request, ScanResult scanResult) {
-          channel.offer(scanResult.getItems());
-          channel.close();
+          result.setResult(scanResult.getItems().iterator());
         }
       });
     }
 
     // wait for the first channel to return a result before done
-    getNext();
-
-    // next is definitely not empty, so check to make sure it doesn't have an exception
-    throwIfRequestFailed();
+    next = getNext();
   }
 
-  private void getNext() {
-    while ((nextQueue == null || nextQueue.isEmpty()) && channels.size() > 0) {
-      nextQueue = getNext(channels.remove(0));
+  private Iterator<Map<String, AttributeValue>> getNext() {
+    // get the next batch from the results we are tracking
+    while (nextBatch == null && results.size() > 0) {
+      nextBatch = results.remove(0);
     }
-  }
 
-  private Queue<ResultOrException<List<Map<String, AttributeValue>>>> getNext
-    (ScanResultChannel<ResultOrException<List<Map<String, AttributeValue>>>> channel) {
-    if (channel.isOpen()) {
-      try {
-        Queue<ResultOrException<List<Map<String, AttributeValue>>>> queue = new ArrayDeque<>(1);
-        queue.add(channel.next());
-      } catch (ClosedChannelException e) {
-        return getNext(channel);
-      }
+    // exit if we don't have any more results to iterate
+    if (nextBatch == null) {
+      return null;
     }
-    return channel.drain();
-  }
 
-  private void throwIfRequestFailed() {
-    ResultOrException<List<Map<String, AttributeValue>>> re = nextQueue.peek();
-    if(re.hasException()){
-      throw new RuntimeException(re.getException());
+    // wait for the results to be set for the batch we want to read
+    try {
+      nextBatch.await();
+    } catch (InterruptedException e) {
+      throw new RuntimeException(e);
     }
+
+    // result is set, but its an exception, so throw it back up to the client
+    if (nextBatch.hasException()) {
+      throw new RuntimeException(nextBatch.getException());
+    }
+
+    return nextBatch.getResult().hasNext() ? nextBatch.getResult() : getNext();
   }
 
   @Override
   public boolean hasNext() {
-    if(nextQueue.isEmpty()){
-      getNext();
+    if (next == null || !next.hasNext()) {
+      next = getNext();
     }
-    throwIfRequestFailed();
-    .
+
+    return next != null;
   }
 
   @Override
   public Map<String, AttributeValue> next() {
-    ResultOrException<List<>>
+    return next.next();
   }
 }

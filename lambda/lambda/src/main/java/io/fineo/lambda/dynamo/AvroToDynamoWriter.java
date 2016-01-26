@@ -4,6 +4,7 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Joiner;
 import io.fineo.internal.customer.BaseFields;
 import io.fineo.lambda.LambdaClientProperties;
@@ -68,13 +69,15 @@ public class AvroToDynamoWriter {
   // TODO replace with a schema ID so we can lookup the schema on read, if necessary
   private static final String MARKER = "marker";
 
-  private final DynamoTableManager tables;
+  private final DynamoTableManager.DynamoTableWriter tables;
   private final AwsAsyncSubmitter<UpdateItemRequest, UpdateItemResult, GenericRecord> submitter;
 
-  private AvroToDynamoWriter(AmazonDynamoDBAsyncClient client, String dynamoIngestTablePrefix, long
+  @VisibleForTesting
+  AvroToDynamoWriter(AmazonDynamoDBAsyncClient client, String dynamoIngestTablePrefix, long
     writeMax, long readMax, long maxRetries) {
     this.submitter = new AwsAsyncSubmitter<>(maxRetries, client::updateItemAsync);
-    this.tables = new DynamoTableManager(client, dynamoIngestTablePrefix, readMax, writeMax);
+    this.tables = new DynamoTableManager(client, dynamoIngestTablePrefix).writer(readMax,
+      writeMax);
   }
 
   public static AvroToDynamoWriter create(LambdaClientProperties props) {
@@ -107,7 +110,7 @@ public class AvroToDynamoWriter {
    */
   private AwsAsyncRequest<GenericRecord, UpdateItemRequest> getUpdateForTable(
     GenericRecord record) {
-    RecordMetadata metadata = RecordMetadata.getMetadata(record);
+    RecordMetadata metadata = RecordMetadata.get(record);
 
     UpdateItemRequest request = new UpdateItemRequest();
     BaseFields fields = metadata.getBaseFields();
@@ -192,15 +195,19 @@ public class AvroToDynamoWriter {
     set.add(name + "= " + attributeName);
   }
 
-  private AttributeValue getSortKey(BaseFields fields) {
+  private static AttributeValue getSortKey(BaseFields fields) {
     return new AttributeValue().withN(fields.getTimestamp().toString());
+  }
+
+  static AttributeValue getSortKey(Long ts) {
+    return new AttributeValue().withN(ts.toString());
   }
 
   private static AttributeValue getPartitionKey(RecordMetadata metadata) {
     return getPartitionKey(metadata.getOrgID(), metadata.getMetricCanonicalType());
   }
 
-  public static AttributeValue getPartitionKey(String orgID, String metricCanonicalName) {
+  static AttributeValue getPartitionKey(String orgID, String metricCanonicalName) {
     return new AttributeValue(orgID + metricCanonicalName);
   }
 }

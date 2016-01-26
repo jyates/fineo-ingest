@@ -2,11 +2,10 @@ package io.fineo.lambda.util;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
-import io.fineo.internal.customer.Metric;
 import io.fineo.lambda.LambdaClientProperties;
-import io.fineo.schema.avro.AvroRecordDecoder;
 import io.fineo.schema.avro.AvroSchemaEncoder;
 import io.fineo.schema.avro.SchemaTestUtils;
+import io.fineo.schema.avro.TestRecordMetadata;
 import io.fineo.schema.store.SchemaStore;
 import org.apache.avro.file.FirehoseRecordReader;
 import org.apache.avro.generic.GenericRecord;
@@ -110,7 +109,7 @@ public class EndToEndTestRunner {
     GenericRecord record = parsedRecords.get(0);
 
     // org/schema naming
-    LambdaTestUtils.verifyRecordMatchesExpectedNaming(record);
+    TestRecordMetadata.verifyRecordMetadataMatchesExpectedNaming(record);
     verifyRecordMatchesJson(progress.store, progress.json, record);
   }
 
