@@ -4,7 +4,7 @@ import io.fineo.lambda.LambdaAvroToStorage;
 import io.fineo.lambda.LambdaClientProperties;
 import io.fineo.lambda.LambdaRawRecordToAvro;
 import io.fineo.lambda.aws.MultiWriteFailures;
-import io.fineo.lambda.dynamo.AvroToDynamoWriter;
+import io.fineo.lambda.dynamo.avro.AvroToDynamoWriter;
 import io.fineo.lambda.firehose.FirehoseBatchWriter;
 import io.fineo.lambda.util.ResourceManager;
 import io.fineo.schema.store.SchemaStore;

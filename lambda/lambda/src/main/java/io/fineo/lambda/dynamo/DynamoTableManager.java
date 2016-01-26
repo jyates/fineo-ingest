@@ -12,6 +12,8 @@ import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Joiner;
+import io.fineo.lambda.dynamo.avro.AvroToDynamoWriter;
+import io.fineo.lambda.dynamo.avro.Schema;
 import io.fineo.schema.Pair;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -56,33 +58,11 @@ public class DynamoTableManager {
     private final CreateTableRequest baseRequest;
 
     private DynamoTableWriter(long readCapacity, long writeCapacity) {
-      Pair<List<KeySchemaElement>, List<AttributeDefinition>> schema = getSchema();
+      Pair<List<KeySchemaElement>, List<AttributeDefinition>> schema = Schema.get();
       this.baseRequest = new CreateTableRequest()
         .withKeySchema(schema.getKey())
         .withAttributeDefinitions(schema.getValue())
         .withProvisionedThroughput(new ProvisionedThroughput(readCapacity, writeCapacity));
-    }
-
-    private Pair<List<KeySchemaElement>, List<AttributeDefinition>> getSchema() {
-      List<KeySchemaElement> schema = new ArrayList<>();
-      ArrayList<AttributeDefinition> attributes = new ArrayList<>();
-      // Partition key
-      schema.add(new KeySchemaElement()
-        .withAttributeName(AvroToDynamoWriter.PARTITION_KEY_NAME)
-        .withKeyType(KeyType.HASH));
-      attributes.add(new AttributeDefinition()
-        .withAttributeName(AvroToDynamoWriter.PARTITION_KEY_NAME)
-        .withAttributeType(ScalarAttributeType.S));
-
-      // sort key
-      schema.add(new KeySchemaElement()
-        .withAttributeName(AvroToDynamoWriter.SORT_KEY_NAME)
-        .withKeyType(KeyType.RANGE));
-      attributes.add(new AttributeDefinition()
-        .withAttributeName(AvroToDynamoWriter.SORT_KEY_NAME)
-        .withAttributeType(ScalarAttributeType.N));
-
-      return new Pair<>(schema, attributes);
     }
 
     /**
@@ -129,7 +109,7 @@ public class DynamoTableManager {
    * @param range
    * @return all table names that are required to cover the time range
    */
-  List<Pair<String, Range<Instant>>> getExistingTableNames(Range<Instant> range) {
+  public List<Pair<String, Range<Instant>>> getExistingTableNames(Range<Instant> range) {
     List<Pair<String, Range<Instant>>> tables = new ArrayList<>();
     Instant start = range.getStart();
     while (start.isBefore(range.getEnd())) {

@@ -3,11 +3,12 @@ package io.fineo.lambda.dynamo;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.amazonaws.services.dynamodbv2.model.ListTablesResult;
 import io.fineo.aws.AwsDependentTests;
+import io.fineo.internal.customer.BaseFields;
 import io.fineo.lambda.LambdaClientProperties;
 import io.fineo.lambda.aws.MultiWriteFailures;
-import io.fineo.schema.MapRecord;
+import io.fineo.lambda.dynamo.avro.AvroDynamoReader;
+import io.fineo.lambda.dynamo.avro.AvroToDynamoWriter;
 import io.fineo.schema.avro.AvroSchemaEncoder;
-import io.fineo.schema.avro.AvroSchemaManager;
 import io.fineo.schema.avro.SchemaTestUtils;
 import io.fineo.schema.store.SchemaStore;
 import org.apache.avro.generic.GenericRecord;
@@ -15,16 +16,13 @@ import org.junit.After;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.mockito.Mockito;
 import org.schemarepo.InMemoryRepository;
 import org.schemarepo.ValidatorFactory;
 
 import java.time.Instant;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
+import java.util.Arrays;
 import java.util.Properties;
-import java.util.UUID;
+import java.util.stream.Stream;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -65,7 +63,7 @@ public class TestAvroDynamoIO {
     String orgId = "orgid", orgMetric = "metricId";
     long ts = 10;
     SchemaStore store = new SchemaStore(new InMemoryRepository(ValidatorFactory.EMPTY));
-    GenericRecord record = SchemaTestUtils.createRandomRecord(store, "orgid", "metricId", 10, 1,
+    GenericRecord record = SchemaTestUtils.createRandomRecord(store, "orgid", "metricId", ts, 1,
       fieldCount).get(0);
 
     // setup the writer
@@ -87,15 +85,23 @@ public class TestAvroDynamoIO {
     readAndVerifyRecord(reader, orgId, orgMetric, Range.of(0, 100), record);
   }
 
-  private void readAndVerifyRecord(AvroDynamoReader reader, String orgId, String orgMetric,
+  private void readAndVerifyRecord(AvroDynamoReader reader, String orgId,
+    String orgMetric,
     Range<Instant> range, GenericRecord... records) {
     // ensure that the record we wrote matches what we created
-    Iterable<GenericRecord> iterable = reader.scan(orgId, orgMetric, range);
-    int count = 0;
-    for (GenericRecord read : iterable) {
-      GenericRecord written = records[count++];
-      assertEquals(written, read);
-    }
+    Stream<GenericRecord> stream = reader.scan(orgId, orgMetric, range);
+    int[] count = new int[1];
+    stream.forEach(record -> {
+      GenericRecord written = records[count[0]++];
+      // we don't store the alias field in the record, so we can't exactly match the base fields.
+      // Instead, we have to verify them by hand
+      BaseFields base = (BaseFields) written.get(AvroSchemaEncoder.BASE_FIELDS_KEY);
+      
+
+      // verify the non-base fields match
+
+      assertEquals(written, record);
+    });
     assertEquals(count, records.length);
   }
 }

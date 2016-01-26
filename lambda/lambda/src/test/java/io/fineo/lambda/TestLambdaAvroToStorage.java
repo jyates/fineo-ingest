@@ -4,7 +4,7 @@ import com.amazonaws.AmazonWebServiceRequest;
 import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
 import com.google.common.collect.Lists;
 import io.fineo.lambda.util.LambdaTestUtils;
-import io.fineo.lambda.dynamo.AvroToDynamoWriter;
+import io.fineo.lambda.dynamo.avro.AvroToDynamoWriter;
 import io.fineo.lambda.firehose.FirehoseBatchWriter;
 import io.fineo.lambda.aws.AwsAsyncRequest;
 import io.fineo.lambda.aws.MultiWriteFailures;

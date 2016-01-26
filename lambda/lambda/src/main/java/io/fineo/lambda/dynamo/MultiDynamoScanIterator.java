@@ -5,11 +5,16 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.amazonaws.services.dynamodbv2.model.ScanResult;
+import io.fineo.lambda.dynamo.avro.Schema;
 
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
+import java.util.function.BiFunction;
+import java.util.stream.Collectors;
 
 /**
  * Run multiple scans against (potentially) multiple dynamo DB tables.
@@ -23,14 +28,39 @@ public class MultiDynamoScanIterator implements Iterator<Map<String, AttributeVa
   private ResultOrException<Iterator<Map<String, AttributeValue>>> nextBatch;
   private Iterator<Map<String, AttributeValue>> next;
   private final List<ResultOrException<Iterator<Map<String, AttributeValue>>>> results;
+  private final List<Iterator> iterators;
 
-  public MultiDynamoScanIterator(AmazonDynamoDBAsyncClient client, List<ScanRequest> requests) {
+  public MultiDynamoScanIterator(AmazonDynamoDBAsyncClient client, List<FScanRequest> requests) {
     results = new LinkedList<>();
-    for (ScanRequest request : requests) {
+    iterators = new ArrayList<>(requests.size());
+    for (FScanRequest request : requests) {
       ResultOrException<Iterator<Map<String, AttributeValue>>> result = new ResultOrException<>();
+      iterators.add(new PagingIterator<>(10, new Scanner(result, client, request)));
       results.add(result);
-      client.scanAsync(request, new AsyncHandler<ScanRequest, ScanResult>() {
-        // TODO support paging results
+    }
+
+    // wait for the first iterator to return a result before done
+    next = getNext();
+  }
+
+  private class Scanner
+    implements BiFunction<Queue<Map<String, AttributeValue>>, PagingIterator<Map<String,
+    AttributeValue>>, Void> {
+    private final ResultOrException result;
+    private final AmazonDynamoDBAsyncClient client;
+    private final FScanRequest scan;
+    private boolean first = true;
+
+    public Scanner(ResultOrException result, AmazonDynamoDBAsyncClient client, FScanRequest scan) {
+      this.result = result;
+      this.client = client;
+      this.scan = scan;
+    }
+
+    @Override
+    public Void apply(Queue<Map<String, AttributeValue>> queue,
+      PagingIterator<Map<String, AttributeValue>> pagingIterator) {
+      client.scanAsync(scan.getScan(), new AsyncHandler<ScanRequest, ScanResult>() {
         @Override
         public void onError(Exception exception) {
           result.setException(exception);
@@ -38,13 +68,28 @@ public class MultiDynamoScanIterator implements Iterator<Map<String, AttributeVa
 
         @Override
         public void onSuccess(ScanRequest request, ScanResult scanResult) {
-          result.setResult(scanResult.getItems().iterator());
+          if (first) {
+            result.setResult(pagingIterator);
+            first = false;
+          }
+          // remove all the elements that are outside the range
+          List<Map<String, AttributeValue>> result = scanResult.getItems().stream().filter(
+            map -> map.get(Schema.PARTITION_KEY_NAME).getS().compareTo(scan.getStopKey()) < 0)
+                                                               .collect(Collectors.toList());
+          queue.addAll(result);
+          // we dropped off the end of the results that we care about
+          if (result.size() < scanResult.getCount() || scanResult.getLastEvaluatedKey().isEmpty()) {
+            pagingIterator.done();
+          }
+          // there may still be more results
+          else {
+            scan.setExclusiveStartKey(scanResult.getLastEvaluatedKey());
+          }
         }
-      });
-    }
 
-    // wait for the first channel to return a result before done
-    next = getNext();
+      });
+      return null;
+    }
   }
 
   private Iterator<Map<String, AttributeValue>> getNext() {

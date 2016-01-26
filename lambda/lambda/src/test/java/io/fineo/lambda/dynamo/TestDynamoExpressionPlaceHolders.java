@@ -2,6 +2,7 @@ package io.fineo.lambda.dynamo;
 
 import org.junit.Test;
 
+import java.util.Arrays;
 import java.util.Random;
 
 import static io.fineo.lambda.dynamo.DynamoExpressionPlaceHolders.asExpressionAttributeValue;

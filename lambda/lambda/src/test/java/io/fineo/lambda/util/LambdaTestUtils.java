@@ -3,15 +3,8 @@ package io.fineo.lambda.util;
 
 import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
 import com.fasterxml.jackson.jr.ob.JSON;
-import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
-import io.fineo.schema.avro.AvroRecordDecoder;
-import io.fineo.schema.avro.AvroSchemaEncoder;
-import io.fineo.schema.avro.RecordMetadata;
-import io.fineo.schema.avro.SchemaNameUtils;
 import io.fineo.schema.avro.SchemaTestUtils;
-import io.fineo.schema.store.SchemaStore;
-import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.mockito.Mockito;
@@ -19,12 +12,8 @@ import org.mockito.Mockito;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
-
-import static org.junit.Assert.assertTrue;
 
 public class LambdaTestUtils {
 

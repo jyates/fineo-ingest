@@ -1,4 +1,4 @@
-package io.fineo.lambda.dynamo;
+package io.fineo.lambda.dynamo.avro;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
@@ -11,14 +11,14 @@ import io.fineo.lambda.LambdaClientProperties;
 import io.fineo.lambda.aws.AwsAsyncRequest;
 import io.fineo.lambda.aws.AwsAsyncSubmitter;
 import io.fineo.lambda.aws.MultiWriteFailures;
+import io.fineo.lambda.dynamo.DynamoExpressionPlaceHolders;
+import io.fineo.lambda.dynamo.DynamoTableManager;
 import io.fineo.schema.avro.AvroSchemaEncoder;
 import io.fineo.schema.avro.RecordMetadata;
-import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -31,13 +31,6 @@ import java.util.Map;
  * simply linux timestamps (names required to match pattern: [a-zA-Z0-9_.-]+).
  * <p/>
  * <p>
- * The schema of the table is as follows:
- * <table>
- * <tr><th>Partition Key</th><th>Sort Key</th><th>Known Fields</th><th>Unknown Fields</th></tr>
- * <tr><td>[orgID]_[metricId]</td><td>[timestamp]</td><td>encoded as
- * type</td><td>string
- * encoded</td></tr>
- * </table>
  * Its assumed that we always know at least the orgID, if not also the schema canonical name.
  * Thus the partition key doesn't need a separator or length suffix.
  * <p/>
@@ -58,14 +51,6 @@ import java.util.Map;
 public class AvroToDynamoWriter {
   private static final Log LOG = LogFactory.getLog(AvroToDynamoWriter.class);
   private static final Joiner COMMAS = Joiner.on(',');
-  /**
-   * name of the column shortened (for speed) of "org ID" and "metric id"
-   */
-  static final String PARTITION_KEY_NAME = "oid_mid";
-  /**
-   * shortened for 'timestamp'
-   */
-  static final String SORT_KEY_NAME = "ts";
   // TODO replace with a schema ID so we can lookup the schema on read, if necessary
   private static final String MARKER = "marker";
 
@@ -118,14 +103,11 @@ public class AvroToDynamoWriter {
     String tableName = tables.getTableAndEnsureExists(fields.getTimestamp());
     request.setTableName(tableName);
 
-    request.addKeyEntry(PARTITION_KEY_NAME, getPartitionKey(metadata));
-    request.addKeyEntry(SORT_KEY_NAME, getSortKey(fields));
+    request.addKeyEntry(Schema.PARTITION_KEY_NAME, getPartitionKey(metadata));
+    request.addKeyEntry(Schema.SORT_KEY_NAME, getSortKey(fields));
 
     Map<String, List<String>> expressionBuilder = new HashMap<>();
     Map<String, AttributeValue> values = new HashMap<>();
-
-    // add a default field, just in case there are no fields in the record
-    setAttribute(MARKER, new AttributeValue("0"), expressionBuilder, values);
 
     // store the unknown fields from the base fields that we parsed
     Map<String, String> unknown = fields.getUnknownFields();
@@ -139,8 +121,14 @@ public class AvroToDynamoWriter {
           .filter(field -> !field.name().equals(AvroSchemaEncoder.BASE_FIELDS_KEY))
           .forEach(field -> {
             String name = field.name();
-            setAttribute(name, convertField(field, record.get(name)), expressionBuilder, values);
+            setAttribute(name, io.fineo.lambda.dynamo.avro.Schema
+              .convertField(field, record.get(name)), expressionBuilder, values);
           });
+
+    // add a default field, just in case there are no fields in the record
+    if (expressionBuilder.size() == 0) {
+      setAttribute(MARKER, new AttributeValue("0"), expressionBuilder, values);
+    }
 
     // convert each part of the expression into a single expression
     StringBuilder sb = new StringBuilder();
@@ -157,25 +145,6 @@ public class AvroToDynamoWriter {
     }
 
     return new AwsAsyncRequest<>(record, request);
-  }
-
-  private AttributeValue convertField(Schema.Field field, Object value) {
-    Schema.Type type = field.schema().getType();
-    switch (type) {
-      case STRING:
-        return new AttributeValue(String.valueOf(value));
-      case BYTES:
-        return new AttributeValue().withB(ByteBuffer.wrap((byte[]) value));
-      case INT:
-      case LONG:
-      case FLOAT:
-      case DOUBLE:
-        return new AttributeValue().withN(value.toString());
-      case BOOLEAN:
-        return new AttributeValue().withBOOL(Boolean.valueOf(value.toString()));
-      default:
-        return null;
-    }
   }
 
   private void setAttribute(String name, AttributeValue value, Map<String, List<String>> expression,
@@ -199,15 +168,8 @@ public class AvroToDynamoWriter {
     return new AttributeValue().withN(fields.getTimestamp().toString());
   }
 
-  static AttributeValue getSortKey(Long ts) {
-    return new AttributeValue().withN(ts.toString());
-  }
-
   private static AttributeValue getPartitionKey(RecordMetadata metadata) {
-    return getPartitionKey(metadata.getOrgID(), metadata.getMetricCanonicalType());
+    return Schema.getPartitionKey(metadata.getOrgID(), metadata.getMetricCanonicalType());
   }
 
-  static AttributeValue getPartitionKey(String orgID, String metricCanonicalName) {
-    return new AttributeValue(orgID + metricCanonicalName);
-  }
 }
