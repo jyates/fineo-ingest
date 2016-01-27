@@ -49,6 +49,7 @@ public class AwsAsyncSubmitter<S extends AmazonWebServiceRequest, R, B> {
   public void submit(AwsAsyncRequest<B, S> request) {
     UpdateItemHandler handler = new UpdateItemHandler(request);
     actions.add(handler);
+    LOG.info("REGISTER- Submitting request: "+request);
     phase.register();
     submit(handler);
   }
@@ -57,7 +58,7 @@ public class AwsAsyncSubmitter<S extends AmazonWebServiceRequest, R, B> {
     if (handler.attempts >= retries) {
       this.actions.remove(handler);
       this.failed.add(handler.request);
-      phase.arriveAndDeregister();
+      done("Actions exceeded retries");
       return;
     }
     client.submit(handler.getRequest(), handler);
@@ -65,13 +66,17 @@ public class AwsAsyncSubmitter<S extends AmazonWebServiceRequest, R, B> {
 
   public MultiWriteFailures<B> flush() {
     phase.register();
-    phase.awaitAdvance(phase.arriveAndDeregister());
+    phase.awaitAdvance(done("Flushing"));
     assert actions.size() == 0 :
       "Some outstanding actions, but phaser is done. Actions: " + actions;
     LOG.debug("All update actions completed!");
     return new MultiWriteFailures(failed);
   }
 
+  private int done(String msg){
+    LOG.info("DE-REGISTER: "+msg);
+    return phase.arriveAndDeregister();
+  }
 
   public class UpdateItemHandler implements AsyncHandler<S, R> {
 
@@ -99,7 +104,7 @@ public class AwsAsyncSubmitter<S extends AmazonWebServiceRequest, R, B> {
       // remove the request from the pending list because we were successful
       LOG.debug("Update success: " + this);
       actions.remove(this);
-      phase.arriveAndDeregister();
+      done("Completed update: "+this);
     }
 
     @Override

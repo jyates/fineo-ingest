@@ -22,4 +22,12 @@ public class AwsAsyncRequest<B, R extends AmazonWebServiceRequest> {
   public B getBaseRecord(){
     return this.base;
   }
+
+  @Override
+  public String toString() {
+    return "AwsAsyncRequest{" +
+           "base=" + base +
+           ", request=" + request +
+           '}';
+  }
 }

@@ -51,6 +51,16 @@ public class TestAvroDynamoIO {
   }
 
   @Test
+  public void testMultipleWrites() throws Exception {
+    readWriteRecord(5, 2);
+  }
+
+  @Test
+  public void testOutsidePageSizeNumberOfWrites() throws Exception {
+
+  }
+
+  @Test
   public void testRecordWithNoFields() throws Exception {
     readWriteRecord(0);
   }
@@ -60,14 +70,19 @@ public class TestAvroDynamoIO {
   }
 
   public void readWriteRecord(int fieldCount) throws Exception {
+    readWriteRecord(1, fieldCount);
+  }
+
+  public void readWriteRecord(int recordCount, int fieldCount) throws Exception {
     Properties prop = new Properties();
     dynamo.setConnectionProperties(prop);
 
     String orgId = "orgid", orgMetric = "metricId";
     long ts = 10;
     SchemaStore store = new SchemaStore(new InMemoryRepository(ValidatorFactory.EMPTY));
-    GenericRecord record = SchemaTestUtils.createRandomRecord(store, "orgid", "metricId", ts, 1,
-      fieldCount).get(0);
+    List<GenericRecord> records =
+      SchemaTestUtils.createRandomRecord(store, "orgid", "metricId", ts, recordCount,
+        fieldCount);
 
     // setup the writer
     LambdaClientProperties props = new LambdaClientProperties(prop);
@@ -75,7 +90,9 @@ public class TestAvroDynamoIO {
     AvroToDynamoWriter writer = AvroToDynamoWriter.create(props);
 
     // write it to dynamo and wait for a response
-    writer.write(record);
+    for (GenericRecord record : records) {
+      writer.write(record);
+    }
     MultiWriteFailures failures = writer.flush();
     assertFalse("There was a write failure", failures.any());
 
@@ -85,16 +102,25 @@ public class TestAvroDynamoIO {
     assertEquals(1, tables.getTableNames().size());
     AvroDynamoReader reader =
       new AvroDynamoReader(store, client, props.getDynamoIngestTablePrefix());
-    readAndVerifyRecord(reader, orgId, orgMetric, Range.of(0, 100), record);
+
+    // sort records by timestamp to ensure that we verify them correctly
+    records.sort((r1, r2) -> {
+      long ts1 = RecordMetadata.get(r1).getBaseFields().getTimestamp();
+      long ts2 = RecordMetadata.get(r2).getBaseFields().getTimestamp();
+      return Long.compare(ts1, ts2);
+    });
+
+    readAndVerifyRecords(reader, orgId, orgMetric, Range.of(0, 100),
+      records.toArray(new GenericRecord[0]));
   }
 
-  private void readAndVerifyRecord(AvroDynamoReader reader, String orgId,
+  private void readAndVerifyRecords(AvroDynamoReader reader, String orgId,
     String orgMetric,
     Range<Instant> range, GenericRecord... records) {
     // ensure that the record we wrote matches what we created
     List<GenericRecord> stream = reader.scan(orgId, orgMetric, range).collect(Collectors.toList());
     int[] count = new int[1];
-    for(GenericRecord actual: stream){
+    for (GenericRecord actual : stream) {
       assertTrue("More records read [next:" + actual + "than expected [" + records + "]",
         records.length > count[0]);
       GenericRecord expected = records[count[0]++];
