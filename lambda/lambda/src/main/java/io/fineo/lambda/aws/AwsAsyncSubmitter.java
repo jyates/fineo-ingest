@@ -36,55 +36,82 @@ public class AwsAsyncSubmitter<S extends AmazonWebServiceRequest, R, B> {
   private final long retries;
   private final Submitter<S, R> client;
 
-  private final Phaser phase = new Phaser();
+  private volatile Phaser phase = newPhaser();
   private final List<UpdateItemHandler> actions = Collections.synchronizedList(new ArrayList<>());
   private final List<AwsAsyncRequest<B, S>> failed =
     Collections.synchronizedList(new ArrayList<>(0));
 
   public AwsAsyncSubmitter(long retries, Submitter<S, R> client) {
+    if (retries < 0) {
+      retries = 1;
+    }
     this.retries = retries;
     this.client = client;
   }
 
   public void submit(AwsAsyncRequest<B, S> request) {
-    UpdateItemHandler handler = new UpdateItemHandler(request);
+    Phaser phase = this.phase;
+    UpdateItemHandler handler = new UpdateItemHandler(phase, request);
     actions.add(handler);
-    LOG.info("REGISTER- Submitting request: "+request);
-    phase.register();
+    register(phase, "Submitting request: " + request);
     submit(handler);
+  }
+
+  private void register(Phaser phase, String msg) {
+    int p = phase.register();
+    LOG.trace("REGISTER(" + p + ") - " + msg);
   }
 
   private void submit(UpdateItemHandler handler) {
     if (handler.attempts >= retries) {
       this.actions.remove(handler);
       this.failed.add(handler.request);
-      done("Actions exceeded retries");
+      done(handler.phaser, "Actions exceeded retries");
       return;
     }
+    LOG.trace("Resubmitting!");
     client.submit(handler.getRequest(), handler);
   }
 
+  /**
+   * Flush all writes that were submitted before calling {@link #flush()}. Some writes may still
+   * be outstanding after flush, if they were submitted on a different thread to <tt>thius</tt>.
+   *
+   * @return any failures that occurred
+   */
   public MultiWriteFailures<B> flush() {
-    phase.register();
-    phase.awaitAdvance(done("Flushing"));
-    assert actions.size() == 0 :
-      "Some outstanding actions, but phaser is done. Actions: " + actions;
-    LOG.debug("All update actions completed!");
+    Phaser phaser = this.phase;
+    this.phase = newPhaser();
+
+    register(phaser, "Flushing");
+    phaser.awaitAdvance(done(phaser, "Flushing - waiting advance"));
+    LOG.trace("Flushed completed => Advanced"); ;
     return new MultiWriteFailures(failed);
   }
 
-  private int done(String msg){
-    LOG.info("DE-REGISTER: "+msg);
-    return phase.arriveAndDeregister();
+  private static Phaser newPhaser() {
+    return new Phaser() {
+      protected boolean onAdvance(int phase, int parties) {
+        return false;
+      }
+    };
+  }
+
+  private int done(Phaser phaser, String msg) {
+    int p = phaser.arriveAndDeregister();
+    LOG.trace("DE-REGISTER(" + p + "): " + msg);
+    return p;
   }
 
   public class UpdateItemHandler implements AsyncHandler<S, R> {
 
+    private final Phaser phaser;
     private int attempts = 0;
 
     private final AwsAsyncRequest<B, S> request;
 
-    public UpdateItemHandler(AwsAsyncRequest<B, S> request) {
+    public UpdateItemHandler(Phaser phase, AwsAsyncRequest<B, S> request) {
+      this.phaser = phase;
       this.request = request;
     }
 
@@ -104,7 +131,7 @@ public class AwsAsyncSubmitter<S extends AmazonWebServiceRequest, R, B> {
       // remove the request from the pending list because we were successful
       LOG.debug("Update success: " + this);
       actions.remove(this);
-      done("Completed update: "+this);
+      done(this.phaser, "Completed update: " + this);
     }
 
     @Override
