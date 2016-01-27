@@ -16,7 +16,6 @@ import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 
 import java.nio.ByteBuffer;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -36,7 +35,7 @@ public class DynamoAvroRecordDecoder {
 
   private List<String> skippedFields = Lists.newArrayList(AvroSchemaEncoder
     .BASE_FIELDS_KEY, io.fineo.lambda.dynamo.avro.Schema.PARTITION_KEY_NAME, io.fineo.lambda
-    .dynamo.avro.Schema.SORT_KEY_NAME);
+    .dynamo.avro.Schema.SORT_KEY_NAME, io.fineo.lambda.dynamo.avro.Schema.MARKER);
   private Predicate<Schema.Field> retainedField = field -> !skippedFields.contains(field.name());
 
   public DynamoAvroRecordDecoder(SchemaStore store) {

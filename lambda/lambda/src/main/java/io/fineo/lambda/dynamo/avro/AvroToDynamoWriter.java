@@ -51,8 +51,6 @@ import java.util.Map;
 public class AvroToDynamoWriter {
   private static final Log LOG = LogFactory.getLog(AvroToDynamoWriter.class);
   private static final Joiner COMMAS = Joiner.on(',');
-  // TODO replace with a schema ID so we can lookup the schema on read, if necessary
-  private static final String MARKER = "marker";
 
   private final DynamoTableManager.DynamoTableWriter tables;
   private final AwsAsyncSubmitter<UpdateItemRequest, UpdateItemResult, GenericRecord> submitter;
@@ -127,7 +125,7 @@ public class AvroToDynamoWriter {
 
     // add a default field, just in case there are no fields in the record
     if (expressionBuilder.size() == 0) {
-      setAttribute(MARKER, new AttributeValue("0"), expressionBuilder, values);
+      setAttribute(Schema.MARKER, new AttributeValue("0"), expressionBuilder, values);
     }
 
     // convert each part of the expression into a single expression

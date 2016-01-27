@@ -52,7 +52,7 @@ public class TestAvroDynamoIO {
 
   @Test
   public void testRecordWithNoFields() throws Exception {
-    readWriteRecord(10);
+    readWriteRecord(0);
   }
 
   public void readWriteRecord() throws Exception {

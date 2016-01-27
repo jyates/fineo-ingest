@@ -33,6 +33,8 @@ public class Schema {
    */
   public static final String SORT_KEY_NAME = "ts";
   private static final Pair<List<KeySchemaElement>, List<AttributeDefinition>> SCHEMA;
+  // TODO replace with a schema ID so we can lookup the schema on read, if necessary
+  static final String MARKER = "marker";
 
   static {
     List<KeySchemaElement> schema = new ArrayList<>();
