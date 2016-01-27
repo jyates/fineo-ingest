@@ -5,9 +5,11 @@ import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import io.fineo.internal.customer.Metric;
 import io.fineo.lambda.dynamo.DynamoTableManager;
-import io.fineo.lambda.dynamo.FScanRequest;
-import io.fineo.lambda.dynamo.MultiDynamoScanIterator;
 import io.fineo.lambda.dynamo.Range;
+import io.fineo.lambda.dynamo.ResultOrException;
+import io.fineo.lambda.dynamo.iter.PageScanManager;
+import io.fineo.lambda.dynamo.iter.PagingIterator;
+import io.fineo.lambda.dynamo.iter.PagingScanRunner;
 import io.fineo.schema.Pair;
 import io.fineo.schema.avro.AvroSchemaManager;
 import io.fineo.schema.store.SchemaStore;
@@ -18,9 +20,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.BinaryOperator;
 import java.util.function.Function;
-import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -58,7 +58,7 @@ public class AvroDynamoReader {
     Metric metric = manager.getMetricInfo(aliasMetricName);
     String canonicalName = metric.getMetadata().getCanonicalName();
     AttributeValue partitionKey = Schema.getPartitionKey(orgId, canonicalName);
-    return scan(range, partitionKey, result -> decoder.decode(metric, result));
+    return scan(range, partitionKey, result -> decoder.decode(orgId, metric, result));
   }
 
   public Function<Instant, Map<String, AttributeValue>> getStartKeys(AttributeValue partitionKey) {
@@ -77,21 +77,23 @@ public class AvroDynamoReader {
     // get the potential tables that match the range
     List<Pair<String, Range<Instant>>> tables = tableManager.getExistingTableNames(range);
     // get a scan across each table
-    List<FScanRequest> requests = new ArrayList<>(tables.size());
+    List<PagingScanRunner> scanners = new ArrayList<>(tables.size());
 
-    String stop = stringPartitionKey.getS()+"0";
+    String stop = stringPartitionKey.getS() + "0";
     Function<Instant, Map<String, AttributeValue>> rangeCreator = getStartKeys(stringPartitionKey);
     for (Pair<String, Range<Instant>> table : tables) {
-      FScanRequest request = new FScanRequest(table.getKey());
+      ScanRequest request = new ScanRequest(table.getKey());
       request.setExclusiveStartKey(rangeCreator.apply(table.getValue().getStart()));
       request.setConsistentRead(true);
-      request.setStopKey(stop);
-      requests.add(request);
+      scanners.add(new PagingScanRunner(client, request, stop));
     }
 
     // create an iterable around all the requests
-    Iterable<Map<String, AttributeValue>> iter =
-      () -> new MultiDynamoScanIterator(client, requests);
-    return StreamSupport.stream(iter.spliterator(), false).map(translator);
+    Iterable<ResultOrException<Map<String, AttributeValue>>> iter =
+      () -> new PagingIterator<>(10, new PageScanManager(scanners));
+    return StreamSupport.stream(iter.spliterator(), false).map(re -> {
+      re.doThrow();
+      return re.getResult();
+    }).map(translator);
   }
 }

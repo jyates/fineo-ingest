@@ -9,12 +9,14 @@ import io.fineo.internal.customer.Metadata;
 import io.fineo.internal.customer.Metric;
 import io.fineo.schema.avro.AvroRecordTranslator;
 import io.fineo.schema.avro.AvroSchemaEncoder;
+import io.fineo.schema.avro.SchemaNameUtils;
 import io.fineo.schema.store.SchemaStore;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -35,7 +37,7 @@ public class DynamoAvroRecordDecoder {
   private List<String> skippedFields = Lists.newArrayList(AvroSchemaEncoder
     .BASE_FIELDS_KEY, io.fineo.lambda.dynamo.avro.Schema.PARTITION_KEY_NAME, io.fineo.lambda
     .dynamo.avro.Schema.SORT_KEY_NAME);
-  private Predicate<Schema.Field> isSkipField = field -> skippedFields.contains(field.name());
+  private Predicate<Schema.Field> retainedField = field -> !skippedFields.contains(field.name());
 
   public DynamoAvroRecordDecoder(SchemaStore store) {
     this.store = store;
@@ -48,11 +50,17 @@ public class DynamoAvroRecordDecoder {
     // skip past the org in the key
     String metricID = partitionKey.substring(orgId.length());
     Metric metric = store.getMetricMetadataFromAlias(org, metricID);
-    return decode(metric, row);
+    return decode(orgId, metric, row);
   }
 
-  public GenericRecord decode(Metric metric, Map<String, AttributeValue> row) {
-    Schema schema = parser.parse(metric.getMetricSchema());
+  public GenericRecord decode(String orgId, Metric metric, Map<String, AttributeValue> row) {
+    String schemaName =
+      SchemaNameUtils.getCustomerSchemaFullName(orgId, metric.getMetadata().getCanonicalName());
+
+    Schema schema = parser.getTypes().get(schemaName);
+    if(schema == null){
+      schema = parser.parse(metric.getMetricSchema());
+    }
     GenericData.Record record = new GenericData.Record(schema);
 
     // extract the base fields
@@ -65,18 +73,22 @@ public class DynamoAvroRecordDecoder {
     allFields.addAll(row.keySet());
 
     // set the remaining fields
-    schema.getFields().stream().filter(isSkipField.negate()).forEach(field -> {
+    schema.getFields().stream().filter(retainedField).forEach(field -> {
       String name = field.name();
       record.put(field.name(), cast(field, row.get(name)));
       allFields.remove(name);
     });
 
     // copy any hidden fields
-    Map<String, String> unknownFields = new HashMap<>(allFields.size());
-    allFields.stream().forEach(name -> {
+    int expectedSize = allFields.size() - skippedFields.size();
+    Map<String, String> unknownFields = new HashMap<>(expectedSize >= 0 ? expectedSize : 1);
+    for (String name : allFields) {
+      if (skippedFields.contains(name)) {
+        continue;
+      }
       String value = getFieldAsString(row.get(name));
       unknownFields.put(name, value);
-    });
+    }
     base.setUnknownFields(unknownFields);
 
     return record;

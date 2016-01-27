@@ -9,8 +9,10 @@ import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.lambda.dynamo.avro.AvroDynamoReader;
 import io.fineo.lambda.dynamo.avro.AvroToDynamoWriter;
 import io.fineo.schema.avro.AvroSchemaEncoder;
+import io.fineo.schema.avro.RecordMetadata;
 import io.fineo.schema.avro.SchemaTestUtils;
 import io.fineo.schema.store.SchemaStore;
+import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.junit.After;
 import org.junit.ClassRule;
@@ -20,12 +22,13 @@ import org.schemarepo.InMemoryRepository;
 import org.schemarepo.ValidatorFactory;
 
 import java.time.Instant;
-import java.util.Arrays;
+import java.util.List;
 import java.util.Properties;
-import java.util.stream.Stream;
+import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Test reading/writing avro records to dynamo
@@ -89,19 +92,36 @@ public class TestAvroDynamoIO {
     String orgMetric,
     Range<Instant> range, GenericRecord... records) {
     // ensure that the record we wrote matches what we created
-    Stream<GenericRecord> stream = reader.scan(orgId, orgMetric, range);
+    List<GenericRecord> stream = reader.scan(orgId, orgMetric, range).collect(Collectors.toList());
     int[] count = new int[1];
-    stream.forEach(record -> {
-      GenericRecord written = records[count[0]++];
+    for(GenericRecord actual: stream){
+      assertTrue("More records read [next:" + actual + "than expected [" + records + "]",
+        records.length > count[0]);
+      GenericRecord expected = records[count[0]++];
+      RecordMetadata actualMeta = RecordMetadata.get(actual);
+      RecordMetadata expectedMeta = RecordMetadata.get(expected);
+      assertEquals("Wrong orgID read", expectedMeta.getOrgID(), actualMeta.getOrgID());
+      assertEquals("Wrong canonical metric type read", expectedMeta.getMetricCanonicalType(),
+        actualMeta.getMetricCanonicalType());
+      assertEquals("Wrong schema read", expectedMeta.getMetricSchema(),
+        actualMeta.getMetricSchema());
       // we don't store the alias field in the record, so we can't exactly match the base fields.
       // Instead, we have to verify them by hand
-      BaseFields base = (BaseFields) written.get(AvroSchemaEncoder.BASE_FIELDS_KEY);
-      
+      BaseFields actualBase = actualMeta.getBaseFields();
+      BaseFields expectedBase = expectedMeta.getBaseFields();
+      assertEquals("Timestamp is wrong", expectedBase.getTimestamp(), actualBase.getTimestamp());
+      assertEquals("Unknown fields are wrong", expectedBase.getUnknownFields(), actualBase
+        .getUnknownFields());
 
       // verify the non-base fields match
-
-      assertEquals(written, record);
-    });
-    assertEquals(count, records.length);
+      Schema schema = expectedMeta.getMetricSchema();
+      schema.getFields().stream()
+            .filter(field -> !field.name().equals(AvroSchemaEncoder.BASE_FIELDS_KEY))
+            .forEach(field -> {
+              String name = field.name();
+              assertEquals(expected.get(name), actual.get(name));
+            });
+    }
+    assertEquals(count[0], records.length);
   }
 }
