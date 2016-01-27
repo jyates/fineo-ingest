@@ -28,12 +28,16 @@ public class PageScanManager implements BiConsumer<Queue<ResultOrException<Map<S
       iterator) {
     // get the next runner
     PagingScanRunner runner = null;
-    while (runners.size() > 0) {
+    while (runners.size() > 0 && runner == null) {
 
-      runner = runners.remove(0);
-      if (!runner.complete()) {
-        break;
+      // get the first runner with more data to read
+      PagingScanRunner next = runners.get(0);
+      // the scanner has no more data, remove the runner
+      if (next.complete()) {
+        runners.remove(0);
+        continue;
       }
+      runner = next;
     }
 
     // no more runners left, so no more results to page

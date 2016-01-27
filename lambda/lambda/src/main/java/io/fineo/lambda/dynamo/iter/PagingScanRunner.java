@@ -62,7 +62,6 @@ public class PagingScanRunner {
           scanResult.getItems().stream()
                     .filter(map -> map.get(Schema.PARTITION_KEY_NAME).getS().compareTo(stopKey) < 0)
                     .map(map -> new ResultOrException<>(map)).collect(Collectors.toList());
-        queue.addAll(result);
 
         // we dropped off the end of the results that we care about
         complete = result.size() < scanResult.getCount() ||
@@ -72,6 +71,8 @@ public class PagingScanRunner {
         if (!complete) {
           scan.setExclusiveStartKey(scanResult.getLastEvaluatedKey());
         }
+
+        queue.addAll(result);
       }
     });
   }

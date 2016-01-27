@@ -81,6 +81,7 @@ public class PagingIterator<T> extends AbstractIterator<T> {
   }
 
   public void done() {
+    // this doesn't close the request because we don't want any new requests started after we close
     if (this.closed)
       return;
     this.closed = true;
@@ -93,10 +94,9 @@ public class PagingIterator<T> extends AbstractIterator<T> {
   }
 
   private void makeRequest() {
-    if (!openRequest.compareAndSet(false, true)) {
-      // request is open, don't make a new one
-      return;
+    // make the request if we don't have any open request
+    if (openRequest.compareAndSet(false, true)) {
+      supplier.accept(items, this);
     }
-    supplier.accept(items, this);
   }
 }
