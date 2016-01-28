@@ -1,6 +1,7 @@
 package io.fineo.lambda.util;
 
 import io.fineo.lambda.LambdaClientProperties;
+import io.fineo.schema.avro.RecordMetadata;
 import io.fineo.schema.store.SchemaStore;
 
 import java.nio.ByteBuffer;
@@ -15,7 +16,7 @@ public interface ResourceManager {
 
   byte[] send(Map<String, Object> json) throws Exception;
 
-  default void cleanup() throws Exception{};
+  default void cleanup(EndtoEndSuccessStatus status) throws Exception{};
 
   List<ByteBuffer> getFirhoseWrites(String streamName);
 
@@ -23,5 +24,5 @@ public interface ResourceManager {
 
   SchemaStore getStore();
 
-  void verifyDynamoWrites(Map<String, Object> json);
+  void verifyDynamoWrites(RecordMetadata metadata, Map<String, Object> json);
 }

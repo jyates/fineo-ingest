@@ -52,10 +52,15 @@ public class AvroDynamoReader {
   public Stream<GenericRecord> scan(String orgId, String aliasMetricName, Range<Instant> range,
     ScanRequest baseRequest) {
     AvroSchemaManager manager = new AvroSchemaManager(store, orgId);
-    DynamoAvroRecordDecoder decoder = new DynamoAvroRecordDecoder(store);
     Metric metric = manager.getMetricInfo(aliasMetricName);
+    return scan(orgId, metric, range, baseRequest);
+  }
+
+  public Stream<GenericRecord> scan(String orgId, Metric metric, Range<Instant> range,
+    ScanRequest baseRequest){
     String canonicalName = metric.getMetadata().getCanonicalName();
     AttributeValue partitionKey = Schema.getPartitionKey(orgId, canonicalName);
+    DynamoAvroRecordDecoder decoder = new DynamoAvroRecordDecoder(store);
     return scan(range, partitionKey, result -> decoder.decode(orgId, metric, result),
       Optional.ofNullable(baseRequest));
   }

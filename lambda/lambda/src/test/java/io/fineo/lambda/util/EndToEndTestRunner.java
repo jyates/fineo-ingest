@@ -4,6 +4,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import io.fineo.lambda.LambdaClientProperties;
 import io.fineo.schema.avro.AvroSchemaEncoder;
+import io.fineo.schema.avro.RecordMetadata;
 import io.fineo.schema.avro.SchemaTestUtils;
 import io.fineo.schema.avro.TestRecordMetadata;
 import io.fineo.schema.store.SchemaStore;
@@ -17,6 +18,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -38,14 +40,16 @@ public class EndToEndTestRunner {
 
   private final LambdaClientProperties props;
   private final ResourceManager manager;
-  private final Progress progress;
+  private final ProgressTracker progress;
+  private final EndtoEndSuccessStatus status;
 
   public EndToEndTestRunner(LambdaClientProperties props, ResourceManager manager)
     throws Exception {
     this.props = props;
     this.manager = manager;
     manager.setup(props);
-    this.progress = new Progress(manager.getStore());
+    this.progress = new ProgressTracker(manager.getStore());
+    this.status = new EndtoEndSuccessStatus();
   }
 
   public static void updateSchemaStore(SchemaStore store, Map<String, Object> event)
@@ -63,19 +67,25 @@ public class EndToEndTestRunner {
     progress.sending(json);
 
     updateSchemaStore(progress.store, json);
+    this.status.updated();
 
     this.progress.sent(this.manager.send(json));
+    this.status.sent();
   }
 
   public void validate() throws Exception {
     validateRawRecordToAvro();
+    status.rawToAvroPassed();
 
     validateAvroToStorage();
+    status.avroToStoragePassed();
+
+    status.success();
   }
 
   private void validateRawRecordToAvro() throws IOException {
     // ensure that we didn't write any errors in the first stage
-    verifyNoStageErrors(RAW_PREFIX);
+    verifyNoStageErrors(RAW_PREFIX, bbs -> new String(combine(bbs).array()));
 
     List<ByteBuffer> archived = manager.getFirhoseWrites(props.getFirehoseStreamName(RAW_PREFIX,
       ARCHIVE));
@@ -85,21 +95,29 @@ public class EndToEndTestRunner {
     String expected = new String(progress.sent);
     String actual = new String(data.array());
     assertArrayEquals(
-      "Raw data sent\n[" + expected + "]\n and archive content\n[" + actual + "] don't match",
+      "---- Raw data ->\n[" + expected + "]\n----Archive content -> \n[" + actual + "] don't match",
       progress.sent, data.array());
 
     verifyAvroRecordsFromStream(manager.getKinesisWrites(props.getRawToStagedKinesisStreamName()));
   }
 
   private void validateAvroToStorage() throws IOException {
-    verifyNoStageErrors(STAGED_PREFIX);
+    verifyNoStageErrors(STAGED_PREFIX, bbs -> {
+      try {
+        return SchemaUtil.toString(readRecords(combine(bbs)));
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    });
 
     // archive should be exactly the avro formatted json record
-    verifyAvroRecordsFromStream(manager.getFirhoseWrites(props.getFirehoseStreamName(STAGED_PREFIX,
-      ARCHIVE)));
+    String stream = props.getFirehoseStreamName(STAGED_PREFIX, ARCHIVE);
+    verifyAvroRecordsFromStream(manager.getFirhoseWrites(stream));
+    status.firehoseStreamCorrect(stream);
 
     // verify that we wrote the right things to DynamoDB
-    manager.verifyDynamoWrites(progress.json);
+    RecordMetadata metadata = RecordMetadata.get(progress.avro);
+    manager.verifyDynamoWrites(metadata, progress.json);
   }
 
   private void verifyAvroRecordsFromStream(List<ByteBuffer> parsedBytes) throws IOException {
@@ -111,17 +129,20 @@ public class EndToEndTestRunner {
     // org/schema naming
     TestRecordMetadata.verifyRecordMetadataMatchesExpectedNaming(record);
     verifyRecordMatchesJson(progress.store, progress.json, record);
+    progress.avro = record;
   }
 
-  private void verifyNoStageErrors(String stage){
-    verifyNoFirehoseWrites(
+  private void verifyNoStageErrors(String stage, Function<List<ByteBuffer>, String> errorResult) {
+    verifyNoFirehoseWrites(errorResult,
       props.getFirehoseStreamName(stage, PROCESSING_ERROR),
       props.getFirehoseStreamName(stage, COMMIT_ERROR));
   }
 
-  private void verifyNoFirehoseWrites(String... streams) {
+  private void verifyNoFirehoseWrites(Function<List<ByteBuffer>, String> errorResult, String...
+    streams) {
     for (String stream : streams) {
-      empty(manager.getFirhoseWrites(stream));
+      empty(errorResult, manager.getFirhoseWrites(stream));
+      status.firehoseStreamCorrect(stream);
     }
   }
 
@@ -129,7 +150,10 @@ public class EndToEndTestRunner {
     List<GenericRecord> records = new ArrayList<>();
     FirehoseRecordReader<GenericRecord> recordReader =
       FirehoseRecordReader.create(data);
-    records.add(recordReader.next());
+    GenericRecord record = recordReader.next();
+    if (record != null) {
+      records.add(record);
+    }
     return records;
   }
 
@@ -141,12 +165,13 @@ public class EndToEndTestRunner {
     return combined;
   }
 
-  private void empty(List<ByteBuffer> records) {
-    assertEquals(Lists.newArrayList(), records);
+  private void empty(Function<List<ByteBuffer>, String> errorResult, List<ByteBuffer> records) {
+    String readable = errorResult.apply(records);
+    assertEquals("Found records: " + readable, Lists.newArrayList(), records);
   }
 
   public void cleanup() throws Exception {
-    this.manager.cleanup();
+    this.manager.cleanup(status);
   }
 
   public static void verifyRecordMatchesJson(SchemaStore store, Map<String, Object> json,
@@ -164,18 +189,19 @@ public class EndToEndTestRunner {
     });
   }
 
-  public static Stream<Map.Entry<String, Object>> filterJson(Map<String, Object> json){
+  public static Stream<Map.Entry<String, Object>> filterJson(Map<String, Object> json) {
     return json.entrySet()
-        .stream()
-        .filter(entry -> AvroSchemaEncoder.IS_BASE_FIELD.negate().test(entry.getKey()));
+               .stream()
+               .filter(entry -> AvroSchemaEncoder.IS_BASE_FIELD.negate().test(entry.getKey()));
   }
 
-  private class Progress {
+  private class ProgressTracker {
     private final SchemaStore store;
     private byte[] sent;
     private Map<String, Object> json;
+    public GenericRecord avro;
 
-    public Progress(SchemaStore store) {
+    public ProgressTracker(SchemaStore store) {
       this.store = store;
     }
 

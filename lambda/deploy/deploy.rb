@@ -97,7 +97,7 @@ end
 
 def runTest(opts)
   logging = opts.test_log ? "-Dtest.output.to.file=false" : ""
-  cmd = "mvn -f #{$lambda_validation} test -DallTests #{logging}"
+  cmd = "mvn -f #{$lambda_validation} clean test -DallTests #{logging}"
   puts "Running: #{cmd}" if opts.verbose
   system cmd
 end

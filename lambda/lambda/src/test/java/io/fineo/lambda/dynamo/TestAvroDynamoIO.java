@@ -3,13 +3,13 @@ package io.fineo.lambda.dynamo;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.amazonaws.services.dynamodbv2.model.ListTablesResult;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
-import com.google.common.base.Joiner;
 import io.fineo.aws.AwsDependentTests;
 import io.fineo.internal.customer.BaseFields;
 import io.fineo.lambda.LambdaClientProperties;
 import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.lambda.dynamo.avro.AvroDynamoReader;
 import io.fineo.lambda.dynamo.avro.AvroToDynamoWriter;
+import io.fineo.lambda.util.SchemaUtil;
 import io.fineo.schema.avro.AvroSchemaEncoder;
 import io.fineo.schema.avro.RecordMetadata;
 import io.fineo.schema.avro.SchemaTestUtils;
@@ -185,9 +185,9 @@ public class TestAvroDynamoIO {
       int[] count = new int[1];
       for (GenericRecord actual : stream) {
         assertTrue(
-          "More records read than expected \nexpected:" + TestAvroDynamoIO.toString(expected) +
+          "More records read than expected \nexpected:" + SchemaUtil.toString(expected) +
           "\n --------------------- \n " +
-          "actual:" + TestAvroDynamoIO.toString(stream),
+          "actual:" + SchemaUtil.toString(stream),
           expected.size() > count[0]);
         GenericRecord expected = this.expected.get(count[0]++);
         RecordMetadata actualMeta = RecordMetadata.get(actual);
@@ -235,21 +235,4 @@ public class TestAvroDynamoIO {
         range);
   }
 
-  public static String toString(List<GenericRecord> records) {
-    return "[" + Joiner.on(',')
-                       .join(records.stream().map(TestAvroDynamoIO::toString).toArray()) + "]";
-  }
-
-  private static String toString(GenericRecord record) {
-    StringBuffer sb = new StringBuffer("GR:{");
-    Schema s = record.getSchema();
-    sb.append("\nschema: " + s);
-    sb.append("\n\t{\n");
-    s.getFields().forEach(field -> {
-      sb.append(field.name() + " -> " + record.get(field.name()) + "\n");
-    });
-    sb.append("\t}");
-    sb.append("}");
-    return sb.toString();
-  }
 }

@@ -106,7 +106,7 @@ public class LambdaClientProperties {
     AmazonDynamoDBClient client = getDynamo();
     LOG.debug("Got dynamo client");
     CreateTableRequest create =
-      DynamoDBRepository.getBaseTableCreate(props.getProperty(DYNAMO_SCHEMA_STORE_TABLE));
+      DynamoDBRepository.getBaseTableCreate(getSchemaStoreTable());
     create.setProvisionedThroughput(new ProvisionedThroughput()
       .withReadCapacityUnits(getDynamoReadMax())
       .withWriteCapacityUnits(getDynamoWriteMax()));
@@ -115,6 +115,11 @@ public class LambdaClientProperties {
       new DynamoDBRepository(new ValidatorFactory.Builder().build(), client, create);
     LOG.debug("created schema repository");
     return new SchemaStore(repo);
+  }
+
+  @VisibleForTesting
+  public String getSchemaStoreTable(){
+    return props.getProperty(DYNAMO_SCHEMA_STORE_TABLE);
   }
 
   public AmazonKinesisAsyncClient getKinesisClient() {

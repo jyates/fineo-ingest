@@ -7,6 +7,7 @@ import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.lambda.dynamo.avro.AvroToDynamoWriter;
 import io.fineo.lambda.firehose.FirehoseBatchWriter;
 import io.fineo.lambda.util.ResourceManager;
+import io.fineo.schema.avro.RecordMetadata;
 import io.fineo.schema.store.SchemaStore;
 import org.apache.avro.generic.GenericRecord;
 import org.mockito.Mockito;
@@ -93,7 +94,7 @@ public class MockResourceManager implements ResourceManager {
   }
 
   @Override
-  public void verifyDynamoWrites(Map<String, Object> json) {
+  public void verifyDynamoWrites(RecordMetadata metadata, Map<String, Object> json) {
     assertEquals(1, dynamoWrites.size());
     verifyRecordMatchesJson(store, json, dynamoWrites.get(0));
   }

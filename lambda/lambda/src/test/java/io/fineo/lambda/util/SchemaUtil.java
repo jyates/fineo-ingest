@@ -1,10 +1,13 @@
 package io.fineo.lambda.util;
 
+import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import io.fineo.internal.customer.Metric;
+import io.fineo.lambda.dynamo.TestAvroDynamoIO;
 import io.fineo.schema.avro.AvroSchemaEncoder;
 import io.fineo.schema.avro.RecordMetadata;
 import io.fineo.schema.store.SchemaStore;
+import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 
 import java.util.List;
@@ -21,6 +24,24 @@ public class SchemaUtil {
   public SchemaUtil(SchemaStore store, GenericRecord record){
     this.store = store;
     read(record);
+  }
+
+  public static String toString(List<GenericRecord> records) {
+    return "[" + Joiner.on(',')
+                       .join(records.stream().map(SchemaUtil::toString).toArray()) + "]";
+  }
+
+  private static String toString(GenericRecord record) {
+    StringBuffer sb = new StringBuffer("GR:{");
+    Schema s = record.getSchema();
+    sb.append("\nschema: " + s);
+    sb.append("\n\t{\n");
+    s.getFields().forEach(field -> {
+      sb.append(field.name() + " -> " + record.get(field.name()) + "\n");
+    });
+    sb.append("\t}");
+    sb.append("}");
+    return sb.toString();
   }
 
   public void read(GenericRecord record) {

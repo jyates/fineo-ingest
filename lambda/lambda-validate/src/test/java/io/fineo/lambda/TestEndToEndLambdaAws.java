@@ -44,7 +44,7 @@ public class TestEndToEndLambdaAws {
     if (this.runner != null) {
       this.runner.cleanup();
     } else {
-      this.manager.cleanup();
+      this.manager.cleanup(null);
     }
   }
 
