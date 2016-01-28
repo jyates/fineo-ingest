@@ -94,7 +94,7 @@ public class EndToEndTestRunner {
     // ensure the bytes match from the archived/sent
     String expected = new String(progress.sent);
     String actual = new String(data.array());
-    assertArrayEquals(
+    assertArrayEquals("Validating archived vs stored data in raw -> avro\n"+
       "---- Raw data ->\n[" + expected + "]\n----Archive content -> \n[" + actual + "] don't match",
       progress.sent, data.array());
 

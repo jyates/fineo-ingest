@@ -33,9 +33,6 @@ import com.amazonaws.services.s3.model.S3ObjectSummary;
 import com.amazonaws.util.IOUtils;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
-import com.google.common.util.concurrent.FutureCallback;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
 import io.fineo.aws.rule.AwsCredentialResource;
@@ -67,7 +64,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.function.Supplier;
@@ -139,7 +135,7 @@ public class AwsResourceManager implements ResourceManager {
   public void setup(LambdaClientProperties props) throws Exception {
     this.props = props;
     SchemaStore[] storeRef = new SchemaStore[1];
-    FutureWaiter future = new FutureWaiter();
+    FutureWaiter future = new FutureWaiter(executor);
     future.run(() -> {
       SchemaStore store = props.createSchemaStore();
       storeRef[0] = store;
@@ -281,7 +277,8 @@ public class AwsResourceManager implements ResourceManager {
       // first time, but after that all writes should have been flushed, so we just read it
       // immediately
       .withTimeout(firstS3FlushWait ? 2 * ONE_MINUTE : ONE_SECOND + 1)
-      .withDescription("Firehose -> s3 [" + (s3BucketName + prefix) + "] write; expected: ~60sec")
+      .withDescription("Firehose -> s3 [" + s3BucketName + "/" + prefix + "] write; expected: "
+                       + "~60sec")
       .withStatus(() -> {
         ObjectListing listing = lister.get();
         lists[0] = listing;
@@ -407,6 +404,7 @@ public class AwsResourceManager implements ResourceManager {
     // successful
     List<String> ignoredPrefixes = Lists.newArrayList(firehosesToS3.values());
     if (status.isRawToAvroSuccessful()) {
+      LOG.debug("Raw -> Avro successful - cleaning up all endpoints");
       for (String path : rawToAvroS3) {
         ignoredPrefixes.remove(path);
         delete(s3(), path);
@@ -422,6 +420,7 @@ public class AwsResourceManager implements ResourceManager {
     }
 
     if (status.isAvroToStorageSuccessful()) {
+      LOG.debug("Avro -> Storage successful - cleaning up all endpoints");
       for (String path : avroToStoreS3) {
         ignoredPrefixes.remove(path);
         delete(s3(), path);
@@ -439,8 +438,10 @@ public class AwsResourceManager implements ResourceManager {
     }
 
     LOG.error("There were some S3 locations that were not deleted because they contain failed "
-              + "test information! Locations: " + ignoredPrefixes.stream().map(p ->
-      s3BucketName + "/" + p).reduce("", (result, next) -> result + ",\n"));
+              + "test information! Locations: " + ignoredPrefixes
+                .stream()
+                .map(p -> s3BucketName + "/" + p)
+                .reduce("", (result, next) -> result == "" ? next : result + ",\n" + next));
   }
 
   /**
@@ -455,13 +456,14 @@ public class AwsResourceManager implements ResourceManager {
   private String deleteFirehoseS3BucketIfSuccessful(String prefix, LambdaClientProperties
     .StreamType type, EndtoEndSuccessStatus status) {
     String firehose = props.getFirehoseStreamName(prefix, type);
+    String path = firehosesToS3.get(firehose);
 
     if (!status.getCorrectFirehoses().contains(firehose)) {
+      LOG.debug("Firehose: " + firehose + " was not successful, retaining up endpoint: " + path);
       return null;
     }
 
-    // delete the path because it was successful
-    String path = firehosesToS3.get(firehose);
+    LOG.debug("DELETE:" + firehose + " -> " + path);
     delete(s3(), path);
     return path;
   }
@@ -494,7 +496,7 @@ public class AwsResourceManager implements ResourceManager {
   }
 
   private void cleanupBasicResources() throws InterruptedException {
-    FutureWaiter futures = new FutureWaiter();
+    FutureWaiter futures = new FutureWaiter(executor);
     //dynamo
     futures.run(() -> deleteDynamoTables(props.getSchemaStoreTable()));
 
@@ -530,33 +532,6 @@ public class AwsResourceManager implements ResourceManager {
       });
     });
     futures.await();
-  }
-
-  private class FutureWaiter {
-    private List<ListenableFuture> futures = new ArrayList<>();
-
-    public void run(Runnable r) {
-      ListenableFuture future = executor.submit(r);
-      this.futures.add(future);
-    }
-
-    public void await() throws InterruptedException {
-      CountDownLatch latch = new CountDownLatch(futures.size());
-      for (ListenableFuture f : futures) {
-        Futures.addCallback(f, new FutureCallback() {
-          @Override
-          public void onSuccess(Object result) {
-            latch.countDown();
-          }
-
-          @Override
-          public void onFailure(Throwable t) {
-            latch.countDown();
-          }
-        });
-      }
-      latch.await();
-    }
   }
 
   private void deleteDynamoTables(String tableNamesPrefix) {
