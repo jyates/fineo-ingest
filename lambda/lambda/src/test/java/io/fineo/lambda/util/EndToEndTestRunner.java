@@ -142,6 +142,7 @@ public class EndToEndTestRunner {
     streams) {
     for (String stream : streams) {
       empty(errorResult, manager.getFirhoseWrites(stream));
+      LOG.debug("Marking stream: "+stream+" correct");
       status.firehoseStreamCorrect(stream);
     }
   }

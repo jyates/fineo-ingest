@@ -41,8 +41,11 @@ $options = {
   :dynamo_retries => Pair.new("3", "dynamo.limit.retries")
 }
 
-test_properties = [:schema_table, :ingest_prefix, :parsed, :raw_archive, :raw_error, :raw_malformed,
-:staged_archive, :staged_error_dynamo, :staged_error]
+test_properties = [:schema_table, :ingest_prefix, :parsed, :raw_archive, :staged_archive]
+# Firehose name used for all 'error' firehoses when we are building a test deployment. This helps
+# us get under the firehose limit but doesn't loose any clarity.
+test_firehose_name=failed-records-test
+test_firehoses_rename = [:raw_error, :raw_malformed, :staged_error_dynamo, :staged_error]
 
 # set pair value at option[ref]
 def set(ref, value)
@@ -136,22 +139,25 @@ end
 
 parser.parse!
 
-def test_fix(name)
+def test_fix(prefix, name)
   val = $options[name].one
-  "#{$test_prefix}#{val}"
+  "#{prefix}#{val}"
 end
 
 unless $config.test.nil?
-  $test_prefix = "test-#{$config.test}-"
+  test_prefix = "test-#{$config.test}-"
 
   # store the test prefix so we can use it for testing
   test_key = :"integration.test.prefix"
-  puts "Setting #{test} = #{$test_prefix}" if $config.verbose2
-  $options[test_key] = Pair.new($test_prefix, test_key)
+  puts "Setting #{test} = #{test_prefix}" if $config.verbose2
+  $options[test_key] = Pair.new(test_prefix, test_key)
 
   # update the parameters
   test_properties.each{|property|
-    set property, test_fix(property)
+    set property, test_fix(test_prefix, property)
+  }
+  test_firehoses_rename.each{|property|
+    set property, "#{test_prefix}#{test_firehose_name}"
   }
 end
 

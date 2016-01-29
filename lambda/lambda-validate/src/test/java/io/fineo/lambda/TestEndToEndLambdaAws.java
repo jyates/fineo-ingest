@@ -21,8 +21,6 @@ import java.util.Map;
 @Category(AwsDependentTests.class)
 public class TestEndToEndLambdaAws {
 
-  private static final Log LOG = LogFactory.getLog(TestEndToEndLambdaAws.class);
-
   @ClassRule
   public static AwsCredentialResource awsCredentials = new AwsCredentialResource();
 

@@ -1,9 +1,9 @@
-package io.fineo.lambda;
+package io.fineo.lambda.util;
 
 /**
  * A {@link java.util.function.Supplier} that can also throw an exception
  */
 @FunctionalInterface
-interface ThrowingSupplier<T> {
+public interface ThrowingSupplier<T> {
   T a() throws Exception;
 }

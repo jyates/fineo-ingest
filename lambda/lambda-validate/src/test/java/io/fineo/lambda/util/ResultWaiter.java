@@ -1,7 +1,7 @@
-package io.fineo.lambda;
+package io.fineo.lambda.util;
 
-import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
 import com.google.common.base.Preconditions;
+import io.fineo.lambda.TestProperties;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -11,22 +11,19 @@ import java.util.function.Supplier;
 /**
  *
  */
-class ResultWaiter<RESULT> {
+public class ResultWaiter<RESULT> {
   private static final Log LOG = LogFactory.getLog(ResultWaiter.class);
-  private long timeoutMs = AwsResourceManager.THREE_HUNDRED_SECONDS;
-  private long intervalMs = AwsResourceManager.ONE_SECOND;
+  private long timeoutMs = TestProperties.THREE_HUNDRED_SECONDS;
+  private long intervalMs = TestProperties.ONE_SECOND;
   private String description;
   private Supplier<RESULT> status;
   private Predicate<RESULT> statusCheck;
+  private RESULT lastStatus;
 
   /**
    * Do the action and return the result or return null if an exception is thrown
-   *
-   * @param t
-   * @param <T>
-   * @return
    */
-  static <T> T doOrNull(ThrowingSupplier<T> t) {
+  public static <T> T doOrNull(ThrowingSupplier<T> t) {
     try {
       return t.a();
     } catch (Exception e) {
@@ -79,17 +76,26 @@ class ResultWaiter<RESULT> {
   }
 
   private boolean run() throws InterruptedException {
-    if (intervalMs > 0 && intervalMs < timeoutMs) {
+    if (intervalMs > 0 && intervalMs <= timeoutMs) {
       LOG.info(
         "Waiting for [" + description + "]. Max wait: " + timeoutMs / 1000 + "s");
       long startTime = System.currentTimeMillis();
-      long endTime = startTime + (long) timeoutMs;
-      for (; System.currentTimeMillis() < endTime; Thread.sleep((long) intervalMs)) {
+      long endTime = startTime + timeoutMs;
+      for (int i = 0; System.currentTimeMillis() < endTime && i > 0;
+           Thread.sleep(intervalMs), i++) {
         try {
-          if (statusCheck.test(status.get())) {
+          lastStatus = status.get();
+          if (statusCheck.test(lastStatus)) {
+            LOG.info("Finished waiting for: " + description + ". Elapsed: " +
+                     ((System.currentTimeMillis() - startTime) / 1000.0) + "s");
             return true;
           }
-        } catch (ResourceNotFoundException var11) {
+        } catch (Exception e) {
+          LOG.warn("[" + description + "] Got exception, but ignoring it...", e);
+          // ignore
+        }
+        if ((i % 10) == 0) {
+          LOG.info("(" + i + ") Waiting [" + description + "]");
         }
       }
       LOG.warn(String.format("Resource [%s] didn't not become active/created within %d sec!",
@@ -103,5 +109,10 @@ class ResultWaiter<RESULT> {
   private void validate() {
     Preconditions.checkArgument(status != null, "Must have a status supplier");
     Preconditions.checkArgument(statusCheck != null, "Must have some status check");
+  }
+
+
+  public RESULT getLastStatus() {
+    return lastStatus;
   }
 }
