@@ -44,7 +44,7 @@ $options = {
 test_properties = [:schema_table, :ingest_prefix, :parsed, :raw_archive, :staged_archive]
 # Firehose name used for all 'error' firehoses when we are building a test deployment. This helps
 # us get under the firehose limit but doesn't loose any clarity.
-test_firehose_name=failed-records-test
+test_firehose_name="failed-records"
 test_firehoses_rename = [:raw_error, :raw_malformed, :staged_error_dynamo, :staged_error]
 
 # set pair value at option[ref]

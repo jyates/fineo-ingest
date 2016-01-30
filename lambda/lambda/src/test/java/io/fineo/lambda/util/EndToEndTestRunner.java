@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -94,11 +95,13 @@ public class EndToEndTestRunner {
     // ensure the bytes match from the archived/sent
     String expected = new String(progress.sent);
     String actual = new String(data.array());
-    assertArrayEquals("Validating archived vs stored data in raw -> avro\n"+
-      "---- Raw data ->\n[" + expected + "]\n----Archive content -> \n[" + actual + "] don't match",
+    assertArrayEquals("Validating archived vs stored data in raw -> avro\n" +
+                      "---- Raw data ->\n[" + expected + "]\n----Archive content -> \n[" + actual
+                      + "] don't match",
       progress.sent, data.array());
 
-    verifyAvroRecordsFromStream(manager.getKinesisWrites(props.getRawToStagedKinesisStreamName()));
+    String stream = props.getRawToStagedKinesisStreamName();
+    verifyAvroRecordsFromStream(stream, () -> manager.getKinesisWrites(stream));
   }
 
   private void validateAvroToStorage() throws IOException {
@@ -112,18 +115,21 @@ public class EndToEndTestRunner {
 
     // archive should be exactly the avro formatted json record
     String stream = props.getFirehoseStreamName(STAGED_PREFIX, ARCHIVE);
-    verifyAvroRecordsFromStream(manager.getFirhoseWrites(stream));
-    status.firehoseStreamCorrect(stream);
+    verifyAvroRecordsFromStream(stream, () -> manager.getFirhoseWrites(stream));
+    status.firehoseStreamCorrect(STAGED_PREFIX, ARCHIVE);
 
     // verify that we wrote the right things to DynamoDB
     RecordMetadata metadata = RecordMetadata.get(progress.avro);
     manager.verifyDynamoWrites(metadata, progress.json);
   }
 
-  private void verifyAvroRecordsFromStream(List<ByteBuffer> parsedBytes) throws IOException {
+  private void verifyAvroRecordsFromStream(String stream, Supplier<List<ByteBuffer>> bytes)
+    throws IOException {
+    List<ByteBuffer> parsedBytes = bytes.get();
     // read the parsed avro records
     List<GenericRecord> parsedRecords = readRecords(combine(parsedBytes));
-    assertEquals("Got unexpected number of records: " + parsedRecords, 1, parsedRecords.size());
+    assertEquals("["+stream+"] Got unexpected number of records: " + parsedRecords, 1,
+      parsedRecords.size());
     GenericRecord record = parsedRecords.get(0);
 
     // org/schema naming
@@ -133,17 +139,15 @@ public class EndToEndTestRunner {
   }
 
   private void verifyNoStageErrors(String stage, Function<List<ByteBuffer>, String> errorResult) {
-    verifyNoFirehoseWrites(errorResult,
-      props.getFirehoseStreamName(stage, PROCESSING_ERROR),
-      props.getFirehoseStreamName(stage, COMMIT_ERROR));
+    verifyNoFirehoseWrites(errorResult, stage, PROCESSING_ERROR, COMMIT_ERROR);
   }
 
-  private void verifyNoFirehoseWrites(Function<List<ByteBuffer>, String> errorResult, String...
-    streams) {
-    for (String stream : streams) {
-      empty(errorResult, manager.getFirhoseWrites(stream));
-      LOG.debug("Marking stream: "+stream+" correct");
-      status.firehoseStreamCorrect(stream);
+  private void verifyNoFirehoseWrites(Function<List<ByteBuffer>, String> errorResult, String stage,
+    LambdaClientProperties.StreamType... streams) {
+    for (LambdaClientProperties.StreamType stream : streams) {
+      empty(errorResult, manager.getFirhoseWrites(props.getFirehoseStreamName(stage, stream)));
+      LOG.debug("Marking stream: " + stage + "-" + stream + " correct");
+      status.firehoseStreamCorrect(stage, stream);
     }
   }
 

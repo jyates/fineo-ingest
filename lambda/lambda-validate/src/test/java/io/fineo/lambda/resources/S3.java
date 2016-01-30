@@ -7,19 +7,22 @@ import com.amazonaws.services.s3.model.ObjectListing;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import java.io.File;
+import java.nio.file.DirectoryStream;
+
 /**
  * Helper to delete things from s3
  */
-public class S3Delete {
-  private static final Log LOG = LogFactory.getLog(S3Delete.class);
+public class S3 {
+  private static final Log LOG = LogFactory.getLog(S3.class);
   private final AmazonS3Client s3;
   private String bucket;
 
-  public S3Delete(AWSCredentialsProvider cred) {
+  public S3(AWSCredentialsProvider cred) {
     this.s3 = new AmazonS3Client(cred);
   }
 
-  public S3Delete withBucket(String bucket) {
+  public S3 withBucket(String bucket) {
     this.bucket = bucket;
     return this;
   }
@@ -43,5 +46,9 @@ public class S3Delete {
     ObjectListing meta = s3.listObjects(bucket, prefix);
     assert meta.getObjectSummaries().size() == 0 :
       "Got some left over entries: " + meta.getObjectSummaries();
+  }
+
+  public void clone(String prefix, File localDir){
+
   }
 }

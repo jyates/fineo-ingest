@@ -1,5 +1,8 @@
 package io.fineo.lambda.util;
 
+import io.fineo.lambda.LambdaClientProperties;
+import io.fineo.schema.Pair;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -9,7 +12,8 @@ import java.util.List;
 public class EndtoEndSuccessStatus {
   private boolean updated;
   private boolean messageSent;
-  private List<String> correctFirehoses = new ArrayList<>();
+  private List<Pair<String, LambdaClientProperties.StreamType>> correctFirehoses = new
+    ArrayList<>();
   private boolean rawToAvro;
   private boolean avroToStorage;
   private boolean successful;
@@ -22,8 +26,8 @@ public class EndtoEndSuccessStatus {
     this.messageSent = true;
   }
 
-  public void firehoseStreamCorrect(String stream) {
-    this.correctFirehoses.add(stream);
+  public void firehoseStreamCorrect(String stream, LambdaClientProperties.StreamType type) {
+    this.correctFirehoses.add(new Pair<>(stream, type));
   }
 
   public void rawToAvroPassed() {
@@ -34,15 +38,24 @@ public class EndtoEndSuccessStatus {
     this.avroToStorage = true;
   }
 
+  /**
+   * Setup check.
+   * @return <tt>true</tt> if the schema store was updated with the correct information for the
+   * record
+   */
   public boolean isUpdateStoreCorrect() {
     return updated;
   }
 
+  /**
+   * Setup check
+   * @return <tt>true</tt> if the manager reported that the message was sent successfully
+   */
   public boolean isMessageSent() {
     return messageSent;
   }
 
-  public List<String> getCorrectFirehoses() {
+  public List<Pair<String, LambdaClientProperties.StreamType>> getCorrectFirehoses() {
     return correctFirehoses;
   }
 

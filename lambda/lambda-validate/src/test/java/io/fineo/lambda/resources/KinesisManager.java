@@ -25,12 +25,24 @@ import io.fineo.lambda.util.ResultWaiter;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import java.io.BufferedOutputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.Channel;
+import java.nio.channels.Channels;
+import java.nio.channels.WritableByteChannel;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import static junit.framework.TestCase.assertTrue;
 
 /**
  * Manage interactions with Kinesis streams
@@ -55,12 +67,11 @@ public class KinesisManager {
     this.region = region;
     this.kinesis = getKinesis();
     String streamName = props.getRawToStagedKinesisStreamName();
-
-    setupKinesisStreams(streamName);
     String arn = String.format(TestProperties.Kinesis.KINESIS_STREAM_ARN_TO_FORMAT, region,
       props.getRawToStagedKinesisStreamName());
     kinesisStreams.put(streamName, arn);
-    LOG.debug("Kinesis stream setup!");
+
+    assertTrue("Kinesis did not get setup within time limit", setupKinesisStreams(streamName));
 
     linkStreamToLambda(arn);
     LOG.debug("Kinesis setup complete!");
@@ -89,13 +100,13 @@ public class KinesisManager {
     LOG.info("Created event mapping: " + result);
   }
 
-  private void setupKinesisStreams(String stream) {
+  private boolean setupKinesisStreams(String stream) {
     CreateStreamRequest createStreamRequest = new CreateStreamRequest();
     createStreamRequest.setStreamName(stream);
     createStreamRequest.setShardCount(TestProperties.Kinesis.SHARD_COUNT);
     kinesis.createStream(createStreamRequest);
-    new ResultWaiter<>()
-      .withDescription("Create Kinesis stream:" + stream)
+    return new ResultWaiter<>()
+      .withDescription("Kinesis stream:" + stream + " activation")
       .withStatus(() -> {
         DescribeStreamRequest describeStreamRequest = new DescribeStreamRequest();
         describeStreamRequest.setStreamName(stream);
@@ -139,5 +150,9 @@ public class KinesisManager {
       futures.run(() ->
         lambda.deleteEventSourceMapping(new DeleteEventSourceMappingRequest().withUUID(uuid)));
     }
+  }
+
+  public void clone(String streamName, File dir) throws IOException {
+    ResourceUtils.writeStream(streamName, dir, () -> this.getWrites(streamName));
   }
 }

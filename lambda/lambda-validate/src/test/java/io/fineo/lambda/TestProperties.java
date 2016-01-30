@@ -2,6 +2,7 @@ package io.fineo.lambda;
 
 import com.google.common.collect.Lists;
 
+import java.time.Duration;
 import java.util.List;
 
 /**
@@ -9,9 +10,9 @@ import java.util.List;
  */
 public class TestProperties {
 
-  public static final int ONE_SECOND = 1000;
-  public static final int THREE_HUNDRED_SECONDS = 3 * 100 * ONE_SECOND;
-  public static final int ONE_MINUTE = ONE_SECOND * 60;
+  public static final long ONE_SECOND = Duration.ofSeconds(1).toMillis();
+  public static final long FIVE_MINUTES = Duration.ofMinutes(5).toMillis();
+  public static final long ONE_MINUTE = Duration.ofMinutes(1).toMillis();
 
   public static class Firehose{
 

@@ -8,6 +8,8 @@ import com.amazonaws.services.kinesisfirehose.model.CreateDeliveryStreamRequest;
 import com.amazonaws.services.kinesisfirehose.model.DeleteDeliveryStreamRequest;
 import com.amazonaws.services.kinesisfirehose.model.DescribeDeliveryStreamRequest;
 import com.amazonaws.services.kinesisfirehose.model.DescribeDeliveryStreamResult;
+import com.amazonaws.services.kinesisfirehose.model.ResourceInUseException;
+import com.amazonaws.services.kinesisfirehose.model.ResourceNotFoundException;
 import com.amazonaws.services.kinesisfirehose.model.S3DestinationConfiguration;
 import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.model.GetObjectRequest;
@@ -20,25 +22,21 @@ import com.google.common.collect.Lists;
 import io.fineo.lambda.LambdaClientProperties;
 import io.fineo.lambda.TestProperties;
 import io.fineo.lambda.util.FutureWaiter;
-import io.fineo.lambda.util.Join;
 import io.fineo.lambda.util.ResultWaiter;
 import io.fineo.schema.Pair;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -49,50 +47,49 @@ import static org.junit.Assert.assertEquals;
  */
 public class FirehoseManager {
   private static final Log LOG = LogFactory.getLog(FirehoseManager.class);
-  public static final int READ_S3_INTERVAL = TestProperties.ONE_SECOND * 10;
+  public static final long READ_S3_INTERVAL = TestProperties.ONE_SECOND * 10;
 
   private final LambdaClientProperties props;
   private final AWSCredentialsProvider provider;
   private final AmazonS3Client s3;
-  private Map<String, Boolean> prefixes = new HashMap<>();
-  private Map<String, String> firehoseNameToStage = new HashMap<>();
-  private Map<String, String> firehosesToS3 = new ConcurrentHashMap<>();
-  private Map<String, List<String>> stageToS3Prefix = new HashMap<>();
+  private final AmazonKinesisFirehoseClient firehoseClient;
+  private FirehoseStreams streams = new FirehoseStreams();
 
   public FirehoseManager(LambdaClientProperties props, AWSCredentialsProvider provider) {
     this.provider = provider;
     this.props = props;
     this.s3 = new AmazonS3Client(provider);
+    firehoseClient = new AmazonKinesisFirehoseClient(provider);
   }
 
   public void createFirehoses(String stage, FutureWaiter future) {
-    this.prefixes.put(stage, false);
-    // create the firehoses
-    stageToS3Prefix.put(stage, s3Tracker());
     for (LambdaClientProperties.StreamType type : LambdaClientProperties.StreamType.values()) {
-      future.run(() -> stageToS3Prefix.get(stage).add(createFirehose(stage, type)));
+      future.run(() -> createFirehose(stage, type));
     }
   }
 
-  private List<String> s3Tracker() {
-    return Collections.synchronizedList(new ArrayList<>(3));
-  }
-
-  private String createFirehose(String stage, LambdaClientProperties.StreamType type) {
+  private void createFirehose(String stage, LambdaClientProperties.StreamType type) {
     String stream = props.getFirehoseStreamName(stage, type);
-    firehoseNameToStage.put(stream, stage);
-    AmazonKinesisFirehoseClient firehoseClient = new AmazonKinesisFirehoseClient(provider);
+    String s3Path = stream + "/";
+
+    // track the firehose information
+    Pair<String, LambdaClientProperties.StreamType> key = new Pair<>(stage, type);
+    streams.store(key, stream, s3Path);
+
+    // create the stream, if it doesn't exist already
+    if (exists(stream)) {
+      LOG.debug("Skipping checking for stream active => someone else is already doing it (hint: "
+                + "the guy who created the stream");
+      return;
+    }
+    LOG.debug(
+      "Creating firehose [" + stream + "] -> " + TestProperties.Firehose.S3_BUCKET_ARN +
+      "/" + s3Path);
     CreateDeliveryStreamRequest create = new CreateDeliveryStreamRequest();
     create.setDeliveryStreamName(stream);
-
-    String prefix = props.getTestPrefix() + stream + "/";
-    firehosesToS3.put(stream, prefix);
-    LOG.debug(
-      "Creating firehose [" + stream + "] writing to " + TestProperties.Firehose.S3_BUCKET_ARN +
-      "/" + prefix);
     S3DestinationConfiguration destConf = new S3DestinationConfiguration();
     destConf.setBucketARN(TestProperties.Firehose.S3_BUCKET_ARN);
-    destConf.setPrefix(prefix);
+    destConf.setPrefix(s3Path);
     destConf.setBufferingHints(new BufferingHints()
       .withIntervalInSeconds(60)
       .withSizeInMBs(1));
@@ -100,11 +97,17 @@ public class FirehoseManager {
     destConf.setCompressionFormat(CompressionFormat.UNCOMPRESSED);
     destConf.setRoleARN(TestProperties.Firehose.FIREHOSE_TO_S3_ARN_ROLE);
     create.setS3DestinationConfiguration(destConf);
-    firehoseClient.createDeliveryStream(create);
+    try {
+      firehoseClient.createDeliveryStream(create);
+    } catch (ResourceInUseException e) {
+      LOG.debug(stream + " appears to already exist: " + e.getMessage());
+      return;
+    }
+    LOG.info(stage + ", " + type + " -> " + stream + " created!");
 
     // wait for the stream to be ready, but don't fail if it isn't
     new ResultWaiter<>()
-      .withDescription("Create Firehose stream: " + stream)
+      .withDescription("Firehose stream: " + stream + " activation")
       .withStatus(() -> {
         DescribeDeliveryStreamRequest describe = new DescribeDeliveryStreamRequest()
           .withDeliveryStreamName(stream);
@@ -112,24 +115,31 @@ public class FirehoseManager {
         return result.getDeliveryStreamDescription().getDeliveryStreamStatus();
       }).withStatusCheck(status -> status.equals("ACTIVE"))
       .waitForResult();
-    return prefix;
   }
 
+  private boolean exists(String stream) {
+    try {
+      firehoseClient.describeDeliveryStream(new DescribeDeliveryStreamRequest()
+        .withDeliveryStreamName(stream));
+      return true;
+    } catch (ResourceNotFoundException e) {
+      return false;
+    }
+  }
+
+
   public List<ByteBuffer> read(String streamName) {
-    long timeout = getTimeout(streamName);
+    String prefix = streams.getS3Path(streamName);
+    long timeout = streams.getTimeout(prefix);
 
     // read the data from S3 to ensure it matches the raw data sent
-    String prefix = firehosesToS3.get(streamName);
-
-    // the first time we wait on S3, we want to wait a good amount of time to ensure firehoses
-    // flushed to the S3. After that point, we should have no more waiting.
     ResultWaiter<ObjectListing> wait = new ResultWaiter<>()
       .withInterval(READ_S3_INTERVAL)
-      .withTimeout(Math.min(timeout, READ_S3_INTERVAL))
+      .withTimeout(Math.max(timeout, READ_S3_INTERVAL))
       .withDescription(
         "Firehose -> s3 [" + TestProperties.Firehose.S3_BUCKET_NAME + "/" + prefix
-        + "] write; "
-        + "expected: ~60sec")
+        + "] flush; "
+        + "max expceted: ~60sec")
       .withStatus(() -> s3.listObjects(TestProperties.Firehose.S3_BUCKET_NAME, prefix))
       .withStatusCheck(
         listing -> ((ObjectListing) listing).getObjectSummaries().size() > 0);
@@ -139,14 +149,15 @@ public class FirehoseManager {
 
     // read the most recent record from the bucket with our prefix
     ObjectListing listing = wait.getLastStatus();
-    List<String> objects = new ArrayList<>();
     Optional<S3ObjectSummary> optionalSummary =
-      listing.getObjectSummaries().stream().sorted((s1, s2) -> {
-        ZonedDateTime time = parseTimeFromS3ObjectName(s1.getKey(), streamName);
-        ZonedDateTime t2 = parseTimeFromS3ObjectName(s2.getKey(), streamName);
-        // descending order
-        return -time.compareTo(t2);
-      }).peek(summary -> objects.add(summary.getKey())).findFirst();
+      listing.getObjectSummaries().stream()
+             .peek(summary -> LOG.debug("Got s3 location: " + summary.getKey()))
+             .sorted((s1, s2) -> {
+               ZonedDateTime time = parseTimeFromS3ObjectName(s1.getKey(), streamName);
+               ZonedDateTime t2 = parseTimeFromS3ObjectName(s2.getKey(), streamName);
+               // descending order
+               return -time.compareTo(t2);
+             }).findFirst();
     if (!optionalSummary.isPresent()) {
       return new ArrayList<>(0);
     }
@@ -164,25 +175,6 @@ public class FirehoseManager {
     return Lists.newArrayList(ByteBuffer.wrap(out.toByteArray()));
   }
 
-  /**
-   * Determine what timeout we should used based on the stage. Each stage should be waited
-   * independently, since records may have not made it to the next stage.
-   * <p>
-   * Firehose takes a minute to flush results to s3. We wait doublee that, just in case, the
-   * first time, but after that all writes should have been flushed, so we just read it
-   * immediately, for each stage
-   * </p>
-   */
-  private long getTimeout(String streamName) {
-    String prefix = this.firehoseNameToStage.get(streamName);
-    long timeout = 2 * TestProperties.ONE_MINUTE;
-    if (prefixes.get(prefix)) {
-      timeout = TestProperties.ONE_SECOND * 2;
-    }
-    prefixes.put(prefix, true);
-    return timeout;
-  }
-
   private ZonedDateTime parseTimeFromS3ObjectName(String name, String stream) {
     name = name.substring(name.lastIndexOf('/') + 1);
     name = name.replaceFirst(stream, "");
@@ -192,24 +184,22 @@ public class FirehoseManager {
   }
 
   public void cleanupFirehoses(FutureWaiter futures) {
-    // firehose
-    AmazonKinesisFirehoseClient firehoseClient = new AmazonKinesisFirehoseClient(provider);
-    firehosesToS3.keySet().stream().forEach(stream -> futures.run(() -> {
+    streams.firehoseNames().forEach(streamName -> futures.run(() -> {
       DeleteDeliveryStreamRequest delete = new DeleteDeliveryStreamRequest()
-        .withDeliveryStreamName(stream);
+        .withDeliveryStreamName(streamName);
       ResultWaiter.doOrNull(() -> firehoseClient.deleteDeliveryStream(delete));
       new ResultWaiter<>()
-        .withDescription("Ensuring Firehose delete of: " + stream)
+        .withDescription("Ensuring Firehose delete of: " + streamName)
         .withStatusNull(
           () -> firehoseClient.describeDeliveryStream(new DescribeDeliveryStreamRequest()
-            .withDeliveryStreamName(stream)))
+            .withDeliveryStreamName(streamName)))
         .waitForResult();
     }));
   }
 
   public void cleanupData() {
     // remove all s3 files with the current test prefix
-    S3Delete delete = new S3Delete(provider).withBucket(TestProperties.Firehose.S3_BUCKET_NAME);
+    S3 delete = new S3(provider).withBucket(TestProperties.Firehose.S3_BUCKET_NAME);
     delete.delete(props.getTestPrefix());
   }
 
@@ -221,23 +211,16 @@ public class FirehoseManager {
       objs.stream().map(S3ObjectSummary::getKey).collect(Collectors.toList())), 0, objs.size());
   }
 
-  public void cleanupData(List<Pair<String, LambdaClientProperties.StreamType>> streams) {
-    if (streams.size() == 0) {
-      return;
-    }
-    S3Delete delete = new S3Delete(provider).withBucket(TestProperties.Firehose.S3_BUCKET_NAME);
-    for (Pair<String, LambdaClientProperties.StreamType> stream : streams) {
+  public void clone(List<Pair<String, LambdaClientProperties.StreamType>> toClone, File dir)
+    throws IOException {
+    for(Pair<String, LambdaClientProperties.StreamType> stream: toClone){
       String name = props.getFirehoseStreamName(stream.getKey(), stream.getValue());
-      String path = firehosesToS3.remove(name);
-      LOG.debug("DELETE:" + name + " -> " + path);
-      delete.delete(path);
+      File file = new File(dir, name);
+      if(file.exists()){
+        LOG.info("Skipping copying data for file: "+file);
+        continue;
+      }
+      ResourceUtils.writeStream(name, dir, () -> this.read(name));
     }
-    String output =
-      firehosesToS3.entrySet().stream()
-                   .map(entry -> entry.getKey() + " -> " + entry.getValue())
-                   .reduce(null, Join.on(",\n"));
-    LOG.error("There were some S3 locations that were not deleted because they contain failed "
-              + "test information!\nS3 Locations: " + output);
   }
-
 }

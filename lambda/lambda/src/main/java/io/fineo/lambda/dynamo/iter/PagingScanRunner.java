@@ -60,7 +60,8 @@ public class PagingScanRunner {
         // remove all the elements that are outside the range
         List<ResultOrException<Map<String, AttributeValue>>> result =
           scanResult.getItems().stream()
-                    .filter(map -> map.get(Schema.PARTITION_KEY_NAME).getS().compareTo(stopKey) < 0)
+                    .filter(map -> stopKey != null ||
+                                   map.get(Schema.PARTITION_KEY_NAME).getS().compareTo(stopKey) < 0)
                     .map(map -> new ResultOrException<>(map)).collect(Collectors.toList());
 
         // we dropped off the end of the results that we care about

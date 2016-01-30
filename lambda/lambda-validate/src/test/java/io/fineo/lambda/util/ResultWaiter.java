@@ -13,7 +13,7 @@ import java.util.function.Supplier;
  */
 public class ResultWaiter<RESULT> {
   private static final Log LOG = LogFactory.getLog(ResultWaiter.class);
-  private long timeoutMs = TestProperties.THREE_HUNDRED_SECONDS;
+  private long timeoutMs = TestProperties.FIVE_MINUTES;
   private long intervalMs = TestProperties.ONE_SECOND;
   private String description;
   private Supplier<RESULT> status;
@@ -76,34 +76,37 @@ public class ResultWaiter<RESULT> {
   }
 
   private boolean run() throws InterruptedException {
-    if (intervalMs > 0 && intervalMs <= timeoutMs) {
-      LOG.info(
-        "Waiting for [" + description + "]. Max wait: " + timeoutMs / 1000 + "s");
-      long startTime = System.currentTimeMillis();
-      long endTime = startTime + timeoutMs;
-      for (int i = 0; System.currentTimeMillis() < endTime && i > 0;
-           Thread.sleep(intervalMs), i++) {
-        try {
-          lastStatus = status.get();
-          if (statusCheck.test(lastStatus)) {
-            LOG.info("Finished waiting for: " + description + ". Elapsed: " +
-                     ((System.currentTimeMillis() - startTime) / 1000.0) + "s");
-            return true;
-          }
-        } catch (Exception e) {
-          LOG.warn("[" + description + "] Got exception, but ignoring it...", e);
-          // ignore
+    Preconditions.checkArgument(intervalMs > 0, "Interval must be over 0ms");
+    Preconditions.checkArgument(intervalMs <= timeoutMs,
+      "Interval [%d] must be <= timeoutMs [%d]", intervalMs, timeoutMs);
+
+    LOG.info("Waiting for [" + description + "]. Max wait: " + timeoutMs / 1000 + "s. Interval: "
+             + this.intervalMs / 1000 + "s");
+    long startTime = System.currentTimeMillis();
+    long endTime = startTime + timeoutMs;
+    int i = 0;
+    // run at least once, but not longer than the specified endtime
+    do {
+      try {
+        lastStatus = status.get();
+        if (statusCheck.test(lastStatus)) {
+          LOG.info("Finished waiting for: " + description + ". Elapsed: " +
+                   ((System.currentTimeMillis() - startTime) / 1000.0) + "s");
+          return true;
         }
-        if ((i % 10) == 0) {
-          LOG.info("(" + i + ") Waiting [" + description + "]");
-        }
+      } catch (Exception e) {
+        LOG.warn("[" + description + "] Got exception, but ignoring it...", e);
+        // ignore
       }
-      LOG.warn(String.format("Resource [%s] didn't not become active/created within %d sec!",
-        description, timeoutMs / 1000));
-      return false;
-    } else {
-      throw new IllegalArgumentException("Interval must be > 0 and < timeoutMs");
-    }
+      if ((i % 10) == 0 && i > 0) {
+        LOG.info("(" + (i*intervalMs/1000) + "s) Waiting [" + description + "]");
+      }
+      i++;
+      Thread.sleep(intervalMs);
+    } while (System.currentTimeMillis() < endTime);
+    LOG.warn(String.format("Request [%s] didn't not become complete within %d sec!",
+      description, timeoutMs / 1000));
+    return false;
   }
 
   private void validate() {
