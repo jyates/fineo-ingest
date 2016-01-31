@@ -5,6 +5,8 @@ import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
 import com.fasterxml.jackson.jr.ob.JSON;
 import com.google.common.collect.Lists;
 import io.fineo.schema.avro.SchemaTestUtils;
+import org.apache.avro.file.FirehoseRecordReader;
+import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.mockito.Mockito;
@@ -12,6 +14,8 @@ import org.mockito.Mockito;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -60,5 +64,16 @@ public class LambdaTestUtils {
       records[i] = map;
     }
     return (Map<String, Object>[]) records;
+  }
+
+  public static List<GenericRecord> readRecords(ByteBuffer data) throws IOException {
+    List<GenericRecord> records = new ArrayList<>();
+    FirehoseRecordReader<GenericRecord> recordReader =
+      FirehoseRecordReader.create(data);
+    GenericRecord record = recordReader.next();
+    if (record != null) {
+      records.add(record);
+    }
+    return records;
   }
 }

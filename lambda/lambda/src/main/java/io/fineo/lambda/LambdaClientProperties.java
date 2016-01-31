@@ -8,6 +8,7 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.amazonaws.services.kinesis.AmazonKinesisAsyncClient;
+import com.amazonaws.services.kinesisfirehose.AmazonKinesisFirehoseAsyncClient;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import io.fineo.schema.aws.dynamodb.DynamoDBRepository;
@@ -49,6 +50,7 @@ public class LambdaClientProperties {
   /* These prefixes combine with the StreamType below to generate the full property names */
   public static final String RAW_PREFIX = "fineo.firehose.raw";
   public static final String STAGED_PREFIX = "fineo.firehose.staged";
+
   public enum StreamType {
     ARCHIVE("archive"), PROCESSING_ERROR("error"), COMMIT_ERROR("error.commit");
 
@@ -136,16 +138,23 @@ public class LambdaClientProperties {
     return props.getProperty(KINESIS_PARSED_RAW_OUT_STREAM_NAME);
   }
 
-  public String getFirehoseUrl() {
+  public AmazonKinesisFirehoseAsyncClient createFireHose() {
+    AmazonKinesisFirehoseAsyncClient firehoseClient =
+      new AmazonKinesisFirehoseAsyncClient(this.provider);
+    firehoseClient.setEndpoint(this.getFirehoseUrl());
+    return firehoseClient;
+  }
+
+  private String getFirehoseUrl() {
     return props.getProperty(FIREHOSE_URL);
   }
 
   public String getFirehoseStreamName(String phaseName, StreamType type) {
-    return props.getProperty(getFirehoseStreamProperty(phaseName, type));
+    return props.getProperty(getFirehoseStreamPropertyVisibleForTesting(phaseName, type));
   }
 
   @VisibleForTesting
-  static String getFirehoseStreamProperty(String phase, StreamType type){
+  public static String getFirehoseStreamPropertyVisibleForTesting(String phase, StreamType type){
     return type.getPropertyKey(phase);
   }
 

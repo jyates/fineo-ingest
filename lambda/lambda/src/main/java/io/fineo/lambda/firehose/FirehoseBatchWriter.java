@@ -43,7 +43,7 @@ public class FirehoseBatchWriter {
 
   public FirehoseBatchWriter(LambdaClientProperties props,
     Function<ByteBuffer, ByteBuffer> recordToOutputConverter, String streamName) {
-    this(recordToOutputConverter, FirehoseUtils.createFireHose(props), streamName);
+    this(recordToOutputConverter, props.createFireHose(), streamName);
     FirehoseUtils.checkHoseStatus(client, streamName);
   }
 

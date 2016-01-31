@@ -1,10 +1,12 @@
-package io.fineo.lambda.util.mock;
+package io.fineo.lambda.e2e.resources.manager;
 
 import io.fineo.lambda.LambdaAvroToStorage;
 import io.fineo.lambda.LambdaClientProperties;
 import io.fineo.lambda.LambdaRawRecordToAvro;
 import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.lambda.dynamo.avro.AvroToDynamoWriter;
+import io.fineo.lambda.e2e.resources.IngestUtil;
+import io.fineo.lambda.e2e.resources.kinesis.MockKinesisStreams;
 import io.fineo.lambda.firehose.FirehoseBatchWriter;
 import io.fineo.lambda.util.ResourceManager;
 import io.fineo.schema.avro.RecordMetadata;
@@ -14,6 +16,7 @@ import org.mockito.Mockito;
 import org.schemarepo.InMemoryRepository;
 import org.schemarepo.ValidatorFactory;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -24,7 +27,7 @@ import java.util.stream.Stream;
 
 import static io.fineo.lambda.LambdaClientProperties.RAW_PREFIX;
 import static io.fineo.lambda.LambdaClientProperties.STAGED_PREFIX;
-import static io.fineo.lambda.util.EndToEndTestRunner.verifyRecordMatchesJson;
+import static io.fineo.lambda.e2e.EndToEndTestRunner.verifyRecordMatchesJson;
 import static org.junit.Assert.assertEquals;
 
 /**
@@ -40,7 +43,7 @@ public class MockResourceManager implements ResourceManager {
   private IngestUtil util;
 
   @Override
-  public void setup(LambdaClientProperties props) throws NoSuchMethodException {
+  public void setup(LambdaClientProperties props) throws NoSuchMethodException, IOException {
     setupMocks(props);
     // setup each stage
     this.store = new SchemaStore(new InMemoryRepository(ValidatorFactory.EMPTY));
@@ -66,10 +69,10 @@ public class MockResourceManager implements ResourceManager {
           props.getFirehoseStreamName(STAGED_PREFIX, LambdaClientProperties.StreamType.COMMIT_ERROR)));
 
     // setup the flow
-    this.util = IngestUtil.newBuilder()
-                          .start(start)
-                          .then(props.getRawToStagedKinesisStreamName(), storage)
-                          .build();
+    this.util = new IngestUtil.IngestUtilBuilder(new MockKinesisStreams())
+      .start(start)
+      .then(props.getRawToStagedKinesisStreamName(), storage)
+      .build();
   }
 
   @Override

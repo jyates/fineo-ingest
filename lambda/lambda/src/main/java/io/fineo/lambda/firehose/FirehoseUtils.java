@@ -19,17 +19,11 @@ public class FirehoseUtils {
 
   public static AmazonKinesisFirehoseAsyncClient createFirehoseAndCheck(
     LambdaClientProperties props, String... names) {
-    AmazonKinesisFirehoseAsyncClient firehoseClient = createFireHose(props);
+    AmazonKinesisFirehoseAsyncClient firehoseClient = props.createFireHose();
     for (String name : names) {
       checkHoseStatus(firehoseClient, name);
     }
 
-    return firehoseClient;
-  }
-
-  public static AmazonKinesisFirehoseAsyncClient createFireHose(LambdaClientProperties props) {
-    AmazonKinesisFirehoseAsyncClient firehoseClient = new AmazonKinesisFirehoseAsyncClient();
-    firehoseClient.setEndpoint(props.getFirehoseUrl());
     return firehoseClient;
   }
 

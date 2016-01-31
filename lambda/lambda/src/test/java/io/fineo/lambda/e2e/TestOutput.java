@@ -1,13 +1,9 @@
-package io.fineo.lambda.util;
+package io.fineo.lambda.e2e;
 
-import com.google.common.base.Preconditions;
 import org.junit.rules.TemporaryFolder;
 
-import java.io.File;
-import java.io.IOException;
-
 /**
- * Derivative of {@link org.junit.rules.TemporaryFolder}, but doesn't delete the output
+ * Derivative of {@link TemporaryFolder}, but doesn't delete the output
  */
 public class TestOutput extends TemporaryFolder {
 

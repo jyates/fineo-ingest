@@ -1,4 +1,4 @@
-package io.fineo.lambda.resources;
+package io.fineo.lambda.e2e.resources;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
@@ -14,9 +14,8 @@ import io.fineo.lambda.dynamo.avro.AvroDynamoReader;
 import io.fineo.lambda.dynamo.iter.PageScanManager;
 import io.fineo.lambda.dynamo.iter.PagingIterator;
 import io.fineo.lambda.dynamo.iter.PagingScanRunner;
-import io.fineo.lambda.util.EndToEndTestRunner;
-import io.fineo.lambda.util.FutureWaiter;
-import io.fineo.lambda.util.ResultWaiter;
+import io.fineo.lambda.util.run.FutureWaiter;
+import io.fineo.lambda.util.run.ResultWaiter;
 import io.fineo.schema.avro.RecordMetadata;
 import io.fineo.schema.store.SchemaStore;
 import org.apache.avro.generic.GenericRecord;
@@ -40,13 +39,15 @@ import static org.junit.Assert.assertTrue;
 /**
  *
  */
-public class DynamoManager {
-  private static final Log LOG = LogFactory.getLog(DynamoManager.class);
+public class DynamoResource {
+  private static final Log LOG = LogFactory.getLog(DynamoResource.class);
   private final LambdaClientProperties props;
   private final AtomicReference<SchemaStore> storeRef = new AtomicReference<>();
   private final AmazonDynamoDBAsyncClient dynamo;
+  private final ResultWaiter.ResultWaiterFactory waiter;
 
-  public DynamoManager(LambdaClientProperties props) {
+  public DynamoResource(LambdaClientProperties props, ResultWaiter.ResultWaiterFactory waiter) {
+    this.waiter = waiter;
     this.props = props;
     this.dynamo = props.getDynamo();
   }
@@ -67,7 +68,7 @@ public class DynamoManager {
     getTables(tableNamesPrefix).parallel().forEach(name -> {
       AmazonDynamoDBAsyncClient dynamo = props.getDynamo();
       dynamo.deleteTable(name);
-      new ResultWaiter<>()
+      waiter.get()
         .withDescription("Deletion dynamo table: " + name)
         .withStatusNull(() -> dynamo.describeTable(name))
         .waitForResult();
@@ -131,7 +132,7 @@ public class DynamoManager {
     Metric metric = getStore().getMetricMetadata(metadata);
     long ts = metadata.getBaseFields().getTimestamp();
     Range<Instant> range = Range.of(ts, ts + 1);
-    ResultWaiter<List<GenericRecord>> waiter = new ResultWaiter<>()
+    ResultWaiter<List<GenericRecord>> waiter = this.waiter.get()
       .withDescription("Some records to appear in dynamo")
       .withStatus(
         () -> reader.scan(metadata.getOrgID(), metric, range, null).collect(Collectors.toList()))

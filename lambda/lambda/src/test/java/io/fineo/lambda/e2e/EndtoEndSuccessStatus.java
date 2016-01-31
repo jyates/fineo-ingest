@@ -1,4 +1,4 @@
-package io.fineo.lambda.util;
+package io.fineo.lambda.e2e;
 
 import io.fineo.lambda.LambdaClientProperties;
 import io.fineo.schema.Pair;

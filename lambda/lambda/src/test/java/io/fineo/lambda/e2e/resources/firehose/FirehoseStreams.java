@@ -1,8 +1,8 @@
-package io.fineo.lambda.resources;
+package io.fineo.lambda.e2e.resources.firehose;
 
 import com.google.common.base.Preconditions;
 import io.fineo.lambda.LambdaClientProperties;
-import io.fineo.lambda.TestProperties;
+import io.fineo.lambda.e2e.resources.TestProperties;
 import io.fineo.lambda.util.Join;
 import io.fineo.schema.Pair;
 

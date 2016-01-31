@@ -1,4 +1,4 @@
-package io.fineo.lambda.util;
+package io.fineo.lambda.util.run;
 
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;

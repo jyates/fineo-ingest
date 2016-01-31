@@ -88,7 +88,7 @@ public abstract class IngestBaseLambda implements TestableLambda {
 
   private void setupInternal() throws IOException {
     LOG.debug("Setting up");
-    this.props = LambdaClientProperties.load();
+    this.props = props != null ? props : LambdaClientProperties.load();
 
     setup();
 
@@ -135,4 +135,9 @@ public abstract class IngestBaseLambda implements TestableLambda {
     name -> func -> () -> new FirehoseBatchWriter(props, func, name);
 
 
+  @VisibleForTesting
+  public static void setupPropertiesForIntegrationTesting(IngestBaseLambda lambda,
+    LambdaClientProperties props) {
+    lambda.props = props;
+  }
 }

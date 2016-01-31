@@ -1,12 +1,13 @@
-package io.fineo.lambda;
+package io.fineo.lambda.e2e.resources;
 
 import com.google.common.collect.Lists;
+import io.fineo.lambda.LambdaClientProperties;
 
 import java.time.Duration;
 import java.util.List;
 
 /**
- *
+ * Properties for manage remote test resources
  */
 public class TestProperties {
 

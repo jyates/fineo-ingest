@@ -1,21 +1,22 @@
-package io.fineo.lambda.util;
+package io.fineo.lambda.e2e;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import io.fineo.lambda.LambdaClientProperties;
+import io.fineo.lambda.util.LambdaTestUtils;
+import io.fineo.lambda.util.ResourceManager;
+import io.fineo.lambda.util.SchemaUtil;
 import io.fineo.schema.avro.AvroSchemaEncoder;
 import io.fineo.schema.avro.RecordMetadata;
 import io.fineo.schema.avro.SchemaTestUtils;
 import io.fineo.schema.avro.TestRecordMetadata;
 import io.fineo.schema.store.SchemaStore;
-import org.apache.avro.file.FirehoseRecordReader;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -107,7 +108,7 @@ public class EndToEndTestRunner {
   private void validateAvroToStorage() throws IOException {
     verifyNoStageErrors(STAGED_PREFIX, bbs -> {
       try {
-        return SchemaUtil.toString(readRecords(combine(bbs)));
+        return SchemaUtil.toString(LambdaTestUtils.readRecords(combine(bbs)));
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
@@ -127,7 +128,7 @@ public class EndToEndTestRunner {
     throws IOException {
     List<ByteBuffer> parsedBytes = bytes.get();
     // read the parsed avro records
-    List<GenericRecord> parsedRecords = readRecords(combine(parsedBytes));
+    List<GenericRecord> parsedRecords = LambdaTestUtils.readRecords(combine(parsedBytes));
     assertEquals("["+stream+"] Got unexpected number of records: " + parsedRecords, 1,
       parsedRecords.size());
     GenericRecord record = parsedRecords.get(0);
@@ -149,17 +150,6 @@ public class EndToEndTestRunner {
       LOG.debug("Marking stream: " + stage + "-" + stream + " correct");
       status.firehoseStreamCorrect(stage, stream);
     }
-  }
-
-  private List<GenericRecord> readRecords(ByteBuffer data) throws IOException {
-    List<GenericRecord> records = new ArrayList<>();
-    FirehoseRecordReader<GenericRecord> recordReader =
-      FirehoseRecordReader.create(data);
-    GenericRecord record = recordReader.next();
-    if (record != null) {
-      records.add(record);
-    }
-    return records;
   }
 
   private ByteBuffer combine(List<ByteBuffer> data) {

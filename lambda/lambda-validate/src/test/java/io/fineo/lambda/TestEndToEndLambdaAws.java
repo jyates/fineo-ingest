@@ -5,6 +5,7 @@ import io.fineo.aws.rule.AwsCredentialResource;
 import io.fineo.lambda.resources.AwsResourceManager;
 import io.fineo.lambda.util.EndToEndTestRunner;
 import io.fineo.lambda.util.LambdaTestUtils;
+import io.fineo.lambda.util.TestOutput;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.ClassRule;
@@ -22,6 +23,8 @@ public class TestEndToEndLambdaAws {
 
   @ClassRule
   public static AwsCredentialResource awsCredentials = new AwsCredentialResource();
+  @ClassRule
+  private TestOutput output = new TestOutput(false);
 
   private LambdaClientProperties props;
   private EndToEndTestRunner runner;
@@ -32,7 +35,7 @@ public class TestEndToEndLambdaAws {
     this.props = LambdaClientProperties.load();
     props.setAwsCredentialProviderForTesting(awsCredentials.getProvider());
 
-    this.manager = new AwsResourceManager(awsCredentials);
+    this.manager = new AwsResourceManager(awsCredentials, output);
     this.runner = new EndToEndTestRunner(props, manager);
   }
 
