@@ -2,6 +2,7 @@ package io.fineo.lambda.dynamo;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.amazonaws.services.dynamodbv2.document.DynamoDB;
+import com.amazonaws.services.dynamodbv2.document.Table;
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
@@ -10,10 +11,16 @@ import com.amazonaws.services.dynamodbv2.model.ListTablesResult;
 import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
+import com.amazonaws.services.dynamodbv2.model.TableDescription;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Joiner;
+import com.google.common.collect.Lists;
 import io.fineo.lambda.dynamo.avro.AvroToDynamoWriter;
 import io.fineo.lambda.dynamo.avro.Schema;
+import io.fineo.lambda.dynamo.iter.PageManager;
+import io.fineo.lambda.dynamo.iter.PagingIterator;
+import io.fineo.lambda.dynamo.iter.PagingRunner;
+import io.fineo.lambda.dynamo.iter.TableNamePagingRunner;
 import io.fineo.schema.Pair;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -26,6 +33,8 @@ import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 /**
  * Manages the actual table creation + schema
@@ -48,7 +57,6 @@ public class DynamoTableManager {
     this.client = client;
     this.dynamo = new DynamoDB(client);
   }
-
 
   public DynamoTableWriter writer(long readCapacity, long writeCapacity) {
     return new DynamoTableWriter(readCapacity, writeCapacity);
@@ -81,14 +89,27 @@ public class DynamoTableManager {
     @VisibleForTesting
     void createTable(String fullTableName) {
       // get the prefix since
+      LOG.debug("Checking for table: " + fullTableName);
       String tableAndStart = DynamoTableManager.getPrefixAndStart(fullTableName);
-      ListTablesResult result = client.listTables(tableAndStart, 1);
-      // table exists, get a reference to it
-      if (result.getTableNames().size() > 0) {
+      Stream<String> tables = getTables(client, tableAndStart, 1);
+      // we have the table already, we are done
+      if (tables.count() > 0) {
         return;
       }
       baseRequest.setTableName(fullTableName);
-      dynamo.createTable(baseRequest);
+      Table t = dynamo.createTable(baseRequest);
+      while (true) {
+        try {
+          TableDescription desc = t.waitForActiveOrDelete();
+          if (desc == null) {
+            throw new RuntimeException(
+              "Table " + fullTableName + " was deleted while waiting for it to become active!");
+          }
+          break;
+        } catch (InterruptedException e) {
+          // ignore
+        }
+      }
     }
   }
 
@@ -152,5 +173,12 @@ public class DynamoTableManager {
     int weekOffset = (day - 1) % 7;
     Instant start = time.minusDays(weekOffset).toInstant(ZONE);
     return new Range<>(start, start.plus(TABLE_TIME_LENGTH));
+  }
+
+  public static Stream<String> getTables(AmazonDynamoDBAsyncClient dynamo, String prefix, int
+    pageSize) {
+    PagingRunner<String> runner = new TableNamePagingRunner(prefix, dynamo, pageSize);
+    return StreamSupport.stream(new PagingIterator<>(pageSize, new PageManager<>(
+      Lists.newArrayList(runner))).iterable().spliterator(), false);
   }
 }

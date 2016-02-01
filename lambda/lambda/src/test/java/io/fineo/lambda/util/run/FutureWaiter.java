@@ -4,6 +4,8 @@ import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -11,6 +13,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class FutureWaiter {
+  private static final Log LOG = LogFactory.getLog(FutureWaiter.class);
+
   private final ListeningExecutorService executor;
   private List<ListenableFuture> futures = new ArrayList<>();
   private AtomicReference<Exception> exception = new AtomicReference<>();
@@ -52,6 +56,7 @@ public class FutureWaiter {
   }
 
   public void setException(Exception e) {
+    LOG.error("Failed to complete task!", e);
     this.exception.set(e);
   }
 }

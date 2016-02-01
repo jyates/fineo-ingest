@@ -7,9 +7,9 @@ import io.fineo.internal.customer.Metric;
 import io.fineo.lambda.dynamo.DynamoTableManager;
 import io.fineo.lambda.dynamo.Range;
 import io.fineo.lambda.dynamo.ResultOrException;
-import io.fineo.lambda.dynamo.iter.PageScanManager;
+import io.fineo.lambda.dynamo.iter.PageManager;
 import io.fineo.lambda.dynamo.iter.PagingIterator;
-import io.fineo.lambda.dynamo.iter.PagingScanRunner;
+import io.fineo.lambda.dynamo.iter.ScanPagingRunner;
 import io.fineo.schema.Pair;
 import io.fineo.schema.avro.AvroSchemaManager;
 import io.fineo.schema.store.SchemaStore;
@@ -80,7 +80,7 @@ public class AvroDynamoReader {
     // get the potential tables that match the range
     List<Pair<String, Range<Instant>>> tables = tableManager.getExistingTableNames(range);
     // get a scan across each table
-    List<PagingScanRunner> scanners = new ArrayList<>(tables.size());
+    List<ScanPagingRunner> scanners = new ArrayList<>(tables.size());
 
     String stop = stringPartitionKey.getS() + "0";
     Function<Instant, Map<String, AttributeValue>> rangeCreator = getStartKeys(stringPartitionKey);
@@ -90,12 +90,12 @@ public class AvroDynamoReader {
       request.setTableName(table.getKey());
       request.setExclusiveStartKey(rangeCreator.apply(table.getValue().getStart()));
       request.setConsistentRead(true);
-      scanners.add(new PagingScanRunner(client, request, stop));
+      scanners.add(new ScanPagingRunner(client, request, stop));
     }
 
     // create an iterable around all the requests
     Iterable<ResultOrException<Map<String, AttributeValue>>> iter =
-      () -> new PagingIterator<>(prefetchSize, new PageScanManager(scanners));
+      () -> new PagingIterator<>(prefetchSize, new PageManager(scanners));
     return StreamSupport.stream(iter.spliterator(), false).map(re -> {
       re.doThrow();
       return re.getResult();

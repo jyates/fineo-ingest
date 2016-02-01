@@ -169,5 +169,4 @@ public class AvroToDynamoWriter {
   private static AttributeValue getPartitionKey(RecordMetadata metadata) {
     return Schema.getPartitionKey(metadata.getOrgID(), metadata.getMetricCanonicalType());
   }
-
 }

@@ -70,7 +70,7 @@ public class MockKinesisStreams implements IKinesisStreams {
   }
 
   @Override
-  public List<ByteBuffer> getEvents(String stream) {
+  public List<ByteBuffer> getEvents(String stream, boolean start) {
     return null;
   }
 }

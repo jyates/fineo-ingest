@@ -43,6 +43,10 @@ public class PagingIterator<T> extends AbstractIterator<T> {
     this.supplier = supplier;
   }
 
+  public Iterable<T> iterable(){
+    return () -> this;
+  }
+
   @Override
   protected T computeNext() {
     Object next = getNext();
@@ -82,8 +86,9 @@ public class PagingIterator<T> extends AbstractIterator<T> {
 
   public void done() {
     // this doesn't close the request because we don't want any new requests started after we close
-    if (this.closed)
+    if (this.closed) {
       return;
+    }
     this.closed = true;
     this.items.add(poison);
   }

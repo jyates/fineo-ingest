@@ -17,5 +17,5 @@ public interface IKinesisStreams {
 
   Stream<Pair<String, List<ByteBuffer>>> events();
 
-  List<ByteBuffer> getEvents(String stream);
+  List<ByteBuffer> getEvents(String stream, boolean start);
 }

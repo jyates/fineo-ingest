@@ -121,7 +121,7 @@ public class AwsAsyncSubmitter<S extends AmazonWebServiceRequest, R, B> {
 
     @Override
     public void onError(Exception exception) {
-      LOG.error("Failed to make an update.", exception);
+      LOG.error("Failed to make an update for request: " + this.request, exception);
       attempts++;
       submit(this);
     }

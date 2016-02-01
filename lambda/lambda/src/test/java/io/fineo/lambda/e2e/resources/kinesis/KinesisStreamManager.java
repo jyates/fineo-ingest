@@ -23,6 +23,7 @@ import io.fineo.schema.Pair;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,7 +41,7 @@ public class KinesisStreamManager implements IKinesisStreams {
 
   private final AWSCredentialsProvider credentials;
   private final ResultWaiter.ResultWaiterFactory waiter;
-  private Map<String, String> kinesisStreams = new HashMap<>(1);
+  private Map<String, String> streamToIterator = new HashMap<>(1);
   private AmazonKinesisAsyncClient kinesis;
   private int kinesisRetries = 3;
   private Queue<List<ByteBuffer>> events = new ConcurrentLinkedDeque<>();
@@ -51,9 +52,9 @@ public class KinesisStreamManager implements IKinesisStreams {
     this.waiter = waiter;
   }
 
-  public void setup(String region, String arn, String streamName, int shardCount) {
+  public void setup(String region, String streamName, int shardCount) {
     this.kinesis = getKinesis(region);
-    kinesisStreams.put(streamName, arn);
+    streamToIterator.put(streamName, null);
 
     CreateStreamRequest createStreamRequest = new CreateStreamRequest();
     createStreamRequest.setStreamName(streamName);
@@ -78,25 +79,47 @@ public class KinesisStreamManager implements IKinesisStreams {
   }
 
   @Override
-  public List<ByteBuffer> getEvents(String stream) {
+  public List<ByteBuffer> getEvents(String stream, boolean start) {
+    if (!start) {
+      String iter = streamToIterator.get(stream);
+      if (iter == null) {
+        iter = createShardIterator(stream);
+        streamToIterator.put(stream, iter);
+      }
+      GetRecordsResult getResult =
+        kinesis.getRecords(new GetRecordsRequest().withShardIterator(iter));
+      return getResult.getRecords().stream().map(Record::getData).collect(Collectors.toList());
+    }
+    String iter = createShardIterator(stream);
+    GetRecordsResult getResult =
+      kinesis.getRecords(new GetRecordsRequest().withShardIterator(iter));
+    List<ByteBuffer> events = new ArrayList<>();
+    while (getResult.getRecords().size() > 0) {
+      for (Record r : getResult.getRecords()) {
+        events.add(r.getData());
+      }
+      getResult = kinesis.getRecords(new GetRecordsRequest().withShardIterator(iter));
+    }
+    return events;
+  }
+
+  private String createShardIterator(String stream) {
     GetShardIteratorResult shard =
       kinesis.getShardIterator(stream, "0", "TRIM_HORIZON");
-    String iterator = shard.getShardIterator();
-    GetRecordsResult getResult = kinesis.getRecords(new GetRecordsRequest().withShardIterator
-      (iterator));
-    return getResult.getRecords().stream().map(Record::getData).collect(Collectors.toList());
+    return shard.getShardIterator();
   }
+
 
   public void deleteStreams() throws InterruptedException {
     FutureWaiter f = new FutureWaiter(
-      MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(this.kinesisStreams.size())));
+      MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(this.streamToIterator.size())));
     deleteStreams(f);
     f.await();
   }
 
   public void deleteStreams(FutureWaiter futures) {
     // delete the streams
-    kinesisStreams.keySet().stream().forEach(name -> futures.run(() -> {
+    streamToIterator.keySet().stream().forEach(name -> futures.run(() -> {
       DeleteStreamRequest deleteStreamRequest = new DeleteStreamRequest();
       deleteStreamRequest.setStreamName(name);
       kinesis.deleteStream(deleteStreamRequest);
@@ -113,7 +136,7 @@ public class KinesisStreamManager implements IKinesisStreams {
   }
 
   public void cloneStream(String streamName, File dir) throws IOException {
-    ResourceUtils.writeStream(streamName, dir, () -> this.getEvents(streamName));
+    ResourceUtils.writeStream(streamName, dir, () -> this.getEvents(streamName, true));
   }
 
   @Override
@@ -138,8 +161,8 @@ public class KinesisStreamManager implements IKinesisStreams {
           return new Pair<>(null, events.remove());
         }
 
-        for (String name : kinesisStreams.keySet()) {
-          List<ByteBuffer> next = getEvents(name);
+        for (String name : streamToIterator.keySet()) {
+          List<ByteBuffer> next = getEvents(name, false);
           if (next.size() > 0) {
             return new Pair<>(name, next);
           }

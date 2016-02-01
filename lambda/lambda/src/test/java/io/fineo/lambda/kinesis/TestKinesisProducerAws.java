@@ -52,7 +52,7 @@ public class TestKinesisProducerAws {
   @Test
   public void readWriteStream() throws Exception {
     String streamName = "integration-test-" + UUID.randomUUID().toString();
-    manager.setup(tests.getRegion(), tests.getKinesisArn(streamName), streamName, 1);
+    manager.setup(tests.getRegion(), streamName, 1);
 
     // write some data to the stream
     GenericRecord data = SchemaTestUtils.createRandomRecord();
@@ -62,7 +62,7 @@ public class TestKinesisProducerAws {
     assertFalse("Some actions failed: " + failures.getActions(), failures.any());
 
     // verify that the data we wrote is what we read back in
-    List<ByteBuffer> writes = manager.getEvents(streamName);
+    List<ByteBuffer> writes = manager.getEvents(streamName, false);
     assertEquals(1, writes.size());
 
     // verify the data actually matches the record

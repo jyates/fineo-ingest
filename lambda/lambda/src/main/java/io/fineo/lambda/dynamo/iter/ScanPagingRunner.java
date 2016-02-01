@@ -7,6 +7,8 @@ import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.amazonaws.services.dynamodbv2.model.ScanResult;
 import io.fineo.lambda.dynamo.ResultOrException;
 import io.fineo.lambda.dynamo.avro.Schema;
+import io.fineo.lambda.dynamo.iter.PagingRunner;
+import io.fineo.lambda.dynamo.iter.Pipe;
 
 import java.util.Collection;
 import java.util.List;
@@ -25,29 +27,27 @@ import java.util.stream.Collectors;
  *
  * @see Pipe
  */
-public class PagingScanRunner {
+public class ScanPagingRunner
+  implements PagingRunner<ResultOrException<Map<String, AttributeValue>>> {
 
   private AmazonDynamoDBAsyncClient client;
   private ScanRequest scan;
   private String stopKey;
   private boolean complete;
 
-  public PagingScanRunner(AmazonDynamoDBAsyncClient client,
+  public ScanPagingRunner(AmazonDynamoDBAsyncClient client,
     ScanRequest scan, String stopKey) {
     this.client = client;
     this.scan = scan;
     this.stopKey = stopKey;
   }
 
+  @Override
   public boolean complete() {
     return this.complete;
   }
 
-  /**
-   * Get the next page of results
-   *
-   * @param queue to receive the results
-   */
+  @Override
   public void page(Pipe<ResultOrException<Map<String, AttributeValue>>> queue) {
     client.scanAsync(scan, new AsyncHandler<ScanRequest, ScanResult>() {
       @Override

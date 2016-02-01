@@ -8,12 +8,13 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import io.fineo.internal.customer.Metric;
 import io.fineo.lambda.LambdaClientProperties;
+import io.fineo.lambda.dynamo.DynamoTableManager;
 import io.fineo.lambda.dynamo.Range;
 import io.fineo.lambda.dynamo.ResultOrException;
 import io.fineo.lambda.dynamo.avro.AvroDynamoReader;
-import io.fineo.lambda.dynamo.iter.PageScanManager;
+import io.fineo.lambda.dynamo.iter.PageManager;
 import io.fineo.lambda.dynamo.iter.PagingIterator;
-import io.fineo.lambda.dynamo.iter.PagingScanRunner;
+import io.fineo.lambda.dynamo.iter.ScanPagingRunner;
 import io.fineo.lambda.util.run.FutureWaiter;
 import io.fineo.lambda.util.run.ResultWaiter;
 import io.fineo.schema.avro.RecordMetadata;
@@ -64,19 +65,24 @@ public class DynamoResource {
     return storeRef.get();
   }
 
-  private void deleteDynamoTables(String tableNamesPrefix) {
-    getTables(tableNamesPrefix).parallel().forEach(name -> {
+  private void deleteDynamoTables(String nonInclusiveTableNamePrefix) {
+    LOG.debug("Starting to delete dynamo table with non-inclusive prefix: " +
+              nonInclusiveTableNamePrefix);
+    getTables(nonInclusiveTableNamePrefix).parallel().forEach(name -> {
       AmazonDynamoDBAsyncClient dynamo = props.getDynamo();
       dynamo.deleteTable(name);
       waiter.get()
-        .withDescription("Deletion dynamo table: " + name)
-        .withStatusNull(() -> dynamo.describeTable(name))
-        .waitForResult();
+            .withDescription("Deleting dynamo table: " + name)
+            .withStatusNull(() -> dynamo.describeTable(name))
+            .waitForResult();
     });
   }
 
   public void deleteSchemaStore() {
-    this.deleteDynamoTables(props.getSchemaStoreTable());
+    String table = props.getSchemaStoreTable();
+    // need less that than the full name since is an exclusive start key and wont include the
+    // table we actually want to delete
+    this.deleteDynamoTables(table.substring(0, table.length() - 2));
   }
 
   public void cleanupStoreTables() {
@@ -91,9 +97,9 @@ public class DynamoResource {
         // create a directory for each table
         File out = new File(outputDir, name);
         ScanRequest request = new ScanRequest(name);
-        PagingScanRunner runner = new PagingScanRunner(dynamo, request, null);
+        ScanPagingRunner runner = new ScanPagingRunner(dynamo, request, null);
         Iterable<ResultOrException<Map<String, AttributeValue>>> iter =
-          () -> new PagingIterator<>(5, new PageScanManager(Lists.newArrayList(runner)));
+          () -> new PagingIterator<>(5, new PageManager(Lists.newArrayList(runner)));
         DataOutputStream dos = new DataOutputStream(new BufferedOutputStream(new FileOutputStream
           (out)));
         for (ResultOrException<Map<String, AttributeValue>> result : iter) {
@@ -116,9 +122,7 @@ public class DynamoResource {
     Preconditions.checkArgument(prefix.startsWith(props.getTestPrefix()),
       "Table names have to start with the test prefix: %s. Got prefix: %s", props.getTestPrefix(),
       prefix);
-    ListTablesResult tables = props.getDynamo().listTables(prefix);
-    return tables.getTableNames().stream().filter(name -> name.startsWith(prefix)
-    );
+    return DynamoTableManager.getTables(dynamo, prefix, 1);
   }
 
   public List<GenericRecord> read(RecordMetadata metadata) {
@@ -133,10 +137,16 @@ public class DynamoResource {
     long ts = metadata.getBaseFields().getTimestamp();
     Range<Instant> range = Range.of(ts, ts + 1);
     ResultWaiter<List<GenericRecord>> waiter = this.waiter.get()
-      .withDescription("Some records to appear in dynamo")
-      .withStatus(
-        () -> reader.scan(metadata.getOrgID(), metric, range, null).collect(Collectors.toList()))
-      .withStatusCheck(list -> ((List<GenericRecord>) list).size() > 0);
+                                                          .withDescription(
+                                                            "Some records to appear in dynamo")
+                                                          .withStatus(
+                                                            () -> reader
+                                                              .scan(metadata.getOrgID(), metric,
+                                                                range, null)
+                                                              .collect(Collectors.toList()))
+                                                          .withStatusCheck(
+                                                            list -> ((List<GenericRecord>) list)
+                                                                      .size() > 0);
     assertTrue("Didn't get any rows from Dynamo within timeout!", waiter.waitForResult());
     return waiter.getLastStatus();
   }

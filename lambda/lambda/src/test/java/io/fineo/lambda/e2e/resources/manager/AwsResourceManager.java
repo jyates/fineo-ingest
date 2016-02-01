@@ -94,7 +94,7 @@ public class AwsResourceManager implements ResourceManager {
     // all the aws, remote resources
     setupAws();
 
-   // setup the interconnect between the methods
+    // setup the interconnect between the methods
     setupLambda();
   }
 
@@ -132,7 +132,7 @@ public class AwsResourceManager implements ResourceManager {
       props.getRawToStagedKinesisStreamName());
     this.kinesis = new KinesisStreamManager(awsCredentials.getProvider(), waiter);
     future.run(() -> {
-      kinesis.setup(region, arn, streamName, TestProperties.Kinesis.SHARD_COUNT);
+      kinesis.setup(region, streamName, TestProperties.Kinesis.SHARD_COUNT);
     });
 
     // wait for all the setup to complete
@@ -169,38 +169,38 @@ public class AwsResourceManager implements ResourceManager {
 
   @Override
   public void cleanup(EndtoEndSuccessStatus status) throws InterruptedException, IOException {
-    FutureWaiter futures = new FutureWaiter(executor);
-    futures.run(dynamo::deleteSchemaStore);
-    if (status != null) {
-      if (!status.isSuccessful()) {
-        LOG.info(" ---- FAILURE ----");
-        LOG.info("");
-        LOG.info("Data available at: " + output.getRoot());
-        LOG.info("");
-        LOG.info(" ---- FAILURE ----");
-        // we didn't start the test properly, so ensure that no data was stored in firehoses
-        if (!status.isMessageSent() || !status.isUpdateStoreCorrect()) {
-          firehose.ensureNoDataStored();
+    if (status != null && !status.isSuccessful()) {
+      LOG.info(" ---- FAILURE ----");
+      LOG.info("");
+      LOG.info("Data available at: " + output.getRoot());
+      LOG.info("");
+      LOG.info(" ---- FAILURE ----");
+      // we didn't start the test properly, so ensure that no data was stored in firehoses
+      if (!status.isMessageSent() || !status.isUpdateStoreCorrect()) {
+        firehose.ensureNoDataStored();
+      } else {
+        // if is not so good, but we don't want to be keep resources up, so cleanup after we pull
+        // down everything that is in error
+        Preconditions.checkState(status.isAvroToStorageSuccessful(),
+          "Last lambda stage was successful, but not overall successful");
+        if (!status.isRawToAvroSuccessful()) {
+          cloneRawToAvroData(status);
         } else {
-          // if is not so good, but we don't want to be keep resources up, so cleanup after we pull
-          // down everything that is in error
-          Preconditions.checkState(status.isAvroToStorageSuccessful(),
-            "Last lambda stage was successful, but not overall successful");
-          if (!status.isRawToAvroSuccessful()) {
-            cloneRawToAvroData(status);
-          } else {
-            cloneAvroToStorageData(status);
-          }
+          cloneAvroToStorageData(status);
         }
       }
-
-      // cleanup all the resources
-      kinesis.deleteStreams(futures);
-      firehose.cleanupFirehoses(futures);
-      futures.run(this.firehose::cleanupData);
-      futures.run(dynamo::cleanupStoreTables);
     }
+    deleteResources();
+  }
 
+  private void deleteResources() throws InterruptedException {
+    FutureWaiter futures = new FutureWaiter(executor);
+    futures.run(dynamo::deleteSchemaStore);
+    // cleanup all the resources
+    kinesis.deleteStreams(futures);
+    firehose.cleanupFirehoses(futures);
+    futures.run(this.firehose::cleanupData);
+    futures.run(dynamo::cleanupStoreTables);
     futures.await();
   }
 

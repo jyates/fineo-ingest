@@ -1,8 +1,11 @@
-package io.fineo.lambda.dynamo;
+package io.fineo.lambda.dynamo.iter;
 
 import com.google.common.collect.Lists;
 import io.fineo.lambda.dynamo.iter.BatchedPager;
+import io.fineo.lambda.dynamo.iter.PageManager;
 import io.fineo.lambda.dynamo.iter.PagingIterator;
+import io.fineo.lambda.dynamo.iter.PagingRunner;
+import io.fineo.lambda.dynamo.iter.Pipe;
 import org.junit.Test;
 
 import java.util.List;
@@ -183,4 +186,5 @@ public class TestPagingIterator {
     assertFetch(prefetch, 2, counter);
     assertFalse(iter.hasNext());
   }
+
 }

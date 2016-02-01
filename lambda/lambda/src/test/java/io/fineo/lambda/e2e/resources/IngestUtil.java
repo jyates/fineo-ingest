@@ -123,6 +123,7 @@ public class IngestUtil {
         KinesisEvent kevent = LambdaTestUtils.getKinesisEvent(message);
         for (Lambda stage : listeners) {
           try {
+            LOG.debug("Invoking stage: " + stage + " with an event");
             stage.handler.invoke(stage.lambda, kevent);
           } catch (IllegalAccessException | InvocationTargetException e) {
             LOG.error("Failed to submit event: " + event + " to stage: " + stage, e);
