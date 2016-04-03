@@ -4,9 +4,13 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>io.fineo.aws</groupId>
-  <artifactId>fineo-etl</artifactId>
-  <version>1.0-SNAPSHOT</version>
+  <parent>
+    <artifactId>ingest-parent</artifactId>
+    <groupId>io.fineo.etl</groupId>
+    <version>1.0-SNAPSHOT</version>
+  </parent>
+
+  <artifactId>batch</artifactId>
 
   <properties>
     <surefire.version>2.19</surefire.version>
