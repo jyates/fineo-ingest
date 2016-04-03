@@ -82,7 +82,7 @@ public class LambdaClientProperties {
 
   private static LambdaClientProperties load(String file) throws IOException {
     InputStream input = LambdaClientProperties.class.getClassLoader().getResourceAsStream(file);
-    Preconditions.checkArgument(input != null, "Could not load properties file: " + input);
+    Preconditions.checkArgument(input != null, "Could not load properties file: " + file);
     Properties props = new Properties();
     props.load(input);
     LambdaClientProperties fProps = new LambdaClientProperties(props);
