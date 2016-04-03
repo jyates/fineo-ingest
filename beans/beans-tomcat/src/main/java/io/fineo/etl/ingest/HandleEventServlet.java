@@ -6,6 +6,7 @@ import javax.servlet.http.HttpServlet;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
+import javax.ws.rs.core.Response;
 
 @Singleton
 @Path("/handle")
@@ -14,6 +15,7 @@ public class HandleEventServlet extends HttpServlet {
 
   @POST
   @Consumes("application/json")
-  public void handle(String body) {
+  public Response handle(String body) {
+    return Response.ok().build();
   }
 }
