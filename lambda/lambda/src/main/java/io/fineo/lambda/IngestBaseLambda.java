@@ -117,7 +117,7 @@ public abstract class IngestBaseLambda implements TestableLambda {
   }
 
   protected Supplier<FirehoseBatchWriter> getProcessingErrorStream() {
-    return lazyFirehoseBatchWriter(props.getFirehoseStreamName(phaseName, StreamType.COMMIT_ERROR));
+    return lazyFirehoseBatchWriter(props.getFirehoseStreamName(phaseName, StreamType.PROCESSING_ERROR));
   }
 
   protected Supplier<FirehoseBatchWriter> lazyFirehoseBatchWriter(String stream) {

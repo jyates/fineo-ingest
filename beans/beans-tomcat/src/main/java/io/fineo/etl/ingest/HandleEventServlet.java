@@ -10,7 +10,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
 @Singleton
-public class TestServlet extends HttpServlet {
+public class HandleEventServlet extends HttpServlet {
     private static final long serialVersionUID = 7528373021106530918L;
 
     private String greeting;
