@@ -1,6 +1,7 @@
 package io.fineo.etl.processing.raw;
 
 import com.fasterxml.jackson.jr.ob.JSON;
+import com.google.inject.Inject;
 import io.fineo.etl.processing.BaseProcessor;
 import io.fineo.etl.processing.Message;
 import io.fineo.etl.processing.OutputWriter;
@@ -25,6 +26,7 @@ public class ProcessJsonToAvro extends BaseProcessor<Void> {
   private final JSON parser;
   private final SchemaStore store;
 
+  @Inject
   public ProcessJsonToAvro(Supplier<FirehoseBatchWriter> processingErrors,
     Supplier<FirehoseBatchWriter> commitErrors, OutputWriter<Message<Void>> writer,
     SchemaStore store) {

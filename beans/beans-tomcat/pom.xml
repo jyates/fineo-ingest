@@ -54,6 +54,14 @@
   </build>
 
   <dependencies>
+    <!-- Intra-project -->
+    <dependency>
+      <groupId>io.fineo.etl</groupId>
+      <artifactId>processing</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+
+    <!-- External -->
     <dependency>
       <groupId>com.google.inject.extensions</groupId>
       <artifactId>guice-servlet</artifactId>
@@ -93,6 +101,7 @@
       <groupId>com.sun.jersey</groupId>
       <artifactId>jersey-client</artifactId>
       <version>${jersey.version}</version>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>com.github.mjeanroy</groupId>
