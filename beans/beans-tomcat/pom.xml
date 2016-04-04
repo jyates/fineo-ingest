@@ -94,5 +94,11 @@
       <artifactId>jersey-client</artifactId>
       <version>${jersey.version}</version>
     </dependency>
+    <dependency>
+      <groupId>com.github.mjeanroy</groupId>
+      <artifactId>junit-servers-tomcat</artifactId>
+      <version>0.4.2</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 </project>

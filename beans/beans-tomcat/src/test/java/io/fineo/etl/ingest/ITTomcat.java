@@ -1,25 +1,32 @@
 package io.fineo.etl.ingest;
 
+import com.github.mjeanroy.junit.servers.rules.TomcatServerRule;
+import com.github.mjeanroy.junit.servers.tomcat.EmbeddedTomcat;
+import com.github.mjeanroy.junit.servers.tomcat.EmbeddedTomcatConfiguration;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
+import org.junit.ClassRule;
 import org.junit.Test;
 
-import javax.ws.rs.core.MediaType;
+import java.util.UUID;
 
 import static org.junit.Assert.assertEquals;
 
-/**
- *
- */
 public class ITTomcat {
 
+  @ClassRule
+  public static TomcatServerRule SERVER = new TomcatServerRule(new EmbeddedTomcat(
+    EmbeddedTomcatConfiguration.builder()
+                               .withBaseDir("target/tomcat/" + UUID.randomUUID())
+                                .withWebapp("beans/beans-tomcat/src/main/webapp")
+                               .build()));
+
   @Test
-  public void testPost() throws Exception {
+  public void testIsUp() throws Exception {
     Client client = Client.create();
-    WebResource target = client.resource("http://localhost:8080/beans-tomcat").path("handle");
-    ClientResponse respose =
-      target.type(MediaType.APPLICATION_JSON_TYPE).post(ClientResponse.class, "{some:text}");
-    assertEquals(200, respose.getStatus());
+    WebResource target = client.resource(SERVER.getUrl());
+    ClientResponse response = target.get(ClientResponse.class);
+    assertEquals(200, response.getStatus());
   }
 }
