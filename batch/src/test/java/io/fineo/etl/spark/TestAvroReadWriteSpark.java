@@ -1,8 +1,6 @@
 package io.fineo.etl.spark;
 
-import io.fineo.lambda.EndToEndTestUtil;
-import io.fineo.lambda.LambdaTestUtils;
-import io.fineo.lambda.avro.LambdaClientProperties;
+import io.fineo.lambda.LambdaClientProperties;
 import io.fineo.util.TemporaryFolderWithCleanupToggle;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;

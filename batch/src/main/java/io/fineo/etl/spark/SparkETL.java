@@ -121,8 +121,8 @@ public class SparkETL {
     // write to s3-glacier gzip
     //http://stackoverflow.com/questions/17241185/spark-standalone-mode-how-to-compress-spark
     // -output-written-to-hdfs
-    records.map
-    messages.saveAsTextFile(opts.archive(), GzipCodec.class);
+//    records.map
+//    messages.saveAsTextFile(opts.archive(), GzipCodec.class);
 
     // map to [tenant, [...fields...]
 

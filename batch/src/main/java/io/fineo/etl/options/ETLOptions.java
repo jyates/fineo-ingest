@@ -16,7 +16,7 @@
  */
 package io.fineo.etl.options;
 
-import io.fineo.etl.SparkETL;
+import io.fineo.etl.spark.SparkETL;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;

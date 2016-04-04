@@ -32,7 +32,7 @@ public class LambdaClientProperties {
 
   private final java.lang.String KINESIS_URL = "fineo.kinesis.url";
   public static final String KINESIS_PARSED_RAW_OUT_STREAM_NAME = "fineo.kinesis.parsed";
-  private final String KINESIS_RETRIES = "fineo.kinesis.retries";
+  public final String KINESIS_RETRIES = "fineo.kinesis.retries";
 
   public static final String DYNAMO_REGION = "fineo.dynamo.region";
   public static final String DYNAMO_URL_FOR_TESTING = "fineo.dynamo.testing.url";
