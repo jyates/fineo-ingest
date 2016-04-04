@@ -26,9 +26,9 @@ public abstract class BaseProcessor<INFO> {
 
   public void handle(String json) throws IOException {
     try {
-      Message<INFO> obj = process(json);
-      this.writer.write(obj);
+      process(json, this.writer);
     } catch (RuntimeException | IOException e) {
+      LOG.error("Failure during record processing!", e);
       processingErrors.get().addToBatch(ByteBuffer.wrap(json.getBytes()));
     }
 
@@ -43,5 +43,5 @@ public abstract class BaseProcessor<INFO> {
     processingErrors.get().flush();
   }
 
-  protected abstract Message<INFO> process(String json) throws IOException;
+  protected abstract void process(String json, OutputWriter<Message<INFO>> writer) throws IOException;
 }
