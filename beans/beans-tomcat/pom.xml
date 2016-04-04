@@ -34,10 +34,6 @@
     <!-- Run a local tomcat, for testing -->
     <plugins>
       <plugin>
-        <groupId>org.apache.tomcat.maven</groupId>
-        <artifactId>tomcat7-maven-plugin</artifactId>
-      </plugin>
-      <plugin>
         <artifactId>maven-war-plugin</artifactId>
         <configuration>
           <webResources>
@@ -46,6 +42,12 @@
               <directory>src/main/webapp</directory>
             </resource>
           </webResources>
+        </configuration>
+      </plugin>
+      <plugin>
+        <artifactId>maven-failsafe-plugin</artifactId>
+        <configuration>
+          <includes>**/IT*.java</includes>
         </configuration>
       </plugin>
     </plugins>
@@ -71,6 +73,25 @@
     <dependency>
       <groupId>com.sun.jersey.contribs</groupId>
       <artifactId>jersey-guice</artifactId>
+      <version>${jersey.version}</version>
+    </dependency>
+
+    <!-- Tests -->
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>4.12</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>javax.ws.rs</groupId>
+      <artifactId>javax.ws.rs-api</artifactId>
+      <version>2.0.1</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.sun.jersey</groupId>
+      <artifactId>jersey-client</artifactId>
       <version>${jersey.version}</version>
     </dependency>
   </dependencies>

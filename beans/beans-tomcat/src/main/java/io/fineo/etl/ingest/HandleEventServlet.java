@@ -16,6 +16,7 @@ public class HandleEventServlet extends HttpServlet {
   @POST
   @Consumes("application/json")
   public Response handle(String body) {
+    System.out.println("---- here!");
     return Response.ok().build();
   }
 }

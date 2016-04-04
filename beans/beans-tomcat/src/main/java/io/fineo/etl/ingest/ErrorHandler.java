@@ -1,6 +1,7 @@
 package io.fineo.etl.ingest;
 
 import com.google.inject.BindingAnnotation;
+import io.fineo.lambda.LambdaClientProperties;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
@@ -15,4 +16,6 @@ import static java.lang.annotation.ElementType.METHOD;
 @BindingAnnotation
 @Target({ FIELD, PARAMETER, METHOD }) @Retention(RUNTIME)
 public @interface  ErrorHandler {
+
+  LambdaClientProperties.StreamType type();
 }
