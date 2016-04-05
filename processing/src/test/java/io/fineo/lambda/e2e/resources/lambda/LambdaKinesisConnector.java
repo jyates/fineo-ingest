@@ -2,6 +2,7 @@ package io.fineo.lambda.e2e.resources.lambda;
 
 import io.fineo.lambda.LambdaClientProperties;
 import io.fineo.lambda.e2e.resources.AwsResource;
+import io.fineo.lambda.e2e.resources.kinesis.IKinesisStreams;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -25,7 +26,7 @@ public abstract class LambdaKinesisConnector<T> implements AwsResource {
 
   public abstract void write(String kinesisStream, byte[] data);
 
-  public abstract void connect(LambdaClientProperties props) throws IOException;
+  public abstract void connect(LambdaClientProperties props, IKinesisStreams kinesis) throws IOException;
 
   public abstract List<ByteBuffer> getWrites(String streamName);
 }

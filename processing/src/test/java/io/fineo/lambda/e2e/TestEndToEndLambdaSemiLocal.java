@@ -82,8 +82,8 @@ public class TestEndToEndLambdaSemiLocal {
     props.setProperty("dynamo.region", "us-east-1");
     props.setProperty("dynamo.schema-store", uuid + "schema-customer");
     props.setProperty("dynamo.ingest.prefix", uuid + "customer-ingest");
-    props.setProperty("dynamo.limit.write", "5");
-    props.setProperty("dynamo.limit.read", "7");
+    props.setProperty("dynamo.limit.write", "1");
+    props.setProperty("dynamo.limit.read", "1");
     props.setProperty("dynamo.limit.retries", "3");
 
     // replace all the properties with one that is prefixed by "fineo"

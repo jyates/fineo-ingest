@@ -7,7 +7,8 @@ import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.lambda.dynamo.avro.AvroToDynamoWriter;
 import io.fineo.lambda.e2e.resources.IngestUtil;
 import io.fineo.lambda.e2e.resources.TestProperties;
-import io.fineo.lambda.e2e.resources.lambda.LocalLambdaKinesisConnector;
+import io.fineo.lambda.e2e.resources.lambda.LambdaKinesisConnector;
+import io.fineo.lambda.e2e.resources.lambda.LocalLambdaRemoteKinesisConnector;
 import io.fineo.lambda.firehose.FirehoseBatchWriter;
 import io.fineo.lambda.util.run.ResultWaiter;
 import io.fineo.schema.avro.RecordMetadata;
@@ -47,7 +48,7 @@ public class MockResourceManager extends BaseResourceManager {
   private AvroToDynamoWriter dynamo;
   private SchemaStore store;
 
-  public MockResourceManager(LocalLambdaKinesisConnector connector, LambdaRawRecordToAvro start,
+  public MockResourceManager(LambdaKinesisConnector connector, LambdaRawRecordToAvro start,
     LambdaAvroToStorage storage) {
     super(connector);
     this.start = start;
@@ -80,7 +81,8 @@ public class MockResourceManager extends BaseResourceManager {
           props
             .getFirehoseStreamName(STAGED_PREFIX, LambdaClientProperties.StreamType.COMMIT_ERROR)));
 
-    this.connector.connect(props);
+    // connector manages kinesis itself in local mock
+    this.connector.connect(props, null);
   }
 
   @Override

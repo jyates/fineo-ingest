@@ -20,6 +20,7 @@ import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -62,7 +63,10 @@ public class TestKinesisProducerAws {
     assertFalse("Some actions failed: " + failures.getActions(), failures.any());
 
     // verify that the data we wrote is what we read back in
-    List<ByteBuffer> writes = manager.getEvents(streamName, false);
+    List<ByteBuffer> writes = Lists.newArrayList(manager.getEventQueue(streamName, false))
+                                   .stream()
+                                   .flatMap(list -> list.stream())
+                                   .collect(Collectors.toList());
     assertEquals(1, writes.size());
 
     // verify the data actually matches the record

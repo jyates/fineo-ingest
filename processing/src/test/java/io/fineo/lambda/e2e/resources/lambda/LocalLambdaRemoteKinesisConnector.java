@@ -3,7 +3,7 @@ package io.fineo.lambda.e2e.resources.lambda;
 import io.fineo.lambda.LambdaClientProperties;
 import io.fineo.lambda.StreamProducer;
 import io.fineo.lambda.e2e.resources.IngestUtil;
-import io.fineo.lambda.e2e.resources.kinesis.MockKinesisStreams;
+import io.fineo.lambda.e2e.resources.kinesis.IKinesisStreams;
 import io.fineo.lambda.util.run.FutureWaiter;
 
 import java.io.IOException;
@@ -17,15 +17,15 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * Connect lambda to kinesis streams
+ * Connect lambda to a remote kinesis streams
  */
-public class LocalLambdaKinesisConnector extends LambdaKinesisConnector<IngestUtil.Lambda> {
+public class LocalLambdaRemoteKinesisConnector extends LambdaKinesisConnector<IngestUtil.Lambda> {
 
-  private MockKinesisStreams kinesis;
-
+  protected IKinesisStreams kinesis;
   private ExecutorService executor = Executors.newSingleThreadExecutor();
 
-  public LocalLambdaKinesisConnector(Map<String, List<IngestUtil.Lambda>> streamToLambdaMapping,
+  public LocalLambdaRemoteKinesisConnector(
+    Map<String, List<IngestUtil.Lambda>> streamToLambdaMapping,
     String pipelineSource) {
     super(streamToLambdaMapping, pipelineSource);
   }
@@ -41,16 +41,19 @@ public class LocalLambdaKinesisConnector extends LambdaKinesisConnector<IngestUt
   }
 
   @Override
-  public void connect(LambdaClientProperties props) throws IOException {
-    // have local streams
-    this.kinesis = new MockKinesisStreams();
+  public void connect(LambdaClientProperties props, IKinesisStreams kinesisConnection)
+    throws IOException {
+    this.kinesis = kinesisConnection;
+    connect();
+  }
 
+  protected void connect() {
     // ensure that the outputs can actually write back to kinesis
     for (List<IngestUtil.Lambda> lambdas : this.mapping.values()) {
       for (IngestUtil.Lambda lambda : lambdas) {
         Object func = lambda.getFunction();
         if (func instanceof StreamProducer) {
-          ((StreamProducer) func).setDownstreamForTesting(kinesis.getProducer());
+          ((StreamProducer) func).setDownstreamForTesting(this.kinesis.getProducer());
         }
       }
     }
@@ -58,7 +61,7 @@ public class LocalLambdaKinesisConnector extends LambdaKinesisConnector<IngestUt
     executor.execute(() -> {
       Map<String, BlockingQueue<List<ByteBuffer>>> streams = new HashMap<>();
       for (String stream : mapping.keySet()) {
-        streams.put(stream, kinesis.getEventQueue(stream, true));
+        streams.put(stream, this.kinesis.getEventQueue(stream, true));
       }
 
       while (true) {

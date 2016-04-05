@@ -11,6 +11,7 @@ import io.fineo.lambda.e2e.EndtoEndSuccessStatus;
 import io.fineo.lambda.e2e.TestOutput;
 import io.fineo.lambda.e2e.resources.AwsResource;
 import io.fineo.lambda.e2e.resources.DynamoResource;
+import io.fineo.lambda.e2e.resources.ResourceUtils;
 import io.fineo.lambda.e2e.resources.TestProperties;
 import io.fineo.lambda.e2e.resources.firehose.FirehoseResource;
 import io.fineo.lambda.e2e.resources.kinesis.KinesisStreamManager;
@@ -92,7 +93,7 @@ public class AwsResourceManager extends BaseResourceManager {
     // setup the interconnect between the methods
     future.run(() -> {
       try {
-        connector.connect(props);
+        connector.connect(props, kinesis);
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
@@ -110,7 +111,7 @@ public class AwsResourceManager extends BaseResourceManager {
 
   @Override
   public List<ByteBuffer> getKinesisWrites(String stream) {
-    return this.kinesis.getEvents(stream, true);
+    return this.connector.getWrites(stream);
   }
 
   @Override
@@ -174,8 +175,9 @@ public class AwsResourceManager extends BaseResourceManager {
     cloneS3(LambdaClientProperties.STAGED_PREFIX, status);
     // we didn't even archive anything, so clone down the kinesis contents
     if (!status.getCorrectFirehoses().contains(new Pair<>(STAGED_PREFIX, ARCHIVE))) {
-      kinesis.cloneStream(props.getRawToStagedKinesisStreamName(), output.newFolder
-        (LambdaClientProperties.STAGED_PREFIX, "kinesis"));
+      String streamName = props.getRawToStagedKinesisStreamName();
+      File out = output.newFolder(LambdaClientProperties.STAGED_PREFIX, "kinesis");
+      ResourceUtils.writeStream(streamName, out, () -> this.connector.getWrites(streamName));
     }
 
     // copy any data from Dynamo

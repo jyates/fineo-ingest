@@ -4,7 +4,9 @@ import io.fineo.lambda.LambdaAvroToStorage;
 import io.fineo.lambda.LambdaClientProperties;
 import io.fineo.lambda.LambdaRawRecordToAvro;
 import io.fineo.lambda.e2e.resources.IngestUtil;
-import io.fineo.lambda.e2e.resources.lambda.LocalLambdaKinesisConnector;
+import io.fineo.lambda.e2e.resources.lambda.LambdaKinesisConnector;
+import io.fineo.lambda.e2e.resources.lambda.LocalLambdaLocalKinesisConnector;
+import io.fineo.lambda.e2e.resources.lambda.LocalLambdaRemoteKinesisConnector;
 import io.fineo.lambda.util.LambdaTestUtils;
 import io.fineo.lambda.e2e.resources.manager.MockResourceManager;
 import org.junit.Test;
@@ -51,8 +53,8 @@ public class TestEndToEndLambdaLocal {
                 .start(INGEST_CONNECTOR, start)
                 .then(STAGE_CONNECTOR, storage)
                 .build();
-    LocalLambdaKinesisConnector connector =
-      new LocalLambdaKinesisConnector(stageMap, INGEST_CONNECTOR);
+    LambdaKinesisConnector connector =
+      new LocalLambdaLocalKinesisConnector(stageMap, INGEST_CONNECTOR);
     EndToEndTestRunner runner =
       new EndToEndTestRunner(new LambdaClientProperties(props),
         new MockResourceManager(connector, start, storage));
