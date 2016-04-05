@@ -13,22 +13,12 @@
   <artifactId>processing</artifactId>
 
   <properties>
-    <!-- Build properties -->
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <maven.compile.version>1.8</maven.compile.version>
 
     <!-- Plugin Versions -->
     <maven.dependency.version>2.10</maven.dependency.version>
     <maven.compiler.version>3.3</maven.compiler.version>
     <avro.maven.plugin.version>1.7.7</avro.maven.plugin.version>
     <maven.shade.version>2.3</maven.shade.version>
-
-    <!-- Dependency Versions -->
-    <!-- AWS -->
-    <aws-lambda-java-core.version>1.1.0</aws-lambda-java-core.version>
-    <amazon-kinesis-client.version>1.5.1</amazon-kinesis-client.version>
-    <aws-lambda-java-log4j.version>1.0.0</aws-lambda-java-log4j.version>
-    <amazon-kinesis-producer.version>0.10.2</amazon-kinesis-producer.version>
 
     <!-- Other -->
     <fineo-schema-mgmt.version>1.0-SNAPSHOT</fineo-schema-mgmt.version>
@@ -141,8 +131,8 @@
           <artifactId>maven-compiler-plugin</artifactId>
           <version>${maven.compiler.version}</version>
           <configuration>
-            <source>${maven.compile.version}</source>
-            <target>${maven.compile.version}</target>
+            <source>${java.version}</source>
+            <target>${java.version}</target>
           </configuration>
         </plugin>
         <plugin>
@@ -285,8 +275,8 @@
                     <transformer
                        implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                       <manifestEntries>
-                        <X-Compile-Source-JDK>${maven.compile.version}</X-Compile-Source-JDK>
-                        <X-Compile-Target-JDK>${maven.compile.version}</X-Compile-Target-JDK>
+                        <X-Compile-Source-JDK>${java.version}</X-Compile-Source-JDK>
+                        <X-Compile-Target-JDK>${java.version}</X-Compile-Target-JDK>
                       </manifestEntries>
                     </transformer>
                   </transformers>

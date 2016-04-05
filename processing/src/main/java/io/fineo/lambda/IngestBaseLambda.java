@@ -49,6 +49,7 @@ public abstract class IngestBaseLambda implements TestableLambda {
         data.reset();
         handleEvent(rec);
       } catch (RuntimeException | IOException e) {
+        LOG.error("Failed for process record", e);
         addRecordError(rec);
       }
     }

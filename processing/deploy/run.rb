@@ -20,8 +20,8 @@ functions = [
     description: "Convert raw JSON records to avro encoded records",
     handler: "io.fineo.lambda.LambdaRawRecordToAvro::handler",
     role: "arn:aws:iam::766732214526:role/Lambda-Raw-To-Avro-Ingest-Role",
-    timeout: 30, # seconds
-    memory_size: 198 # MB
+    timeout: 40, # seconds
+    memory_size: 256 # MB
   },
   {
     function_name: "AvroToStorage",
@@ -80,8 +80,7 @@ end
 
 def getFileStat(file)
   stat = File::Stat.new(file)
-  puts stat
-  "\nname: #{file}\n size: #{(stat.size/1000000.0).round(2)}M"+
+  "\n name: #{file}\n size: #{(stat.size/1000000.0).round(2)}M"+
   "\n atime: #{stat.atime}"+
   "\n birthtime: #{stat.birthtime}"
 end
@@ -122,13 +121,13 @@ parser = OptionParser.new do |opts|
   opts.banner = "Usage: #{File.basename(__FILE__)} [options]"
 
   opts.separator "AWS options:"
-  opts.on('-c', '--credentials file', "Location of the credentials file to use.") do |s|
+  opts.on('-c', '--credentials FILE', "Location of the credentials FILE to use.") do |s|
     options.credentials = s
   end
-  opts.on('-r', '--region regionname', "Specify the region. Default: #{options.region}") do |name|
+  opts.on('-r', '--region REGIONNAME', "Specify the region. Default: #{options.region}") do |name|
     options.region = name
   end
-  opts.on('--lambda name1,name2', Array, "Comma-separated names of the lambda function(s) to deploy") do |list|
+  opts.on('--lambda FUNCTIONS', Array, "Comma-separated names of the lambda function(s) to deploy") do |list|
     options.names += list
   end
 
@@ -164,7 +163,7 @@ raise "No deployable jar found!" if jar.nil?
 # There are some jars, so ask the user if they want to deploy this particular jar
 unless options.force
   system "date"
-  deployCheck = "Do you want to deploy #{getFileStat(jar)}\n? [y/n]"
+  deployCheck = "Found #{getFileStat(jar)}\n---> Do you want do deploy it? [y/n]"
   result = getCorrectResult(deployCheck)
   exit unless result.eql?("y")
 end
@@ -177,7 +176,11 @@ printProperties(jar) if options.verbose
 # Actually do the deployment of the lambda functions
 require 'aws-sdk'
 require 'yaml'
-creds = YAML.load(File.read(options.credentials))
+begin
+  creds = YAML.load(File.read(options.credentials))
+rescue
+  raise "Could not read credentials file at: #{options.credentials}"
+end
 
 # Actually create the lambda function
 client = Aws::Lambda::Client.new(

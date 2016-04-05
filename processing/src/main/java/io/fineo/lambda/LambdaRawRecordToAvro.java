@@ -2,8 +2,8 @@ package io.fineo.lambda;
 
 import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
 import com.fasterxml.jackson.databind.util.ByteBufferBackedInputStream;
-import com.fasterxml.jackson.jr.ob.JSON;
 import com.google.common.annotations.VisibleForTesting;
+import io.fineo.etl.processing.JsonParser;
 import io.fineo.internal.customer.Malformed;
 import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.lambda.firehose.FirehoseBatchWriter;
@@ -39,39 +39,41 @@ import java.util.function.Supplier;
 public class LambdaRawRecordToAvro extends IngestBaseLambda implements StreamProducer {
 
   private static final Log LOG = LogFactory.getLog(LambdaRawRecordToAvro.class);
+  private final JsonParser parser;
   private SchemaStore store;
   private KinesisProducer convertedRecords;
 
-  public LambdaRawRecordToAvro(){
+  public LambdaRawRecordToAvro() {
     super(LambdaClientProperties.RAW_PREFIX);
+    this.parser = new JsonParser();
   }
 
   @VisibleForTesting
   @Override
   public void handleEvent(KinesisEvent.KinesisEventRecord rec) throws IOException {
-    // parse out the json
-    JSON configuredJson = JSON.std.with(JSON.Feature.READ_ONLY).with(JSON.Feature
-      .USE_DEFERRED_MAPS);
-    Map<String, Object> values =
-      configuredJson.mapFrom(new ByteBufferBackedInputStream(rec.getKinesis().getData()));
-    LOG.trace("Parsed json: " + values);
-    // parse out the necessary values
-    MapRecord record = new MapRecord(values);
-    // this is an ugly reach into the bridge, logic for the org ID, specially as we pull it out
-    // when we create the schema bridge, but that requires a bit more refactoring than I want
-    // to do right now for the schema bridge. Maybe an easy improvement later.
-    String orgId = record.getStringByField(AvroSchemaEncoder.ORG_ID_KEY);
-    // sometimes this throws illegal argument, e.g. record not valid, so we fall back on the
-    // error handler
-    AvroSchemaEncoder bridge = AvroSchemaEncoder.create(store, record);
-    LOG.trace("Got the encoder");
+    for (Map<String, Object> values : parser
+      .parse(new ByteBufferBackedInputStream(rec.getKinesis().getData()))) {
+      LOG.trace("Parsed json: " + values);
+      // parse out the necessary values
+      MapRecord record = new MapRecord(values);
+      LOG.trace("got record");
+      // this is an ugly reach into the bridge, logic for the org ID, specially as we pull it out
+      // when we create the schema bridge, but that requires a bit more refactoring than I want
+      // to do right now for the schema bridge. Maybe an easy improvement later.
+      String orgId = record.getStringByField(AvroSchemaEncoder.ORG_ID_KEY);
+      LOG.trace("got org id");
+      // sometimes this throws illegal argument, e.g. record not valid, so we fall back on the
+      // error handler
+      AvroSchemaEncoder bridge = AvroSchemaEncoder.create(store, record);
+      LOG.trace("Got the encoder");
 
-    // write the record to a ByteBuffer
-    GenericRecord outRecord = bridge.encode(new MapRecord(values));
-    LOG.trace("Encoded the record");
-    // add the record
-    this.convertedRecords.add(props.getRawToStagedKinesisStreamName(), orgId, outRecord);
-    LOG.trace("Wrote the record");
+      // write the record to a ByteBuffer
+      GenericRecord outRecord = bridge.encode(new MapRecord(values));
+      LOG.trace("Encoded the record");
+      // add the record
+      this.convertedRecords.add(props.getRawToStagedKinesisStreamName(), orgId, outRecord);
+      LOG.trace("Wrote the record");
+    }
   }
 
   public MultiWriteFailures<GenericRecord> commit() throws IOException {
