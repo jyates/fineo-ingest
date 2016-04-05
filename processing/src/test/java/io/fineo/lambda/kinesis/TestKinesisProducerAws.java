@@ -46,7 +46,7 @@ public class TestKinesisProducerAws {
 
   @AfterClass
   public static void teardown() throws Exception {
-    manager.deleteStreams();
+    manager.cleanup();
   }
 
   @Test

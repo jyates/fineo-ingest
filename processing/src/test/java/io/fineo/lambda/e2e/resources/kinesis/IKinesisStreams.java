@@ -5,6 +5,7 @@ import io.fineo.schema.Pair;
 
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.concurrent.BlockingQueue;
 import java.util.stream.Stream;
 
 /**
@@ -15,7 +16,5 @@ public interface IKinesisStreams {
 
   void submit(String streamName, ByteBuffer data);
 
-  Stream<Pair<String, List<ByteBuffer>>> events();
-
-  List<ByteBuffer> getEvents(String stream, boolean start);
+  BlockingQueue<List<ByteBuffer>> getEventQueue(String stream, boolean start);
 }

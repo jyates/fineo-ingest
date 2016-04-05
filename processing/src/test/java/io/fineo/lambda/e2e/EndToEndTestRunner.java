@@ -86,10 +86,7 @@ public class EndToEndTestRunner {
   }
 
   private void validateRawRecordToAvro() throws IOException {
-    // ensure that we didn't write any errors in the first stage
-    verifyNoStageErrors(RAW_PREFIX, bbs -> new String(combine(bbs).array()));
-
-    List<ByteBuffer> archived = manager.getFirhoseWrites(props.getFirehoseStreamName(RAW_PREFIX,
+    List<ByteBuffer> archived = manager.getFirehoseWrites(props.getFirehoseStreamName(RAW_PREFIX,
       ARCHIVE));
     ByteBuffer data = combine(archived);
 
@@ -103,6 +100,9 @@ public class EndToEndTestRunner {
 
     String stream = props.getRawToStagedKinesisStreamName();
     verifyAvroRecordsFromStream(stream, () -> manager.getKinesisWrites(stream));
+
+    // ensure that we didn't write any errors in the first stage
+    verifyNoStageErrors(RAW_PREFIX, bbs -> new String(combine(bbs).array()));
   }
 
   private void validateAvroToStorage() throws IOException {
@@ -116,7 +116,7 @@ public class EndToEndTestRunner {
 
     // archive should be exactly the avro formatted json record
     String stream = props.getFirehoseStreamName(STAGED_PREFIX, ARCHIVE);
-    verifyAvroRecordsFromStream(stream, () -> manager.getFirhoseWrites(stream));
+    verifyAvroRecordsFromStream(stream, () -> manager.getFirehoseWrites(stream));
     status.firehoseStreamCorrect(STAGED_PREFIX, ARCHIVE);
 
     // verify that we wrote the right things to DynamoDB
@@ -146,7 +146,7 @@ public class EndToEndTestRunner {
   private void verifyNoFirehoseWrites(Function<List<ByteBuffer>, String> errorResult, String stage,
     LambdaClientProperties.StreamType... streams) {
     for (LambdaClientProperties.StreamType stream : streams) {
-      empty(errorResult, manager.getFirhoseWrites(props.getFirehoseStreamName(stage, stream)));
+      empty(errorResult, manager.getFirehoseWrites(props.getFirehoseStreamName(stage, stream)));
       LOG.debug("Marking stream: " + stage + "-" + stream + " correct");
       status.firehoseStreamCorrect(stage, stream);
     }

@@ -19,7 +19,7 @@ public interface ResourceManager {
 
   default void cleanup(EndtoEndSuccessStatus status) throws Exception{};
 
-  List<ByteBuffer> getFirhoseWrites(String streamName);
+  List<ByteBuffer> getFirehoseWrites(String streamName);
 
   List<ByteBuffer> getKinesisWrites(String rawToStagedKinesisStreamName);
 

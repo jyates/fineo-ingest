@@ -41,7 +41,7 @@ public class TestEndToEndLambdaSemiLocal {
     this.props = new LambdaClientProperties(getProperties());
     props.setAwsCredentialProviderForTesting(awsCredentials.getProvider());
 
-    this.manager = new AwsResourceManager(awsCredentials, output);
+    this.manager = null;//new AwsResourceManager(awsCredentials, output);
     this.runner = new EndToEndTestRunner(props, manager);
   }
 

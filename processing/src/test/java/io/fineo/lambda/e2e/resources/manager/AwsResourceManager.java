@@ -1,24 +1,20 @@
 package io.fineo.lambda.e2e.resources.manager;
 
-import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
 import io.fineo.aws.rule.AwsCredentialResource;
-import io.fineo.lambda.IngestBaseLambda;
-import io.fineo.lambda.LambdaAvroToStorage;
 import io.fineo.lambda.LambdaClientProperties;
-import io.fineo.lambda.LambdaRawRecordToAvro;
 import io.fineo.lambda.e2e.EndToEndTestRunner;
 import io.fineo.lambda.e2e.EndtoEndSuccessStatus;
 import io.fineo.lambda.e2e.TestOutput;
+import io.fineo.lambda.e2e.resources.AwsResource;
 import io.fineo.lambda.e2e.resources.DynamoResource;
-import io.fineo.lambda.e2e.resources.IngestUtil;
 import io.fineo.lambda.e2e.resources.TestProperties;
 import io.fineo.lambda.e2e.resources.firehose.FirehoseResource;
 import io.fineo.lambda.e2e.resources.kinesis.KinesisStreamManager;
-import io.fineo.lambda.util.ResourceManager;
+import io.fineo.lambda.e2e.resources.lambda.LambdaKinesisConnector;
 import io.fineo.lambda.util.run.FutureWaiter;
 import io.fineo.lambda.util.run.ResultWaiter;
 import io.fineo.schema.Pair;
@@ -30,7 +26,6 @@ import org.apache.commons.logging.LogFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -45,45 +40,25 @@ import static org.junit.Assert.assertEquals;
 /**
  * Manages lambda test resources on AWS
  */
-public class AwsResourceManager implements ResourceManager {
+public class AwsResourceManager extends BaseResourceManager {
   private static final Log LOG = LogFactory.getLog(AwsResourceManager.class);
   private static final ListeningExecutorService executor = MoreExecutors.listeningDecorator(
     MoreExecutors.getExitingExecutorService((ThreadPoolExecutor) Executors.newCachedThreadPool()));
-
-  private static final String TEST_EVENT =
-    "{"
-    + "  \"Records\": ["
-    + "    {"
-    + "      \"eventID\": "
-    + "\"shardId-000000000000:49545115243490985018280067714973144582180062593244200961\","
-    + "      \"eventVersion\": \"1.0\","
-    + "      \"kinesis\": {"
-    + "        \"partitionKey\": \"partitionKey-3\","
-    + "        \"data\": \"%s\","
-    + "        \"kinesisSchemaVersion\": \"1.0\","
-    + "        \"sequenceNumber\": \"49545115243490985018280067714973144582180062593244200961\""
-    + "      },"
-    + "      \"invokeIdentityArn\": \"arn:aws:iam::EXAMPLE\","
-    + "      \"eventName\": \"aws:kinesis:record\","
-    + "      \"eventSourceARN\": \"arn:aws:kinesis:EXAMPLE\","
-    + "      \"eventSource\": \"aws:kinesis\","
-    + "      \"awsRegion\": \"%s\""
-    + "    }"
-    + "  ]"
-    + "}"
-    + "";
 
   private final String region = System.getProperty("aws-region", "us-east-1");
 
   private final AwsCredentialResource awsCredentials;
   private final TestOutput output;
+
   private LambdaClientProperties props;
   private FirehoseResource firehose;
   private KinesisStreamManager kinesis;
   private DynamoResource dynamo;
-  private IngestUtil util;
+  private List<AwsResource> resources = new ArrayList<>();
 
-  public AwsResourceManager(AwsCredentialResource awsCredentials, TestOutput output) {
+  public AwsResourceManager(AwsCredentialResource awsCredentials, TestOutput output,
+    LambdaKinesisConnector connector) {
+    super(connector);
     this.awsCredentials = awsCredentials;
     this.output = output;
   }
@@ -91,68 +66,51 @@ public class AwsResourceManager implements ResourceManager {
   @Override
   public void setup(LambdaClientProperties props) throws Exception {
     this.props = props;
-    // all the aws, remote resources
-    setupAws();
-
-    // setup the interconnect between the methods
-    setupLambda();
-  }
-
-  private void setupLambda() throws NoSuchMethodException {
-    LambdaRawRecordToAvro raw = new LambdaRawRecordToAvro();
-    IngestBaseLambda.setupPropertiesForIntegrationTesting(raw, props);
-    LambdaAvroToStorage storage = new LambdaAvroToStorage();
-    IngestBaseLambda.setupPropertiesForIntegrationTesting(storage, props);
-    this.util = new IngestUtil.IngestUtilBuilder(this.kinesis)
-      .start(raw, getHandler(raw))
-      .then(props.getRawToStagedKinesisStreamName(), storage, getHandler(storage))
-      .build();
-  }
-
-  private Method getHandler(Object o) throws NoSuchMethodException {
-    return o.getClass().getMethod("handler", KinesisEvent.class);
-  }
-
-  private void setupAws() throws InterruptedException {
     FutureWaiter future = new FutureWaiter(executor);
     ResultWaiter.ResultWaiterFactory waiter = new ResultWaiter.ResultWaiterFactory(TestProperties
       .FIVE_MINUTES, TestProperties.ONE_SECOND);
+
     this.dynamo = new DynamoResource(props, waiter);
     dynamo.setup(future);
+    resources.add(dynamo);
 
     // setup the firehose connections
     this.firehose = new FirehoseResource(props, awsCredentials.getProvider(), waiter);
     for (String stage : TestProperties.Lambda.STAGES) {
       firehose.createFirehoses(stage, future);
     }
+    resources.add(firehose);
 
     // setup the kinesis streams
     String streamName = props.getRawToStagedKinesisStreamName();
-    String arn = String.format(TestProperties.Kinesis.KINESIS_STREAM_ARN_TO_FORMAT, region,
-      props.getRawToStagedKinesisStreamName());
     this.kinesis = new KinesisStreamManager(awsCredentials.getProvider(), waiter);
     future.run(() -> {
       kinesis.setup(region, streamName, TestProperties.Kinesis.SHARD_COUNT);
     });
+    resources.add(kinesis);
+
+    // setup the interconnect between the methods
+    future.run(() -> {
+      try {
+        connector.connect(props);
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    });
+    resources.add(connector);
 
     // wait for all the setup to complete
     future.await();
   }
 
-
   @Override
-  public byte[] send(Map<String, Object> json) throws Exception {
-    return util.send(json);
-  }
-
-  @Override
-  public List<ByteBuffer> getFirhoseWrites(String stream) {
+  public List<ByteBuffer> getFirehoseWrites(String stream) {
     return firehose.read(stream);
   }
 
   @Override
   public List<ByteBuffer> getKinesisWrites(String stream) {
-    return util.getKinesisStream(stream);
+    return this.kinesis.getEvents(stream, true);
   }
 
   @Override
@@ -195,19 +153,16 @@ public class AwsResourceManager implements ResourceManager {
 
   private void deleteResources() throws InterruptedException {
     FutureWaiter futures = new FutureWaiter(executor);
-    futures.run(dynamo::deleteSchemaStore);
-    // cleanup all the resources
-    kinesis.deleteStreams(futures);
-    firehose.cleanupFirehoses(futures);
-    futures.run(this.firehose::cleanupData);
-    futures.run(dynamo::cleanupStoreTables);
+    for (AwsResource resource : resources) {
+      resource.cleanup(futures);
+    }
+
     futures.await();
   }
 
   /**
    * Copy all the resources that were part of the failure to local disk fpor the raw -> avro stage
    */
-
   private void cloneRawToAvroData(EndtoEndSuccessStatus status) throws IOException {
     cloneS3(LambdaClientProperties.RAW_PREFIX, status);
   }

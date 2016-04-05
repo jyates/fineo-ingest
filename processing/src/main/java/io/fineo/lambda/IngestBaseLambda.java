@@ -4,6 +4,7 @@ import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
 import com.google.common.annotations.VisibleForTesting;
 import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.lambda.firehose.FirehoseBatchWriter;
+import io.fineo.lambda.kinesis.KinesisProducer;
 import io.fineo.lambda.test.TestableLambda;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.logging.Log;
@@ -118,7 +119,8 @@ public abstract class IngestBaseLambda implements TestableLambda {
   }
 
   protected Supplier<FirehoseBatchWriter> getProcessingErrorStream() {
-    return lazyFirehoseBatchWriter(props.getFirehoseStreamName(phaseName, StreamType.PROCESSING_ERROR));
+    return lazyFirehoseBatchWriter(
+      props.getFirehoseStreamName(phaseName, StreamType.PROCESSING_ERROR));
   }
 
   protected Supplier<FirehoseBatchWriter> lazyFirehoseBatchWriter(String stream) {
@@ -134,11 +136,4 @@ public abstract class IngestBaseLambda implements TestableLambda {
     Supplier<FirehoseBatchWriter>>>
     curriedFirehose =
     name -> func -> () -> new FirehoseBatchWriter(props, func, name);
-
-
-  @VisibleForTesting
-  public static void setupPropertiesForIntegrationTesting(IngestBaseLambda lambda,
-    LambdaClientProperties props) {
-    lambda.props = props;
-  }
 }

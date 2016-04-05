@@ -14,6 +14,7 @@ import com.amazonaws.services.kinesis.model.Record;
 import com.google.common.collect.AbstractIterator;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.MoreExecutors;
+import io.fineo.lambda.e2e.resources.AwsResource;
 import io.fineo.lambda.e2e.resources.ResourceUtils;
 import io.fineo.lambda.kinesis.KinesisProducer;
 import io.fineo.lambda.util.run.FutureWaiter;
@@ -37,7 +38,7 @@ import java.util.stream.StreamSupport;
 /**
  * Manage interactions with Kinesis streams
  */
-public class KinesisStreamManager implements IKinesisStreams {
+public class KinesisStreamManager implements AwsResource {
 
   private final AWSCredentialsProvider credentials;
   private final ResultWaiter.ResultWaiterFactory waiter;
@@ -78,7 +79,6 @@ public class KinesisStreamManager implements IKinesisStreams {
     return client;
   }
 
-  @Override
   public List<ByteBuffer> getEvents(String stream, boolean start) {
     if (!start) {
       String iter = streamToIterator.get(stream);
@@ -110,14 +110,14 @@ public class KinesisStreamManager implements IKinesisStreams {
   }
 
 
-  public void deleteStreams() throws InterruptedException {
+  public void cleanup() throws InterruptedException {
     FutureWaiter f = new FutureWaiter(
       MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(this.streamToIterator.size())));
-    deleteStreams(f);
+    cleanup(f);
     f.await();
   }
 
-  public void deleteStreams(FutureWaiter futures) {
+  public void cleanup(FutureWaiter futures) {
     // delete the streams
     streamToIterator.keySet().stream().forEach(name -> futures.run(() -> {
       DeleteStreamRequest deleteStreamRequest = new DeleteStreamRequest();
@@ -139,19 +139,19 @@ public class KinesisStreamManager implements IKinesisStreams {
     ResourceUtils.writeStream(streamName, dir, () -> this.getEvents(streamName, true));
   }
 
-  @Override
+
   public KinesisProducer getProducer() {
     return new KinesisProducer(this.kinesis, kinesisRetries);
   }
 
-  @Override
+
   public void submit(String streamName, ByteBuffer data) {
     if (streamName == null) {
       this.events.add(Lists.newArrayList(data));
     }
   }
 
-  @Override
+
   public Stream<Pair<String, List<ByteBuffer>>> events() {
     Iterable<Pair<String, List<ByteBuffer>>> iter = () -> new AbstractIterator<Pair<String,
       List<ByteBuffer>>>() {

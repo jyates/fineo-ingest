@@ -40,7 +40,7 @@ import static org.junit.Assert.assertTrue;
 /**
  *
  */
-public class DynamoResource {
+public class DynamoResource implements AwsResource{
   private static final Log LOG = LogFactory.getLog(DynamoResource.class);
   private final LambdaClientProperties props;
   private final AtomicReference<SchemaStore> storeRef = new AtomicReference<>();
@@ -78,14 +78,19 @@ public class DynamoResource {
     });
   }
 
-  public void deleteSchemaStore() {
+  public void cleanup(FutureWaiter futures){
+    futures.run(this::deleteSchemaStore);
+    futures.run(this::cleanupStoreTables);
+  }
+
+  private void deleteSchemaStore() {
     String table = props.getSchemaStoreTable();
     // need less that than the full name since is an exclusive start key and wont include the
     // table we actually want to delete
     this.deleteDynamoTables(table.substring(0, table.length() - 2));
   }
 
-  public void cleanupStoreTables() {
+  private void cleanupStoreTables() {
     String table = props.getDynamoIngestTablePrefix();
     deleteDynamoTables(table);
   }

@@ -20,6 +20,7 @@ import com.amazonaws.util.IOUtils;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
 import io.fineo.lambda.LambdaClientProperties;
+import io.fineo.lambda.e2e.resources.AwsResource;
 import io.fineo.lambda.e2e.resources.ResourceUtils;
 import io.fineo.lambda.e2e.resources.S3Resource;
 import io.fineo.lambda.e2e.resources.TestProperties;
@@ -47,7 +48,7 @@ import static org.junit.Assert.assertEquals;
 /**
  * Manage firehose connection and result lookup
  */
-public class FirehoseResource {
+public class FirehoseResource implements AwsResource {
   private static final Log LOG = LogFactory.getLog(FirehoseResource.class);
   public static final long READ_S3_INTERVAL = TestProperties.ONE_SECOND * 10;
 
@@ -112,14 +113,14 @@ public class FirehoseResource {
 
     // wait for the stream to be ready, but don't fail if it isn't
     waiter.get()
-      .withDescription("Firehose stream: " + stream + " activation")
-      .withStatus(() -> {
-        DescribeDeliveryStreamRequest describe = new DescribeDeliveryStreamRequest()
-          .withDeliveryStreamName(stream);
-        DescribeDeliveryStreamResult result = firehoseClient.describeDeliveryStream(describe);
-        return result.getDeliveryStreamDescription().getDeliveryStreamStatus();
-      }).withStatusCheck(status -> status.equals("ACTIVE"))
-      .waitForResult();
+          .withDescription("Firehose stream: " + stream + " activation")
+          .withStatus(() -> {
+            DescribeDeliveryStreamRequest describe = new DescribeDeliveryStreamRequest()
+              .withDeliveryStreamName(stream);
+            DescribeDeliveryStreamResult result = firehoseClient.describeDeliveryStream(describe);
+            return result.getDeliveryStreamDescription().getDeliveryStreamStatus();
+          }).withStatusCheck(status -> status.equals("ACTIVE"))
+          .waitForResult();
   }
 
   private boolean exists(String stream) {
@@ -139,15 +140,19 @@ public class FirehoseResource {
 
     // read the data from S3 to ensure it matches the raw data sent
     ResultWaiter<ObjectListing> wait = waiter.get()
-      .withInterval(READ_S3_INTERVAL)
-      .withTimeout(Math.max(timeout, READ_S3_INTERVAL))
-      .withDescription(
-        "Firehose -> s3 [" + TestProperties.Firehose.S3_BUCKET_NAME + "/" + prefix
-        + "] flush; "
-        + "max expceted: ~60sec")
-      .withStatus(() -> s3.listObjects(TestProperties.Firehose.S3_BUCKET_NAME, prefix))
-      .withStatusCheck(
-        listing -> ((ObjectListing) listing).getObjectSummaries().size() > 0);
+                                             .withInterval(READ_S3_INTERVAL)
+                                             .withTimeout(Math.max(timeout, READ_S3_INTERVAL))
+                                             .withDescription(
+                                               "Firehose -> s3 [" + TestProperties.Firehose
+                                                 .S3_BUCKET_NAME + "/" + prefix
+                                               + "] flush; "
+                                               + "max expceted: ~60sec")
+                                             .withStatus(() -> s3
+                                               .listObjects(TestProperties.Firehose.S3_BUCKET_NAME,
+                                                 prefix))
+                                             .withStatusCheck(
+                                               listing -> ((ObjectListing) listing)
+                                                            .getObjectSummaries().size() > 0);
     if (!wait.waitForResult()) {
       return new ArrayList<>(0);
     }
@@ -188,18 +193,21 @@ public class FirehoseResource {
     return ZonedDateTime.of(LocalDateTime.of(i[0], i[1], i[2], i[3], i[4], i[5]), ZoneId.of("Z"));
   }
 
-  public void cleanupFirehoses(FutureWaiter futures) {
+  @Override
+  public void cleanup(FutureWaiter futures) {
     streams.firehoseNames().forEach(streamName -> futures.run(() -> {
       DeleteDeliveryStreamRequest delete = new DeleteDeliveryStreamRequest()
         .withDeliveryStreamName(streamName);
       ResultWaiter.doOrNull(() -> firehoseClient.deleteDeliveryStream(delete));
       waiter.get()
-        .withDescription("Ensuring Firehose delete of: " + streamName)
-        .withStatusNull(
-          () -> firehoseClient.describeDeliveryStream(new DescribeDeliveryStreamRequest()
-            .withDeliveryStreamName(streamName)))
-        .waitForResult();
+            .withDescription("Ensuring Firehose delete of: " + streamName)
+            .withStatusNull(
+              () -> firehoseClient.describeDeliveryStream(new DescribeDeliveryStreamRequest()
+                .withDeliveryStreamName(streamName)))
+            .waitForResult();
     }));
+
+    futures.run(this::cleanupData);
   }
 
   public void cleanupData() {
@@ -218,11 +226,11 @@ public class FirehoseResource {
 
   public void clone(List<Pair<String, LambdaClientProperties.StreamType>> toClone, File dir)
     throws IOException {
-    for(Pair<String, LambdaClientProperties.StreamType> stream: toClone){
+    for (Pair<String, LambdaClientProperties.StreamType> stream : toClone) {
       String name = props.getFirehoseStreamName(stream.getKey(), stream.getValue());
       File file = new File(dir, name);
-      if(file.exists()){
-        LOG.info("Skipping copying data for file: "+file);
+      if (file.exists()) {
+        LOG.info("Skipping copying data for file: " + file);
         continue;
       }
       ResourceUtils.writeStream(name, dir, () -> this.read(name));

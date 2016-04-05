@@ -27,12 +27,21 @@ public class LambdaTestUtils {
   }
 
   public static KinesisEvent getKinesisEvent(ByteBuffer data) {
+    return getKinesisEvent(Lists.newArrayList(data));
+  }
+
+  public static KinesisEvent getKinesisEvent(List<ByteBuffer> data) {
     KinesisEvent event = Mockito.mock(KinesisEvent.class);
-    KinesisEvent.KinesisEventRecord kinesisRecord = new KinesisEvent.KinesisEventRecord();
-    KinesisEvent.Record record = new KinesisEvent.Record();
-    record.setData(data);
-    kinesisRecord.setKinesis(record);
-    Mockito.when(event.getRecords()).thenReturn(Lists.newArrayList(kinesisRecord));
+    List<KinesisEvent.KinesisEventRecord> records = new ArrayList<>();
+    for (ByteBuffer buff : data) {
+      KinesisEvent.KinesisEventRecord kinesisRecord = new KinesisEvent.KinesisEventRecord();
+      KinesisEvent.Record record = new KinesisEvent.Record();
+      record.setData(buff);
+      kinesisRecord.setKinesis(record);
+      records.add(kinesisRecord);
+    }
+    Mockito.when(event.getRecords()).thenReturn(records);
+
     return event;
   }
 
