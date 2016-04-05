@@ -9,7 +9,9 @@ import com.amazonaws.services.lambda.model.EventSourceMappingConfiguration;
 import com.amazonaws.services.lambda.model.EventSourcePosition;
 import com.amazonaws.services.lambda.model.ListEventSourceMappingsResult;
 import io.fineo.lambda.LambdaClientProperties;
-import io.fineo.lambda.kinesis.KinesisStreamManager;
+import io.fineo.lambda.e2e.resources.ResourceUtils;
+import io.fineo.lambda.e2e.resources.TestProperties;
+import io.fineo.lambda.e2e.resources.kinesis.KinesisStreamManager;
 import io.fineo.lambda.util.run.FutureWaiter;
 import io.fineo.lambda.util.run.ResultWaiter;
 import org.apache.commons.logging.Log;
@@ -50,7 +52,7 @@ public class KinesisLambdaManager {
     String streamName = props.getRawToStagedKinesisStreamName();
     String arn = String.format(TestProperties.Kinesis.KINESIS_STREAM_ARN_TO_FORMAT, region,
       props.getRawToStagedKinesisStreamName());
-    kinesis.setup(region, arn, streamName, TestProperties.Kinesis.SHARD_COUNT);
+    kinesis.setup(region, arn, TestProperties.Kinesis.SHARD_COUNT);
 
     // link that stream as an event source to the lambda function
     linkStreamToLambda(arn, region);
@@ -81,7 +83,7 @@ public class KinesisLambdaManager {
   }
 
   public List<ByteBuffer> getWrites(String stream) {
-    return kinesis.getWrites(stream);
+    return kinesis.getEvents(stream, true);
   }
 
   public void deleteStreams(FutureWaiter futures) {

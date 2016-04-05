@@ -2,10 +2,10 @@ package io.fineo.lambda;
 
 import io.fineo.aws.AwsDependentTests;
 import io.fineo.aws.rule.AwsCredentialResource;
+import io.fineo.lambda.e2e.EndToEndTestRunner;
+import io.fineo.lambda.e2e.TestOutput;
 import io.fineo.lambda.resources.AwsResourceManager;
-import io.fineo.lambda.util.EndToEndTestRunner;
 import io.fineo.lambda.util.LambdaTestUtils;
-import io.fineo.lambda.util.TestOutput;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.ClassRule;

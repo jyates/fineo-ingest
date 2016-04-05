@@ -11,8 +11,13 @@ import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
 import io.fineo.aws.rule.AwsCredentialResource;
 import io.fineo.lambda.LambdaClientProperties;
+import io.fineo.lambda.e2e.EndToEndTestRunner;
+import io.fineo.lambda.e2e.EndtoEndSuccessStatus;
 import io.fineo.lambda.e2e.TestOutput;
+import io.fineo.lambda.e2e.resources.DynamoResource;
 import io.fineo.lambda.e2e.resources.TestProperties;
+import io.fineo.lambda.e2e.resources.firehose.FirehoseResource;
+import io.fineo.lambda.e2e.resources.kinesis.KinesisStreamManager;
 import io.fineo.lambda.util.LambdaTestUtils;
 import io.fineo.lambda.util.ResourceManager;
 import io.fineo.lambda.util.run.FutureWaiter;
@@ -75,9 +80,9 @@ public class AwsResourceManager implements ResourceManager {
   private final AwsCredentialResource awsCredentials;
   private final TestOutput output;
   private LambdaClientProperties props;
-  private FirehoseManager firehose;
-  private KinesisManager kinesis;
-  private DynamoManager dynamo;
+  private FirehoseResource firehose;
+  private KinesisLambdaManager kinesis;
+  private DynamoResource dynamo;
 
   public AwsResourceManager(AwsCredentialResource awsCredentials, TestOutput output) {
     this.awsCredentials = awsCredentials;
@@ -88,17 +93,17 @@ public class AwsResourceManager implements ResourceManager {
   public void setup(LambdaClientProperties props) throws Exception {
     this.props = props;
     FutureWaiter future = new FutureWaiter(executor);
-    this.dynamo = new DynamoManager(props);
+    this.dynamo = new DynamoResource(props);
     dynamo.setup(future);
 
     // setup the firehose connections
-    this.firehose = new FirehoseManager(props, awsCredentials.getProvider());
+    this.firehose = new FirehoseResource(props, awsCredentials.getProvider());
     for (String stage : TestProperties.Lambda.STAGES) {
       firehose.createFirehoses(stage, future);
     }
 
     // setup the kinesis streams
-    this.kinesis = new KinesisManager(props, awsCredentials.getProvider());
+    this.kinesis = new KinesisLambdaManager(props, awsCredentials.getProvider(), future);
     future.run(() -> {
       kinesis.setup(region);
     });
