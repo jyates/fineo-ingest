@@ -15,16 +15,12 @@ import com.google.common.collect.AbstractIterator;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.MoreExecutors;
 import io.fineo.lambda.e2e.resources.AwsResource;
-import io.fineo.lambda.e2e.resources.ResourceUtils;
 import io.fineo.lambda.kinesis.KinesisProducer;
 import io.fineo.lambda.util.run.FutureWaiter;
 import io.fineo.lambda.util.run.ResultWaiter;
 
-import java.io.File;
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.AbstractQueue;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -84,14 +80,7 @@ public class KinesisStreamManager implements AwsResource, IKinesisStreams {
   @Override
   public BlockingQueue<List<ByteBuffer>> getEventQueue(String stream, boolean start) {
     String iter = start ? createShardIterator(stream) : getShardIterator(stream);
-    return new IteratorBlockingQueue<>(new AbstractIterator<List<ByteBuffer>>() {
-      @Override
-      protected List<ByteBuffer> computeNext() {
-        GetRecordsResult result =
-          kinesis.getRecords(new GetRecordsRequest().withShardIterator(iter));
-        return result.getRecords().stream().map(Record::getData).collect(Collectors.toList());
-      }
-    });
+    return new IteratorBlockingQueue(iter);
   }
 
   private String getShardIterator(String stream) {
@@ -110,25 +99,34 @@ public class KinesisStreamManager implements AwsResource, IKinesisStreams {
     return shard.getShardIterator();
   }
 
-  private class IteratorBlockingQueue<T> extends AbstractQueue<List<T>>
-    implements BlockingQueue<List<T>> {
+  private class IteratorBlockingQueue extends AbstractQueue<List<ByteBuffer>>
+    implements BlockingQueue<List<ByteBuffer>> {
 
     private static final long WAIT_INTERVAL = 100;
-    private final Iterator<List<T>> iter;
-    private List<T> next;
+    private final String iter;
+    private List<ByteBuffer> next;
 
-    public IteratorBlockingQueue(Iterator<List<T>> iterator) {
+    public IteratorBlockingQueue(String iterator) {
       this.iter = iterator;
     }
 
     @Override
-    public Iterator<List<T>> iterator() {
-      return this.iter;
+    public Iterator<List<ByteBuffer>> iterator() {
+      return new AbstractIterator<List<ByteBuffer>>() {
+        @Override
+        protected List<ByteBuffer> computeNext() {
+          List<ByteBuffer> next = poll();
+          if (next == null) {
+            endOfData();
+          }
+          return next;
+        }
+      };
     }
 
     @Override
-    public List<T> take() throws InterruptedException {
-      List<T> next = poll();
+    public List<ByteBuffer> take() throws InterruptedException {
+      List<ByteBuffer> next = poll();
       while (next == null) {
         Thread.currentThread().sleep(WAIT_INTERVAL);
         next = poll();
@@ -137,9 +135,9 @@ public class KinesisStreamManager implements AwsResource, IKinesisStreams {
     }
 
     @Override
-    public List<T> poll(long timeout, TimeUnit unit) throws InterruptedException {
+    public List<ByteBuffer> poll(long timeout, TimeUnit unit) throws InterruptedException {
       long end = System.currentTimeMillis() + unit.toMillis(timeout);
-      List<T> next = poll();
+      List<ByteBuffer> next = poll();
       while (next == null) {
         long now = System.currentTimeMillis();
         if (now > end || now + WAIT_INTERVAL > end) {
@@ -153,57 +151,68 @@ public class KinesisStreamManager implements AwsResource, IKinesisStreams {
     }
 
     @Override
-    public List<T> poll() {
-      peek();
-      List<T> ret = next;
+    public List<ByteBuffer> poll() {
+      List<ByteBuffer> ret = peek();
       next = null;
       return ret;
     }
 
     @Override
-    public List<T> peek() {
-      next = iter.next();
-      if (next.size() == 0) {
+    public List<ByteBuffer> peek() {
+      ResultWaiter<List<ByteBuffer>> wait= waiter.get()
+        .withDescription("Waiting for next element in Kinesis shard iterator: " + iter)
+        .withInterval(WAIT_INTERVAL)
+        .withTimeout(500)
+        .withStatus(() ->{
+          GetRecordsResult result =
+            kinesis.getRecords(new GetRecordsRequest().withShardIterator(iter));
+          return result.getRecords().stream().map(Record::getData).collect(Collectors.toList());
+        }).withStatusCheck(list -> ((List<ByteBuffer>)list).size() > 0);
+      wait.waitForResult();
+      next = wait.getLastStatus();
+      if(next.size() == 0){
         next = null;
       }
       return next;
     }
 
-    @Override
-    public int size() {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void put(List<T> t) throws InterruptedException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean offer(List<T> t, long timeout, TimeUnit unit) throws InterruptedException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public int remainingCapacity() {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public int drainTo(Collection<? super List<T>> c) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public int drainTo(Collection<? super List<T>> c, int maxElements) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean offer(List<T> t) {
-      throw new UnsupportedOperationException();
-    }
+  @Override
+  public int size() {
+    throw new UnsupportedOperationException();
   }
+
+  @Override
+  public void put(List<ByteBuffer> t) throws InterruptedException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public boolean offer(List<ByteBuffer> t, long timeout, TimeUnit unit)
+    throws InterruptedException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public int remainingCapacity() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public int drainTo(Collection<? super List<ByteBuffer>> c) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public int drainTo(Collection<? super List<ByteBuffer>> c, int maxElements) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public boolean offer(List<ByteBuffer> t) {
+    throw new UnsupportedOperationException();
+  }
+
+}
 
   public void cleanup() throws InterruptedException {
     FutureWaiter f = new FutureWaiter(
@@ -229,14 +238,6 @@ public class KinesisStreamManager implements AwsResource, IKinesisStreams {
   public AmazonKinesisAsyncClient getKinesis() {
     return this.kinesis;
   }
-
-  public void cloneStream(String streamName, File dir) throws IOException {
-    List<ByteBuffer> events =
-      new ArrayList<>(this.getEventQueue(streamName, true)).stream().flatMap(list -> list.stream())
-                                                           .collect(Collectors.toList());
-
-  }
-
 
   public KinesisProducer getProducer() {
     return new KinesisProducer(this.kinesis, kinesisRetries);
