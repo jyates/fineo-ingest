@@ -1,8 +1,6 @@
 package io.fineo.lambda.archive;
 
 import com.amazonaws.services.lambda.runtime.events.SNSEvent;
-import com.google.common.base.Supplier;
-import com.google.common.base.Suppliers;
 import io.fineo.lambda.firehose.FirehoseBatchWriter;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -14,11 +12,11 @@ import java.util.function.Function;
 /**
  * Archive records from an event to firehose
  */
-public class ArchiveHandler {
-  private static final Log LOG = LogFactory.getLog(ArchiveHandler.class);
+public class ArchiveSnsHandler {
+  private static final Log LOG = LogFactory.getLog(ArchiveSnsHandler.class);
   private Function<String, FirehoseBatchWriter> writer;
 
-  public ArchiveHandler(Function<String, FirehoseBatchWriter> writer) {
+  public ArchiveSnsHandler(Function<String, FirehoseBatchWriter> writer) {
     this.writer = writer;
   }
 
