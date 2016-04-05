@@ -9,6 +9,7 @@ import io.fineo.lambda.LambdaClientProperties;
 import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.lambda.dynamo.avro.AvroDynamoReader;
 import io.fineo.lambda.dynamo.avro.AvroToDynamoWriter;
+import io.fineo.lambda.dynamo.rule.AwsDynamoResource;
 import io.fineo.lambda.util.SchemaUtil;
 import io.fineo.schema.avro.AvroSchemaEncoder;
 import io.fineo.schema.avro.RecordMetadata;

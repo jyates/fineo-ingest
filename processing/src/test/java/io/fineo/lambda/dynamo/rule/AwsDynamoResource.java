@@ -1,4 +1,4 @@
-package io.fineo.lambda.dynamo;
+package io.fineo.lambda.dynamo.rule;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;

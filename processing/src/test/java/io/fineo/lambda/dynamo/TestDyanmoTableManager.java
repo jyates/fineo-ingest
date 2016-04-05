@@ -2,6 +2,7 @@ package io.fineo.lambda.dynamo;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import io.fineo.aws.AwsDependentTests;
+import io.fineo.lambda.dynamo.rule.AwsDynamoResource;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;

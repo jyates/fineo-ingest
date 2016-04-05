@@ -23,6 +23,7 @@
     <!-- Dependencies -->
     <dynamo-local.version>1.10.5.1</dynamo-local.version>
     <commons-cli.version>1.2</commons-cli.version>
+    <aws-java-sdk.version>1.10.66</aws-java-sdk.version>
 
     <!-- Test dependencies -->
     <junit.version>4.12</junit.version>

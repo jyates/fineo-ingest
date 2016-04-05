@@ -25,7 +25,6 @@
 
     <!-- Dependency Versions -->
     <!-- AWS -->
-    <aws-java-sdk.version>1.10.66</aws-java-sdk.version>
     <aws-lambda-java-core.version>1.1.0</aws-lambda-java-core.version>
     <amazon-kinesis-client.version>1.5.1</amazon-kinesis-client.version>
     <aws-lambda-java-log4j.version>1.0.0</aws-lambda-java-log4j.version>
