@@ -42,7 +42,6 @@ public class LambdaRawRecordToAvro extends IngestBaseLambda implements StreamPro
   private SchemaStore store;
   private KinesisProducer convertedRecords;
 
-
   public LambdaRawRecordToAvro(){
     super(LambdaClientProperties.RAW_PREFIX);
   }

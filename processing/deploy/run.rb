@@ -4,11 +4,11 @@ require 'pp'
 
 # Constants
 $PROP_FILE = "fineo-lambda.properties"
+module_name = "processing"
 
 # File properties
-path = File.dirname(__FILE__)
-file = File.basename(__FILE__)
-lambda = "#{path}/../lambda"
+path =File.expand_path(File.dirname(__FILE__))
+lambda = "#{path}/.."
 jar_dir = "#{lambda}/target"
 build_script = "#{lambda}/build.sh"
 $lambda_validation = "#{path}/../lambda-validate"
@@ -80,6 +80,7 @@ end
 
 def getFileStat(file)
   stat = File::Stat.new(file)
+  puts stat
   "\nname: #{file}\n size: #{(stat.size/1000000.0).round(2)}M"+
   "\n atime: #{stat.atime}"+
   "\n birthtime: #{stat.birthtime}"
@@ -118,7 +119,7 @@ options.test = false
 options.test_log = false
 
 parser = OptionParser.new do |opts|
-  opts.banner = "Usage: #{file} [options]"
+  opts.banner = "Usage: #{File.basename(__FILE__)} [options]"
 
   opts.separator "AWS options:"
   opts.on('-c', '--credentials file', "Location of the credentials file to use.") do |s|
@@ -156,8 +157,8 @@ puts "[Verbose mode enabled]" if options.verbose
 # Check to see if a deployable artifact is present
 puts "Checking #{jar_dir} for jars..." if options.verbose
 
-jars = Dir["#{jar_dir}/lambda-*.jar"]
-jar = jars.find{|jar| /lambda-[0-9.]+(-SNAPSHOT)?-aws.jar/=~ jar}
+jars = Dir["#{jar_dir}/#{module_name}-*.jar"]
+jar = jars.find{|jar| /#{module_name}-[0-9.]+(-SNAPSHOT)?-aws.jar/=~ jar}
 raise "No deployable jar found!" if jar.nil?
 
 # There are some jars, so ask the user if they want to deploy this particular jar

@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 
-path = File.dirname(__FILE__)
+path = File.expand_path(File.dirname(__FILE__))+"/../"
 confDir = ENV["CONFIG_DIR"] || "#{path}/config"
 confFile = ENV["CONFIG_FILE"] || "#{confDir}/fineo-lambda.properties"
 
@@ -127,7 +127,7 @@ parser = OptionParser.new do|opts|
   opts.on("-v", "--verbose", "Verbose output") do |v|
     $config.verbose = true
   end
-  opts.on("-vv", "--extra-verbose", "Extra Verbose output") do |v|
+  opts.on("--vv", "Extra Verbose output") do |v|
     $config.verbose = true
     $config.verbose2 = true
   end
@@ -144,12 +144,26 @@ def test_fix(prefix, name)
   "#{prefix}#{val}"
 end
 
+def log
+  if $config.verbose
+    yield
+  end
+  return $config.verbose
+end
+
+def vlog
+  if $config.verbose2
+    yield
+  end
+  return $config.verbose2
+end
+
 unless $config.test.nil?
   test_prefix = "test-#{$config.test}-"
 
   # store the test prefix so we can use it for testing
   test_key = :"integration.test.prefix"
-  puts "Setting #{test} = #{test_prefix}" if $config.verbose2
+  vlog { puts "Setting #{test} = #{test_prefix}" }
   $options[test_key] = Pair.new(test_prefix, test_key)
 
   # update the parameters
@@ -170,19 +184,21 @@ File.open(confFile, 'w') do |file|
 end
 
 # Read back in the file to the console so we know what got written
-if $config.verbose
+log {
+  puts "Contents of properties file: "
   File.open(confFile, "r") do |f|
     f.each_line do |line|
       puts line
     end
   end
-end
+  puts
+}
 
 # Build the package
 cmd="mvn -f #{path} clean install -Ddeploy #{$config.skip_tests}"
-if $config.verbose2
-  puts "Running: #{cmd}"
+if log { puts "Running: #{cmd}"}
   system cmd
+else
+  `#{cmd}`
 end
-`#{cmd}`
-puts "---> [Done]"
+puts ($? == 0 ? "---> [Done]" : "-----> FAILURE!!")
