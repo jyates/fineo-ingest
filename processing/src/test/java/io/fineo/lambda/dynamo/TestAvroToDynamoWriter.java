@@ -16,6 +16,7 @@ import org.apache.avro.generic.GenericRecord;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -35,7 +36,8 @@ public class TestAvroToDynamoWriter {
   public void testFailedWriteDynamoUnreachable() throws Exception {
     AmazonDynamoDBAsyncClient client = Mockito.mock(AmazonDynamoDBAsyncClient.class);
     LambdaClientProperties props = Mockito.mock(LambdaClientProperties.class);
-    Mockito.when(props.getDynamoIngestTablePrefix()).thenReturn(UUID.randomUUID().toString());
+    String prefix = UUID.randomUUID().toString();
+    Mockito.when(props.getDynamoIngestTablePrefix()).thenReturn(prefix);
     Mockito.when(props.getDynamoMaxRetries()).thenReturn(1L);
     Mockito.when(props.getDynamoReadMax()).thenReturn(10L);
     Mockito.when(props.getDynamoWriteMax()).thenReturn(10L);
@@ -47,18 +49,26 @@ public class TestAvroToDynamoWriter {
         handler.onError(new ResourceNotFoundException("mocked exception"));
         return null;
       });
+
+    long time = System.currentTimeMillis();
+    Range<Instant> range = DynamoTableManager.getStartEnd(Instant.ofEpochMilli(time));
+    String name =
+      DynamoTableManager.TABLE_NAME_PARTS_JOINER
+        .join(prefix, range.getStart().toEpochMilli(), range.getStart().toEpochMilli());
     ListTablesResult tables = new ListTablesResult();
-    tables.setTableNames(Lists.newArrayList("t1"));
+    tables.setTableNames(Lists.newArrayList(name));
     Mockito.when(client.listTables(Mockito.any(), Mockito.any())).thenReturn(tables);
 
     Mockito.when(props.getDynamo()).thenReturn(client);
 
     AvroToDynamoWriter writer = AvroToDynamoWriter.create(props);
-    GenericRecord record = SchemaTestUtils.createRandomRecord();
+
+    GenericRecord record = SchemaTestUtils.createRandomRecord("orgId", "metricType",
+      time, 1).get(0);
     writer.write(record);
     MultiWriteFailures<GenericRecord> failures = writer.flush();
     assertTrue(failures.any());
-//    List<GenericRecord> failed = FailureHandler.getFailedRecords(failures);
-//    assertEquals(Lists.newArrayList(record), failed);
+    List<GenericRecord> failed = FailureHandler.getFailedRecords(failures);
+    assertEquals(Lists.newArrayList(record), failed);
   }
 }

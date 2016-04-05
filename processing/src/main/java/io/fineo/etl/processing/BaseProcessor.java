@@ -3,6 +3,7 @@ package io.fineo.etl.processing;
 import io.fineo.lambda.FailureHandler;
 import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.lambda.firehose.FirehoseBatchWriter;
+import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -34,7 +35,7 @@ public abstract class BaseProcessor<INFO> {
 
     flushErrors();
 
-    MultiWriteFailures<Message> failures = this.writer.commit();
+    MultiWriteFailures<GenericRecord> failures = this.writer.commit();
     LOG.debug("Finished writing record batches");
     FailureHandler.handle(failures, commitErrors);
   }

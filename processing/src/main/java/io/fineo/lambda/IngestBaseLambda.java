@@ -57,10 +57,10 @@ public abstract class IngestBaseLambda implements TestableLambda {
 
     archive.flush();
 
-//    MultiWriteFailures<GenericRecord> failures = commit();
-//    LOG.debug("Finished writing record batches");
-//    FailureHandler.handle(failures,
-//      failures != null ? () -> this.commitFailures : getCommitFailureStream());
+    MultiWriteFailures<GenericRecord> failures = commit();
+    LOG.debug("Finished writing record batches");
+    FailureHandler.handle(failures,
+      failures != null ? () -> this.commitFailures : getCommitFailureStream());
   }
 
   private void addRecordError(KinesisEvent.KinesisEventRecord rec) {

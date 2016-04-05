@@ -166,7 +166,8 @@ public class DynamoTableManager {
     return TABLE_NAME_PARTS_JOINER.join(prefix, start, end);
   }
 
-  private Range<Instant> getStartEnd(Instant rowTime) {
+  @VisibleForTesting
+  static Range<Instant> getStartEnd(Instant rowTime) {
     LocalDateTime time = LocalDateTime.ofInstant(rowTime, UTC).truncatedTo(ChronoUnit.DAYS);
     int day = time.getDayOfYear();
     // day of the year starts at 1, not 0, so we adjust to offset to make mod work nice

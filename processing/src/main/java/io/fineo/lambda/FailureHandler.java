@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
  */
 public class FailureHandler {
 
-  public static void handle(MultiWriteFailures<Message> failures,
+  public static void handle(MultiWriteFailures<GenericRecord> failures,
     Supplier<FirehoseBatchWriter> creator) throws IOException {
     if (!failures.any()) {
       return;
@@ -31,11 +31,10 @@ public class FailureHandler {
     errors.flush();
   }
 
-  public static List<GenericRecord> getFailedRecords(MultiWriteFailures<Message> failures) {
+  public static List<GenericRecord> getFailedRecords(MultiWriteFailures<GenericRecord> failures) {
     Preconditions.checkNotNull(failures.getActions());
     return failures.getActions().parallelStream()
                    .map(handler -> handler.getBaseRecord())
-                   .map(message -> message.getRecord())
                    .collect(Collectors.toList());
   }
 }
