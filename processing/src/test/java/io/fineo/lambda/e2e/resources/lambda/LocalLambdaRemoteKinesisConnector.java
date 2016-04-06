@@ -69,7 +69,7 @@ public class LocalLambdaRemoteKinesisConnector extends LambdaKinesisConnector<In
     executor.execute(() -> {
       Map<String, BlockingQueue<List<ByteBuffer>>> streams = new HashMap<>();
       for (String stream : mapping.keySet()) {
-        streams.put(stream, this.kinesis.getEventQueue(stream, true));
+        streams.put(stream, this.kinesis.getEventQueue(stream));
       }
 
       while (true) {
@@ -91,7 +91,7 @@ public class LocalLambdaRemoteKinesisConnector extends LambdaKinesisConnector<In
   @Override
   public List<ByteBuffer> getWrites(String streamName) {
     List<ByteBuffer> data = new ArrayList<>();
-    for (List<ByteBuffer> buffs : this.kinesis.getEventQueue(streamName, true)) {
+    for (List<ByteBuffer> buffs : this.kinesis.getEventQueue(streamName)) {
       data.addAll(buffs);
     }
     return data;

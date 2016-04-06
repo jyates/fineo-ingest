@@ -50,6 +50,7 @@ public class TestEndToEndLambdaLocal {
     LambdaAvroToStorage storage = new LambdaAvroToStorage();
     Map<String, List<IngestUtil.Lambda>> stageMap =
       IngestUtil.newBuilder()
+                .local()
                 .start(INGEST_CONNECTOR, start)
                 .then(STAGE_CONNECTOR, storage)
                 .build();

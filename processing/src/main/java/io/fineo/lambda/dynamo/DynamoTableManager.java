@@ -6,21 +6,18 @@ import com.amazonaws.services.dynamodbv2.document.Table;
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
-import com.amazonaws.services.dynamodbv2.model.KeyType;
 import com.amazonaws.services.dynamodbv2.model.ListTablesResult;
 import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
-import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.amazonaws.services.dynamodbv2.model.TableDescription;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
-import io.fineo.lambda.dynamo.avro.AvroToDynamoWriter;
 import io.fineo.lambda.dynamo.avro.Schema;
 import io.fineo.lambda.dynamo.iter.PageManager;
 import io.fineo.lambda.dynamo.iter.PagingIterator;
 import io.fineo.lambda.dynamo.iter.PagingRunner;
-import io.fineo.lambda.dynamo.iter.TableNamePagingRunner;
+import io.fineo.lambda.dynamo.iter.TableNamePager;
 import io.fineo.schema.Pair;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -58,14 +55,14 @@ public class DynamoTableManager {
     this.dynamo = new DynamoDB(client);
   }
 
-  public DynamoTableWriter writer(long readCapacity, long writeCapacity) {
-    return new DynamoTableWriter(readCapacity, writeCapacity);
+  public DynamoTableCreator creator(long readCapacity, long writeCapacity) {
+    return new DynamoTableCreator(readCapacity, writeCapacity);
   }
 
-  public class DynamoTableWriter {
+  public class DynamoTableCreator {
     private final CreateTableRequest baseRequest;
 
-    private DynamoTableWriter(long readCapacity, long writeCapacity) {
+    private DynamoTableCreator(long readCapacity, long writeCapacity) {
       Pair<List<KeySchemaElement>, List<AttributeDefinition>> schema = Schema.get();
       this.baseRequest = new CreateTableRequest()
         .withKeySchema(schema.getKey())
@@ -77,7 +74,7 @@ public class DynamoTableManager {
      * Get the name of the table from the millisecond timestamp
      *
      * @param ts time of the record to map in milliseconds
-     * @return
+     * @return name of the table created
      */
     public String getTableAndEnsureExists(long ts) {
       String name = getTableName(ts);
@@ -178,7 +175,7 @@ public class DynamoTableManager {
 
   public static Stream<String> getTables(AmazonDynamoDBAsyncClient dynamo, String prefix, int
     pageSize) {
-    PagingRunner<String> runner = new TableNamePagingRunner(prefix, dynamo, pageSize);
+    PagingRunner<String> runner = new TableNamePager(prefix, dynamo, pageSize);
     return StreamSupport.stream(new PagingIterator<>(pageSize, new PageManager<>(
       Lists.newArrayList(runner))).iterable().spliterator(), false);
   }

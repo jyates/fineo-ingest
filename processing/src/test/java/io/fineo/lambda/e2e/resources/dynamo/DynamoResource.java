@@ -1,4 +1,4 @@
-package io.fineo.lambda.e2e.resources;
+package io.fineo.lambda.e2e.resources.dynamo;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
@@ -14,7 +14,8 @@ import io.fineo.lambda.dynamo.ResultOrException;
 import io.fineo.lambda.dynamo.avro.AvroDynamoReader;
 import io.fineo.lambda.dynamo.iter.PageManager;
 import io.fineo.lambda.dynamo.iter.PagingIterator;
-import io.fineo.lambda.dynamo.iter.ScanPagingRunner;
+import io.fineo.lambda.dynamo.iter.ScanPager;
+import io.fineo.lambda.e2e.resources.AwsResource;
 import io.fineo.lambda.util.run.FutureWaiter;
 import io.fineo.lambda.util.run.ResultWaiter;
 import io.fineo.schema.avro.RecordMetadata;
@@ -40,7 +41,7 @@ import static org.junit.Assert.assertTrue;
 /**
  *
  */
-public class DynamoResource implements AwsResource{
+public class DynamoResource implements AwsResource {
   private static final Log LOG = LogFactory.getLog(DynamoResource.class);
   private final LambdaClientProperties props;
   private final AtomicReference<SchemaStore> storeRef = new AtomicReference<>();
@@ -78,7 +79,7 @@ public class DynamoResource implements AwsResource{
     });
   }
 
-  public void cleanup(FutureWaiter futures){
+  public void cleanup(FutureWaiter futures) {
     futures.run(this::deleteSchemaStore);
     futures.run(this::cleanupStoreTables);
   }
@@ -102,7 +103,7 @@ public class DynamoResource implements AwsResource{
         // create a directory for each table
         File out = new File(outputDir, name);
         ScanRequest request = new ScanRequest(name);
-        ScanPagingRunner runner = new ScanPagingRunner(dynamo, request, null);
+        ScanPager runner = new ScanPager(dynamo, request, null);
         Iterable<ResultOrException<Map<String, AttributeValue>>> iter =
           () -> new PagingIterator<>(5, new PageManager(Lists.newArrayList(runner)));
         DataOutputStream dos = new DataOutputStream(new BufferedOutputStream(new FileOutputStream
@@ -111,6 +112,7 @@ public class DynamoResource implements AwsResource{
           result.doThrow();
           Map<String, AttributeValue> row = result.getResult();
           for (Map.Entry<String, AttributeValue> pair : row.entrySet()) {
+            LOG.trace("Copied: " + pair.getKey() + "=> " + pair.getValue());
             dos.writeBytes(pair.getKey() + " => " + pair.getValue() + "\n");
           }
         }

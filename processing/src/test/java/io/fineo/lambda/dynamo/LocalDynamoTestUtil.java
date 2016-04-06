@@ -63,7 +63,9 @@ public class LocalDynamoTestUtil {
   public void setConnectionProperties(Properties props) {
     props.setProperty(LambdaClientProperties.DYNAMO_URL_FOR_TESTING, url);
     props.setProperty(LambdaClientProperties.DYNAMO_SCHEMA_STORE_TABLE, storeTableName);
-    props.setProperty(LambdaClientProperties.DYNAMO_INGEST_TABLE_PREFIX, ingestPrefix);
+    String prefix = (String) props.get(LambdaClientProperties.DYNAMO_INGEST_TABLE_PREFIX);
+    props.setProperty(LambdaClientProperties.DYNAMO_INGEST_TABLE_PREFIX,
+      prefix == null ? ingestPrefix : prefix);
     props.setProperty(LambdaClientProperties.DYNAMO_READ_LIMIT, "10");
     props.setProperty(LambdaClientProperties.DYNAMO_WRITE_LIMIT, "10");
     props.setProperty(LambdaClientProperties.DYNAMO_RETRIES, "1");

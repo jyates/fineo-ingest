@@ -14,7 +14,6 @@ import io.fineo.lambda.util.LambdaTestUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.junit.After;
-import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -41,25 +40,6 @@ public class TestEndToEndLambdaSemiLocal {
   private EndToEndTestRunner runner;
   private AwsResourceManager manager;
 
-  @Before
-  public void connect() throws Exception {
-    String uuid = "integration-test-" + System.currentTimeMillis() + "-";
-    this.props = new LambdaClientProperties(getProperties(uuid));
-    props.setAwsCredentialProviderForTesting(awsCredentials.getProvider());
-
-    String kinesisIngest = uuid + "ingest";
-    String kinesisConnector = props.getRawToStagedKinesisStreamName();
-    Map<String, List<IngestUtil.Lambda>> mapping =
-      IngestUtil.newBuilder()
-                .start(kinesisIngest, new LambdaRawRecordToAvro())
-                .then(kinesisConnector, new LambdaAvroToStorage())
-                .build();
-    LambdaKinesisConnector connector =
-      new LocalLambdaRemoteKinesisConnector(mapping, kinesisConnector);
-    this.manager = new AwsResourceManager(awsCredentials, output, connector);
-    this.runner = new EndToEndTestRunner(props, manager);
-  }
-
   @After
   public void cleanup() throws Exception {
     if (this.runner != null) {
@@ -69,8 +49,25 @@ public class TestEndToEndLambdaSemiLocal {
     }
   }
 
-  @Test
+  @Test(timeout = 600000)
   public void testEndToEndSuccess() throws Exception {
+    String uuid = "integration-test-" + System.currentTimeMillis() + "-";
+    this.props = new LambdaClientProperties(getProperties(uuid));
+    props.setAwsCredentialProviderForTesting(awsCredentials.getProvider());
+
+    String kinesisIngest = uuid + "ingest";
+    String kinesisConnector = props.getRawToStagedKinesisStreamName();
+    Map<String, List<IngestUtil.Lambda>> mapping =
+      IngestUtil.newBuilder()
+                .start(kinesisIngest, new LambdaRawRecordToAvro().setPropertiesForTesting(props))
+                .then(kinesisConnector, new LambdaAvroToStorage().setPropertiesForTesting(props))
+                .build();
+    LambdaKinesisConnector connector =
+      new LocalLambdaRemoteKinesisConnector(mapping, kinesisIngest);
+    this.manager = new AwsResourceManager(awsCredentials, output, connector);
+    manager.cleanupResourcesOnFailure(true);
+    this.runner = new EndToEndTestRunner(props, manager);
+
     Map<String, Object> json = LambdaTestUtils.createRecords(1, 1)[0];
     runner.run(json);
     runner.validate();

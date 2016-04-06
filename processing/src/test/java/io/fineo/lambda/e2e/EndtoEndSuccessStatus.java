@@ -2,6 +2,8 @@ package io.fineo.lambda.e2e;
 
 import io.fineo.lambda.LambdaClientProperties;
 import io.fineo.schema.Pair;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -10,6 +12,8 @@ import java.util.List;
  * Track success for each phase of the {@link EndToEndTestRunner}
  */
 public class EndtoEndSuccessStatus {
+  private static final Log LOG = LogFactory.getLog(EndtoEndSuccessStatus.class);
+
   private boolean updated;
   private boolean messageSent;
   private List<Pair<String, LambdaClientProperties.StreamType>> correctFirehoses = new
@@ -32,10 +36,12 @@ public class EndtoEndSuccessStatus {
 
   public void rawToAvroPassed() {
     this.rawToAvro = true;
+    LOG.info("Raw -> Avro stage succeeded!");
   }
 
   public void avroToStoragePassed() {
     this.avroToStorage = true;
+    LOG.info("Avro -> Storage stage succeeded!");
   }
 
   /**

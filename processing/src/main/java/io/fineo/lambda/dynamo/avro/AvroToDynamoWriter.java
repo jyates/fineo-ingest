@@ -52,14 +52,14 @@ public class AvroToDynamoWriter {
   private static final Log LOG = LogFactory.getLog(AvroToDynamoWriter.class);
   private static final Joiner COMMAS = Joiner.on(',');
 
-  private final DynamoTableManager.DynamoTableWriter tables;
+  private final DynamoTableManager.DynamoTableCreator tables;
   private final AwsAsyncSubmitter<UpdateItemRequest, UpdateItemResult, GenericRecord> submitter;
 
   @VisibleForTesting
   AvroToDynamoWriter(AmazonDynamoDBAsyncClient client, String dynamoIngestTablePrefix, long
     writeMax, long readMax, long maxRetries) {
     this.submitter = new AwsAsyncSubmitter<>(maxRetries, client::updateItemAsync);
-    this.tables = new DynamoTableManager(client, dynamoIngestTablePrefix).writer(readMax,
+    this.tables = new DynamoTableManager(client, dynamoIngestTablePrefix).creator(readMax,
       writeMax);
   }
 

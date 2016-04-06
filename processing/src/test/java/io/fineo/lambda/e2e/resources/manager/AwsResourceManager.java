@@ -1,6 +1,5 @@
 package io.fineo.lambda.e2e.resources.manager;
 
-import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
@@ -10,7 +9,7 @@ import io.fineo.lambda.e2e.EndToEndTestRunner;
 import io.fineo.lambda.e2e.EndtoEndSuccessStatus;
 import io.fineo.lambda.e2e.TestOutput;
 import io.fineo.lambda.e2e.resources.AwsResource;
-import io.fineo.lambda.e2e.resources.DynamoResource;
+import io.fineo.lambda.e2e.resources.dynamo.DynamoResource;
 import io.fineo.lambda.e2e.resources.ResourceUtils;
 import io.fineo.lambda.e2e.resources.TestProperties;
 import io.fineo.lambda.e2e.resources.firehose.FirehoseResource;
@@ -56,12 +55,20 @@ public class AwsResourceManager extends BaseResourceManager {
   private KinesisStreamManager kinesis;
   private DynamoResource dynamo;
   private List<AwsResource> resources = new ArrayList<>();
+  private boolean cleanup;
 
   public AwsResourceManager(AwsCredentialResource awsCredentials, TestOutput output,
     LambdaKinesisConnector connector) {
     super(connector);
     this.awsCredentials = awsCredentials;
     this.output = output;
+  }
+
+  /**
+   * Cleanup the AWS resources in the case of failure
+   */
+  public void cleanupResourcesOnFailure(boolean cleanup) {
+    this.cleanup = cleanup;
   }
 
   @Override
@@ -123,28 +130,28 @@ public class AwsResourceManager extends BaseResourceManager {
 
   @Override
   public void cleanup(EndtoEndSuccessStatus status) throws InterruptedException, IOException {
-    if (status != null && !status.isSuccessful()) {
-      LOG.info(" ---- FAILURE ----");
-      LOG.info("");
-      LOG.info("Data available at: " + output.getRoot());
-      LOG.info("");
-      LOG.info(" ---- FAILURE ----");
-      // we didn't start the test properly, so ensure that no data was stored in firehoses
-      if (!status.isMessageSent() || !status.isUpdateStoreCorrect()) {
-        firehose.ensureNoDataStored();
-      } else {
-        // if is not so good, but we don't want to be keep resources up, so cleanup after we pull
-        // down everything that is in error
-        Preconditions.checkState(status.isAvroToStorageSuccessful(),
-          "Last lambda stage was successful, but not overall successful");
-        if (!status.isRawToAvroSuccessful()) {
-          cloneRawToAvroData(status);
+    try {
+      if (status != null && !status.isSuccessful()) {
+        LOG.info(" ---- FAILURE ----");
+        LOG.info("");
+        LOG.info("Data available at: " + output.getRoot());
+        LOG.info("");
+        LOG.info(" ---- FAILURE ----");
+        if (!status.isMessageSent() || !status.isUpdateStoreCorrect()) {
+          LOG.error("We didn't start the test correctly!");
+          firehose.ensureNoDataStored();
         } else {
-          cloneAvroToStorageData(status);
+          if (!status.isRawToAvroSuccessful()) {
+            cloneRawToAvroData(status);
+          } else {
+            cloneAvroToStorageData(status);
+          }
         }
       }
+    } finally {
+      if (cleanup || status.isSuccessful())
+        deleteResources();
     }
-    deleteResources();
   }
 
   private void deleteResources() throws InterruptedException {

@@ -9,7 +9,7 @@ import io.fineo.lambda.dynamo.Range;
 import io.fineo.lambda.dynamo.ResultOrException;
 import io.fineo.lambda.dynamo.iter.PageManager;
 import io.fineo.lambda.dynamo.iter.PagingIterator;
-import io.fineo.lambda.dynamo.iter.ScanPagingRunner;
+import io.fineo.lambda.dynamo.iter.ScanPager;
 import io.fineo.schema.Pair;
 import io.fineo.schema.avro.AvroSchemaManager;
 import io.fineo.schema.store.SchemaStore;
@@ -80,7 +80,7 @@ public class AvroDynamoReader {
     // get the potential tables that match the range
     List<Pair<String, Range<Instant>>> tables = tableManager.getExistingTableNames(range);
     // get a scan across each table
-    List<ScanPagingRunner> scanners = new ArrayList<>(tables.size());
+    List<ScanPager> scanners = new ArrayList<>(tables.size());
 
     String stop = stringPartitionKey.getS() + "0";
     Function<Instant, Map<String, AttributeValue>> rangeCreator = getStartKeys(stringPartitionKey);
@@ -90,7 +90,7 @@ public class AvroDynamoReader {
       request.setTableName(table.getKey());
       request.setExclusiveStartKey(rangeCreator.apply(table.getValue().getStart()));
       request.setConsistentRead(true);
-      scanners.add(new ScanPagingRunner(client, request, stop));
+      scanners.add(new ScanPager(client, request, stop));
     }
 
     // create an iterable around all the requests

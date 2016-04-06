@@ -4,7 +4,6 @@ import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
 import com.google.common.annotations.VisibleForTesting;
 import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.lambda.firehose.FirehoseBatchWriter;
-import io.fineo.lambda.kinesis.KinesisProducer;
 import io.fineo.lambda.test.TestableLambda;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.logging.Log;
@@ -100,6 +99,12 @@ public abstract class IngestBaseLambda implements TestableLambda {
 
   protected void setup() throws IOException {
     // noop
+  }
+
+  @VisibleForTesting
+  public IngestBaseLambda setPropertiesForTesting(LambdaClientProperties props) {
+    this.props = props;
+    return this;
   }
 
   @VisibleForTesting

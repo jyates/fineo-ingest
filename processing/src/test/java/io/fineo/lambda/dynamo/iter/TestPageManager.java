@@ -6,19 +6,14 @@ import org.junit.Test;
 import static org.junit.Assert.assertFalse;
 
 public class TestPageManager {
+
   @Test(timeout = 1000)
   public void testNoItemsToFetch() throws Exception {
-    PagingRunner<String> runner = new PagingRunner<String>() {
-      boolean complete = false;
-
-      @Override
-      public boolean complete() {
-        return complete;
-      }
+    PagingRunner<String> runner = new BasePager<String>() {
 
       @Override
       public void page(Pipe<String> queue) {
-        this.complete = true;
+        complete();
         return;
       }
     };

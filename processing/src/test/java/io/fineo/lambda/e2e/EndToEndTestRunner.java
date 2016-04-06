@@ -94,8 +94,8 @@ public class EndToEndTestRunner {
     String expected = new String(progress.sent);
     String actual = new String(data.array());
     assertArrayEquals("Validating archived vs stored data in raw -> avro\n" +
-                      "---- Raw data ->\n[" + expected + "]\n----Archive content -> \n[" + actual
-                      + "] don't match",
+                      "---- Raw data ->\n[" + expected + "]\n" +
+                      "---- Archive  -> \n[" + actual + "]\n...don't match",
       progress.sent, data.array());
 
     String stream = props.getRawToStagedKinesisStreamName();
@@ -129,7 +129,7 @@ public class EndToEndTestRunner {
     List<ByteBuffer> parsedBytes = bytes.get();
     // read the parsed avro records
     List<GenericRecord> parsedRecords = LambdaTestUtils.readRecords(combine(parsedBytes));
-    assertEquals("["+stream+"] Got unexpected number of records: " + parsedRecords, 1,
+    assertEquals("[" + stream + "] Got unexpected number of records: " + parsedRecords, 1,
       parsedRecords.size());
     GenericRecord record = parsedRecords.get(0);
 
@@ -140,12 +140,14 @@ public class EndToEndTestRunner {
   }
 
   private void verifyNoStageErrors(String stage, Function<List<ByteBuffer>, String> errorResult) {
+    LOG.info("Checking to make sure that there are no errors in stage: "+stage);
     verifyNoFirehoseWrites(errorResult, stage, PROCESSING_ERROR, COMMIT_ERROR);
   }
 
   private void verifyNoFirehoseWrites(Function<List<ByteBuffer>, String> errorResult, String stage,
     LambdaClientProperties.StreamType... streams) {
     for (LambdaClientProperties.StreamType stream : streams) {
+      LOG.debug("Checking stream: " + stage + "-" + stream + " has no writes...");
       empty(errorResult, manager.getFirehoseWrites(props.getFirehoseStreamName(stage, stream)));
       LOG.debug("Marking stream: " + stage + "-" + stream + " correct");
       status.firehoseStreamCorrect(stage, stream);
@@ -182,6 +184,7 @@ public class EndToEndTestRunner {
       assertEquals("JSON: " + json + "\nRecord: " + record,
         entry.getValue(), record.get(cname));
     });
+    LOG.info("Record matches JSON!");
   }
 
   public static Stream<Map.Entry<String, Object>> filterJson(Map<String, Object> json) {

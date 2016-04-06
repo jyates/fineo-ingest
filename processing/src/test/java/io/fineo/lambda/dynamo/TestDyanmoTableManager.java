@@ -58,8 +58,8 @@ public class TestDyanmoTableManager {
   public void testCreateTable() throws Exception {
     AmazonDynamoDBAsyncClient client = dynamo.getAsyncClient();
 
-    DynamoTableManager.DynamoTableWriter loader =
-      new DynamoTableManager(client, UUID.randomUUID().toString()).writer(10, 10);
+    DynamoTableManager.DynamoTableCreator loader =
+      new DynamoTableManager(client, UUID.randomUUID().toString()).creator(10, 10);
     String prefix = "prefix";
     String name = DynamoTableManager.TABLE_NAME_PARTS_JOINER.join(prefix, "1", "2");
     loader.createTable(name);

@@ -1,13 +1,10 @@
 package io.fineo.lambda.dynamo.iter;
 
 import com.google.common.collect.Lists;
-import io.fineo.lambda.dynamo.iter.BatchedPager;
-import io.fineo.lambda.dynamo.iter.PageManager;
-import io.fineo.lambda.dynamo.iter.PagingIterator;
-import io.fineo.lambda.dynamo.iter.PagingRunner;
-import io.fineo.lambda.dynamo.iter.Pipe;
+import org.junit.Ignore;
 import org.junit.Test;
 
+import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -26,7 +23,7 @@ public class TestPagingIterator {
       queue.add(s);
       return true;
     };
-    PagingIterator<String> iter = new PagingIterator<>(2, func);
+    PagingIterator<String> iter = iterator(2, func);
     assertTrue(iter.hasNext());
     assertEquals("one", iter.next());
     assertFalse(iter.hasNext());
@@ -47,7 +44,7 @@ public class TestPagingIterator {
       return false;
     };
     int prefetch = 1;
-    PagingIterator<String> iter = new PagingIterator<>(prefetch, func);
+    PagingIterator<String> iter = iterator(prefetch, func);
     assertTrue(iter.hasNext());
     assertEquals("one", iter.next());
     assertEquals("Didn't prefetch next batch after reading fetch amout: " + prefetch, 2,
@@ -73,7 +70,7 @@ public class TestPagingIterator {
       return false;
     };
     int prefetch = 0;
-    PagingIterator<String> iter = new PagingIterator<>(prefetch, func);
+    PagingIterator<String> iter = iterator(prefetch, func);
     assertTrue(iter.hasNext());
     // one for the initial fetch, one for the prefetch. Basically the same as prefetch =1
     assertFetch(prefetch, 2, counter);
@@ -100,7 +97,7 @@ public class TestPagingIterator {
       return false;
     };
     int prefetch = 0;
-    PagingIterator<String> iter = new PagingIterator<>(prefetch, func);
+    PagingIterator<String> iter = iterator(prefetch, func);
     assertTrue(iter.hasNext());
     assertFetch(prefetch, 2, counter);
     assertEquals("one", iter.next());
@@ -124,7 +121,7 @@ public class TestPagingIterator {
       return false;
     };
     int prefetch = 0;
-    PagingIterator<String> iter = new PagingIterator<>(prefetch, func);
+    PagingIterator<String> iter = iterator(prefetch, func);
     assertTrue(iter.hasNext());
     // this is a little bit of a weird count. We do it once for the initial load, but then also
     // load again when we check against the counter, essentially the 0th prefetch. However, this
@@ -147,7 +144,7 @@ public class TestPagingIterator {
   @Test(expected = NoSuchElementException.class)
   public void testExceptionWhenNoMoreElements() throws Exception {
     BatchedPager<String> func = strings -> true;
-    PagingIterator<String> iter = new PagingIterator<>(1, func);
+    PagingIterator<String> iter = iterator(1, func);
     assertFalse(iter.hasNext());
     iter.next();
   }
@@ -177,7 +174,7 @@ public class TestPagingIterator {
       throw new RuntimeException("Should not reach here!");
     };
     int prefetch = 3;
-    PagingIterator<String> iter = new PagingIterator<>(prefetch, func);
+    PagingIterator<String> iter = iterator(prefetch, func);
     assertTrue(iter.hasNext());
     assertFetch(prefetch, 1, counter);
     assertEquals("one", iter.next());
@@ -187,4 +184,62 @@ public class TestPagingIterator {
     assertFalse(iter.hasNext());
   }
 
+  @Test
+  public void testAsyncPager() throws Exception {
+    long sleep = 1000;
+    String message = "async-message";
+    PagingRunner<String> runner = new BasePager<String>() {
+
+      boolean first = true;
+
+      @Override
+      protected void page(Pipe queue) {
+        if (!first) {
+          complete();
+          return;
+        }
+        first = false;
+        Thread t = new Thread(() -> {
+          try {
+            Thread.currentThread().sleep(sleep);
+          } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+          }
+
+          queue.add(message);
+        });
+        t.start();
+      }
+    };
+    PageManager<String> manager = new PageManager<>(runner);
+    Iterator<String> iter = new PagingIterator<>(1, manager);
+    assertEquals(message, iter.next());
+    assertFalse(iter.hasNext());
+  }
+
+  private <T> PagingIterator<T> iterator(int prefetch, BatchedPager<T> func) {
+    PageManager<T> manager = new PageManager<>(Lists.newArrayList(new PageRunner<>(func)));
+    return new PagingIterator<>(prefetch, manager);
+  }
+
+  private static class PageRunner<T> extends BasePager<T> {
+
+    private final BatchedPager<T> pager;
+
+    private PageRunner(BatchedPager<T> pager) {
+      this.pager = pager;
+    }
+
+    @Override
+    protected void page(Pipe<T> queue) {
+      if (pager.page(queue)) {
+        complete();
+      }
+    }
+  }
+
+  @FunctionalInterface
+  private interface BatchedPager<T> {
+    boolean page(Pipe<T> queue);
+  }
 }

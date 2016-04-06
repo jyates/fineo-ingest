@@ -54,9 +54,9 @@ public class MockKinesisStreams implements IKinesisStreams {
   }
 
   @Override
-  public BlockingQueue<List<ByteBuffer>> getEventQueue(String stream, boolean start) {
+  public BlockingQueue<List<ByteBuffer>> getEventQueue(String stream) {
     List<List<ByteBuffer>> list = kinesisEvents.get(stream);
-    return start ? new WrappingQueue<>(list, 0) : new WrappingQueue<>(list);
+    return new WrappingQueue<>(list, 0);
   }
 
   @Override

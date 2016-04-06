@@ -1,13 +1,13 @@
 package io.fineo.lambda.dynamo.iter;
 
 import com.google.common.collect.AbstractIterator;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
-import java.util.Queue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 /**
@@ -29,18 +29,21 @@ import java.util.function.Function;
  */
 public class PagingIterator<T> extends AbstractIterator<T> {
 
+  private static final Log LOG = LogFactory.getLog(PagingIterator.class);
+
   private AtomicBoolean openRequest = new AtomicBoolean(false);
   // TODO support dynamic prefetch for better interaction with dynamodb's variable size paging
   private final int prefetch;
   private int count = 0;
   private Object poison = new Object();
-  private final BiConsumer<Queue<T>, PagingIterator<T>> supplier;
+  private final PageManager<T> supplier;
   private BlockingQueue items = new LinkedBlockingQueue<>();
   private volatile boolean closed;
 
-  public PagingIterator(int prefetchSize, BiConsumer<Queue<T>, PagingIterator<T>> supplier) {
+  public PagingIterator(int prefetchSize, PageManager<T> supplier) {
     this.prefetch = prefetchSize;
     this.supplier = supplier;
+    this.supplier.prepare(this);
   }
 
   public Iterable<T> iterable(){
@@ -101,7 +104,7 @@ public class PagingIterator<T> extends AbstractIterator<T> {
   private void makeRequest() {
     // make the request if we don't have any open request
     if (openRequest.compareAndSet(false, true)) {
-      supplier.accept(items, this);
+      supplier.update(items);
     }
   }
 }

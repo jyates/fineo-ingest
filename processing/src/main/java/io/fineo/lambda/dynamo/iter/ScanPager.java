@@ -27,24 +27,16 @@ import java.util.stream.Collectors;
  *
  * @see Pipe
  */
-public class ScanPagingRunner
-  implements PagingRunner<ResultOrException<Map<String, AttributeValue>>> {
+public class ScanPager extends BasePager<ResultOrException<Map<String, AttributeValue>>> {
 
   private AmazonDynamoDBAsyncClient client;
   private ScanRequest scan;
   private String stopKey;
-  private boolean complete;
 
-  public ScanPagingRunner(AmazonDynamoDBAsyncClient client,
-    ScanRequest scan, String stopKey) {
+  public ScanPager(AmazonDynamoDBAsyncClient client, ScanRequest scan, String stopKey) {
     this.client = client;
     this.scan = scan;
     this.stopKey = stopKey;
-  }
-
-  @Override
-  public boolean complete() {
-    return this.complete;
   }
 
   @Override
@@ -60,16 +52,18 @@ public class ScanPagingRunner
         // remove all the elements that are outside the range
         List<ResultOrException<Map<String, AttributeValue>>> result =
           scanResult.getItems().stream()
-                    .filter(map -> stopKey != null ||
+                    .filter(map -> stopKey == null ||
                                    map.get(Schema.PARTITION_KEY_NAME).getS().compareTo(stopKey) < 0)
                     .map(map -> new ResultOrException<>(map)).collect(Collectors.toList());
 
         // we dropped off the end of the results that we care about
-        complete = result.size() < scanResult.getCount() ||
-                   scanResult.getLastEvaluatedKey() == null ||
-                   scanResult.getLastEvaluatedKey().isEmpty();
-        // there are (possibly - DynamoDB documentation about last evaluated key mgmt) more results
-        if (!complete) {
+        if (result.size() < scanResult.getCount() ||
+            scanResult.getLastEvaluatedKey() == null ||
+            scanResult.getLastEvaluatedKey().isEmpty()) {
+          complete();
+        } else {
+          // there are (possibly - DynamoDB documentation about last evaluated key mgmt) more
+          // results
           scan.setExclusiveStartKey(scanResult.getLastEvaluatedKey());
         }
 

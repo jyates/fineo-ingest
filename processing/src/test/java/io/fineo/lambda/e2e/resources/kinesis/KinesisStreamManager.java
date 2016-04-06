@@ -7,12 +7,11 @@ import com.amazonaws.services.kinesis.model.CreateStreamRequest;
 import com.amazonaws.services.kinesis.model.DeleteStreamRequest;
 import com.amazonaws.services.kinesis.model.DescribeStreamRequest;
 import com.amazonaws.services.kinesis.model.DescribeStreamResult;
-import com.amazonaws.services.kinesis.model.GetRecordsRequest;
 import com.amazonaws.services.kinesis.model.GetRecordsResult;
-import com.amazonaws.services.kinesis.model.GetShardIteratorResult;
+import com.amazonaws.services.kinesis.model.PutRecordRequest;
 import com.amazonaws.services.kinesis.model.Record;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.AbstractIterator;
-import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.MoreExecutors;
 import io.fineo.lambda.e2e.resources.AwsResource;
 import io.fineo.lambda.kinesis.KinesisProducer;
@@ -26,9 +25,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -39,7 +36,6 @@ import java.util.stream.Collectors;
 public class KinesisStreamManager implements AwsResource, IKinesisStreams {
 
   private final Map<String, String> streamToIterator = new HashMap<>(1);
-  private final Queue<List<ByteBuffer>> events = new ConcurrentLinkedDeque<>();
   private final int kinesisRetries = 3;
 
   private final AWSCredentialsProvider credentials;
@@ -48,6 +44,7 @@ public class KinesisStreamManager implements AwsResource, IKinesisStreams {
   private final int shardCount;
 
   private AmazonKinesisAsyncClient kinesis;
+  private ShardIteratorManager shards;
 
   public KinesisStreamManager(AWSCredentialsProvider provider,
     ResultWaiter.ResultWaiterFactory waiter, String region, int shardCount) {
@@ -76,6 +73,8 @@ public class KinesisStreamManager implements AwsResource, IKinesisStreams {
             return describeStreamResponse.getStreamDescription().getStreamStatus();
           }).withStatusCheck(streamStatus -> streamStatus.equals("ACTIVE"))
           .waitForResult();
+
+    this.shards = new ShardIteratorManager(kinesis);
   }
 
   private AmazonKinesisAsyncClient getKinesis(String region) {
@@ -85,25 +84,24 @@ public class KinesisStreamManager implements AwsResource, IKinesisStreams {
   }
 
   @Override
-  public BlockingQueue<List<ByteBuffer>> getEventQueue(String stream, boolean start) {
-    String iter = start ? createShardIterator(stream) : getShardIterator(stream);
+  public KinesisProducer getProducer() {
+    return new KinesisProducer(this.kinesis, kinesisRetries);
+  }
+
+  @Override
+  public void submit(String streamName, ByteBuffer data) {
+    Preconditions.checkNotNull(streamName, "Stream name cannot be null when writing data!");
+    PutRecordRequest request =
+      new PutRecordRequest().withStreamName(streamName)
+                            .withData(data)
+                            .withPartitionKey("1");
+    this.kinesis.putRecord(request);
+  }
+
+  @Override
+  public BlockingQueue<List<ByteBuffer>> getEventQueue(String stream) {
+    ClosableSupplier<GetRecordsResult> iter = shards.getShardIterator(stream);
     return new IteratorBlockingQueue(iter);
-  }
-
-  private String getShardIterator(String stream) {
-    String iter = streamToIterator.get(stream);
-    if (iter == null) {
-      iter = createShardIterator(stream);
-      streamToIterator.put(stream, iter);
-    }
-    return iter;
-
-  }
-
-  private String createShardIterator(String stream) {
-    GetShardIteratorResult shard =
-      kinesis.getShardIterator(stream, "0", "TRIM_HORIZON");
-    return shard.getShardIterator();
   }
 
   private class IteratorBlockingQueue extends AbstractQueue<List<ByteBuffer>>
@@ -111,10 +109,10 @@ public class KinesisStreamManager implements AwsResource, IKinesisStreams {
 
     private static final long WAIT_INTERVAL = 100;
     private static final int MAX_ATTEMPTS = 3;
-    private final String iter;
+    private final ClosableSupplier<GetRecordsResult> iter;
     private List<ByteBuffer> next;
 
-    public IteratorBlockingQueue(String iterator) {
+    public IteratorBlockingQueue(ClosableSupplier<GetRecordsResult> iterator) {
       this.iter = iterator;
     }
 
@@ -174,8 +172,7 @@ public class KinesisStreamManager implements AwsResource, IKinesisStreams {
         } catch (InterruptedException e) {
           throw new RuntimeException(e);
         }
-        GetRecordsResult result =
-          kinesis.getRecords(new GetRecordsRequest().withShardIterator(iter));
+        GetRecordsResult result = iter.get();
         ret = result.getRecords().stream().map(Record::getData).collect(Collectors.toList());
         if (ret.size() > 0) {
           break;
@@ -249,16 +246,5 @@ public class KinesisStreamManager implements AwsResource, IKinesisStreams {
 
   public AmazonKinesisAsyncClient getKinesis() {
     return this.kinesis;
-  }
-
-  public KinesisProducer getProducer() {
-    return new KinesisProducer(this.kinesis, kinesisRetries);
-  }
-
-
-  public void submit(String streamName, ByteBuffer data) {
-    if (streamName == null) {
-      this.events.add(Lists.newArrayList(data));
-    }
   }
 }

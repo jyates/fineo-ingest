@@ -63,7 +63,7 @@ public class TestKinesisProducerAws {
     assertFalse("Some actions failed: " + failures.getActions(), failures.any());
 
     // verify that the data we wrote is what we read back in
-    List<ByteBuffer> writes = Lists.newArrayList(manager.getEventQueue(streamName, false))
+    List<ByteBuffer> writes = Lists.newArrayList(manager.getEventQueue(streamName))
                                    .stream()
                                    .flatMap(list -> list.stream())
                                    .collect(Collectors.toList());
