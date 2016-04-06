@@ -178,6 +178,10 @@ public class LambdaClientProperties {
     return Long.valueOf(props.getProperty(KINESIS_RETRIES));
   }
 
+  public AWSCredentialsProvider getProvider() {
+    return provider;
+  }
+
   @VisibleForTesting
   public void setAwsCredentialProviderForTesting(AWSCredentialsProvider provider) throws Exception {
     this.provider = provider;

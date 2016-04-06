@@ -46,9 +46,6 @@
       </plugin>
       <plugin>
         <artifactId>maven-failsafe-plugin</artifactId>
-        <configuration>
-          <includes>**/IT*.java</includes>
-        </configuration>
       </plugin>
       <!-- Copy the dependencies into the output directory. Needed for DynamoDB's SQLlite -->
       <plugin>

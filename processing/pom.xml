@@ -23,17 +23,6 @@
     <!-- Other -->
     <fineo-schema-mgmt.version>1.0-SNAPSHOT</fineo-schema-mgmt.version>
     <jackson-jr.version>2.7.0</jackson-jr.version>
-
-    <!-- Test properties -->
-    <surefire.awsLocalTests>io.fineo.aws.AwsDependentTests</surefire.awsLocalTests>
-    <surefire.skipSimpleTests>false</surefire.skipSimpleTests>
-    <surefire.skipAwsLocalTests>false</surefire.skipAwsLocalTests>
-
-    <!-- Integration Tests -->
-    <!-- AWS tests that we run  against real resources -->
-    <failsafe.aws>io.fineo.aws.AwsDependentTests</failsafe.aws>
-    <failsafe.skipLocal>false</failsafe.skipLocal>
-    <failsafe.skipAws>true</failsafe.skipAws>
   </properties>
 
   <dependencies>
@@ -141,62 +130,12 @@
             <target>${java.version}</target>
           </configuration>
         </plugin>
-        <plugin>
-          <artifactId>maven-surefire-plugin</artifactId>
-          <executions>
-            <execution>
-              <id>local-tests</id>
-              <goals>
-                <goal>test</goal>
-              </goals>
-              <configuration>
-                <excludedGroups>${surefire.awsLocalTests}</excludedGroups>
-                <skip>${surefire.skipSimpleTests}</skip>
-              </configuration>
-            </execution>
-            <execution>
-              <id>awsLocalTests</id>
-              <goals>
-                <goal>test</goal>
-              </goals>
-              <configuration>
-                <groups>${surefire.awsLocalTests}</groups>
-                <skip>${surefire.skipAwsLocalTests}</skip>
-              </configuration>
-            </execution>
-          </executions>
-        </plugin>
       </plugins>
     </pluginManagement>
 
     <plugins>
       <plugin>
         <artifactId>maven-failsafe-plugin</artifactId>
-        <configuration>
-          <includes>**/IT*.java</includes>
-        </configuration>
-        <executions>
-          <execution>
-            <id>local-integration-tests</id>
-            <goals>
-              <goal>integration-test</goal>
-            </goals>
-            <configuration>
-              <excludedGroups>${failsafe.aws}</excludedGroups>
-              <skip>${failsafe.skipLocal}</skip>
-            </configuration>
-          </execution>
-          <execution>
-            <id>aws-integration-tests</id>
-            <goals>
-              <goal>integration-test</goal>
-            </goals>
-            <configuration>
-              <groups>${failsafe.aws}</groups>
-              <skip>${failsafe.skipAws}</skip>
-            </configuration>
-          </execution>
-        </executions>
       </plugin>
       <!-- Process the 'static' schema files in src/main/resources/avro -->
       <plugin>
@@ -321,57 +260,6 @@
           </plugin>
         </plugins>
       </build>
-    </profile>
-
-    <!-- Setup the different test phases -->
-    <profile>
-      <id>allTests</id>
-      <activation>
-        <property>
-          <name>allTests</name>
-        </property>
-      </activation>
-      <properties>
-        <surefire.skipAwsLocalTests>false</surefire.skipAwsLocalTests>
-        <surefire.skipSimpleTests>false</surefire.skipSimpleTests>
-        <failsafe.skipAws>false</failsafe.skipAws>
-        <failsafe.skipLocal>false</failsafe.skipLocal>
-      </properties>
-    </profile>
-    <profile>
-      <id>awsLocalTests</id>
-      <activation>
-        <property>
-          <name>awsLocalTests</name>
-        </property>
-      </activation>
-      <properties>
-        <surefire.skipAwsLocalTests>false</surefire.skipAwsLocalTests>
-        <surefire.skipSimpleTests>true</surefire.skipSimpleTests>
-      </properties>
-    </profile>
-    <profile>
-      <id>skipSimpleTests</id>
-      <activation>
-        <property>
-          <name>skipSimpleTests</name>
-        </property>
-      </activation>
-      <properties>
-        <surefire.skipSimpleTests>true</surefire.skipSimpleTests>
-      </properties>
-    </profile>
-    <profile>
-      <id>aws-integration-tests</id>
-      <activation>
-        <property>
-          <name>awsIntegration</name>
-        </property>
-      </activation>
-      <properties>
-        <failsafe.skipAws>false</failsafe.skipAws>
-        <failsafe.skipLocal>true</failsafe.skipLocal>
-      </properties>
     </profile>
   </profiles>
 </project>
