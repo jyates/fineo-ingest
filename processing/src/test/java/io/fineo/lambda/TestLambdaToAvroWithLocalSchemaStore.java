@@ -42,7 +42,6 @@ import static org.junit.Assert.assertTrue;
 public class TestLambdaToAvroWithLocalSchemaStore {
   private static final Log LOG = LogFactory.getLog(TestLambdaToAvroWithLocalSchemaStore.class);
   private SchemaStore store;
-  protected boolean storeTableCreated = true;
 
   @Before
   public void setupStore() throws Exception {

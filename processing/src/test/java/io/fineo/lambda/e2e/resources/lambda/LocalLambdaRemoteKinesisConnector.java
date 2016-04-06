@@ -23,6 +23,7 @@ public class LocalLambdaRemoteKinesisConnector extends LambdaKinesisConnector<In
 
   protected IKinesisStreams kinesis;
   private ExecutorService executor = Executors.newSingleThreadExecutor();
+  private boolean done;
 
   public LocalLambdaRemoteKinesisConnector(
     Map<String, List<IngestUtil.Lambda>> streamToLambdaMapping,
@@ -52,7 +53,7 @@ public class LocalLambdaRemoteKinesisConnector extends LambdaKinesisConnector<In
    */
   protected void connectStreams() {
     // create each stream
-    for(String stream: this.mapping.keySet()){
+    for (String stream : this.mapping.keySet()) {
       kinesis.setup(stream);
     }
 
@@ -72,7 +73,7 @@ public class LocalLambdaRemoteKinesisConnector extends LambdaKinesisConnector<In
         streams.put(stream, this.kinesis.getEventQueue(stream));
       }
 
-      while (true) {
+      while (!done) {
         for (Map.Entry<String, List<IngestUtil.Lambda>> stream : mapping.entrySet()) {
           BlockingQueue<List<ByteBuffer>> queue = streams.get(stream.getKey());
           List<ByteBuffer> data = queue.poll();
@@ -99,6 +100,7 @@ public class LocalLambdaRemoteKinesisConnector extends LambdaKinesisConnector<In
 
   @Override
   public void cleanup(FutureWaiter futures) {
+    this.done = true;
     this.executor.shutdown();
     this.executor.shutdownNow();
   }

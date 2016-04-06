@@ -1,5 +1,6 @@
 package io.fineo.lambda.dynamo.rule;
 
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
 import io.fineo.lambda.LambdaClientProperties;
 import io.fineo.lambda.dynamo.LocalDynamoTestUtil;
@@ -19,11 +20,18 @@ public class AwsDynamoTablesResource extends ExternalResource {
 
   private final AwsDynamoResource dynamoResource;
   private LocalDynamoTestUtil util;
-  private final boolean storeTableCreatedDefault = true;
-  private boolean storeTableCreated = storeTableCreatedDefault;
+  private final boolean storeTableCreatedDefault;
+  private boolean storeTableCreated;
+  private AmazonDynamoDBAsyncClient client;
 
   public AwsDynamoTablesResource(AwsDynamoResource dynamo) {
+    this(dynamo, true);
+  }
+
+  public AwsDynamoTablesResource(AwsDynamoResource dynamo, boolean storeTablesCreatedDefault) {
     this.dynamoResource = dynamo;
+    this.storeTableCreatedDefault = storeTablesCreatedDefault;
+    this.storeTableCreated = storeTableCreatedDefault;
   }
 
   @Override
@@ -38,6 +46,12 @@ public class AwsDynamoTablesResource extends ExternalResource {
       throw e;
     }
     storeTableCreated = storeTableCreatedDefault;
+
+    // reset any open clients
+    if (client != null) {
+      client.shutdown();
+      client = null;
+    }
   }
 
   public void setStoreTableCreated(boolean created) {
@@ -57,6 +71,13 @@ public class AwsDynamoTablesResource extends ExternalResource {
     LambdaClientProperties fProps = new LambdaClientProperties(props);
     dynamoResource.setCredentials(fProps);
     return fProps;
+  }
+
+  public AmazonDynamoDBAsyncClient getAsyncClient() {
+    if (this.client == null) {
+      this.client = getUtil().getAsyncClient();
+    }
+    return this.client;
   }
 
   private LocalDynamoTestUtil getUtil() {

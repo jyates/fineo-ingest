@@ -32,8 +32,7 @@ public class TestDynamoExpressionPlaceHolders {
   private void validate(String value) {
     String attrib = asExpressionAttributeValue(random());
     String suffix = "\n Start: " + value + "\n Attrib: " + attrib;
-    assertTrue("Conversion does not start properly." + suffix,
-      attrib.startsWith(":n"));
+    assertTrue("Conversion does not start properly." + suffix, attrib.startsWith(":e"));
     char[] rest = attrib.substring(2).toCharArray();
     for (int j = 0; j < rest.length; j++) {
         assertTrue("Conversion is not alphanumer after start." + suffix, Character.isLetterOrDigit

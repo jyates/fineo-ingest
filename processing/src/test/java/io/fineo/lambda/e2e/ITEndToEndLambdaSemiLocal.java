@@ -28,8 +28,8 @@ import java.util.Properties;
  * AWS itself
  */
 @Category(AwsDependentTests.class)
-public class TestEndToEndLambdaSemiLocal {
-  private static final Log LOG = LogFactory.getLog(TestEndToEndLambdaSemiLocal.class);
+public class ITEndToEndLambdaSemiLocal {
+  private static final Log LOG = LogFactory.getLog(ITEndToEndLambdaSemiLocal.class);
 
   @ClassRule
   public static AwsCredentialResource awsCredentials = new AwsCredentialResource();

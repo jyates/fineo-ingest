@@ -10,6 +10,7 @@ import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.lambda.dynamo.avro.AvroDynamoReader;
 import io.fineo.lambda.dynamo.avro.AvroToDynamoWriter;
 import io.fineo.lambda.dynamo.rule.AwsDynamoResource;
+import io.fineo.lambda.dynamo.rule.AwsDynamoTablesResource;
 import io.fineo.lambda.util.SchemaUtil;
 import io.fineo.schema.avro.AvroSchemaEncoder;
 import io.fineo.schema.avro.RecordMetadata;
@@ -17,8 +18,8 @@ import io.fineo.schema.avro.SchemaTestUtils;
 import io.fineo.schema.store.SchemaStore;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
-import org.junit.After;
 import org.junit.ClassRule;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.schemarepo.InMemoryRepository;
@@ -44,11 +45,8 @@ public class TestAvroDynamoIO {
   private static final long ONE_WEEK = Duration.ofDays(7).toMillis();
   @ClassRule
   public static AwsDynamoResource dynamo = new AwsDynamoResource();
-
-  @After
-  public void cleanupTables() throws Exception {
-    dynamo.cleanup();
-  }
+  @Rule
+  public AwsDynamoTablesResource tables = new AwsDynamoTablesResource(dynamo, false);
 
   @Test
   public void testSingleWrite() throws Exception {
@@ -112,7 +110,7 @@ public class TestAvroDynamoIO {
     runner.verifyRecords();
   }
 
-  public static TestRunner createTestRunner(int recordCount, int fieldCount)
+  private TestRunner createTestRunner(int recordCount, int fieldCount)
     throws Exception {
     String orgId = "orgId", metricID = "metricAlias";
     SchemaStore store = new SchemaStore(new InMemoryRepository(ValidatorFactory.EMPTY));
@@ -122,7 +120,7 @@ public class TestAvroDynamoIO {
     return new TestRunner(store, orgId, metricID, records);
   }
 
-  private static class TestRunner {
+  private class TestRunner {
     private final List<GenericRecord> expected;
     private final AvroDynamoReader reader;
     private final AvroToDynamoWriter writer;
@@ -153,7 +151,7 @@ public class TestAvroDynamoIO {
       LambdaClientProperties props = new LambdaClientProperties(prop);
       dynamo.setCredentials(props);
       this.writer = AvroToDynamoWriter.create(props);
-      AmazonDynamoDBAsyncClient client = dynamo.getAsyncClient();
+      AmazonDynamoDBAsyncClient client = tables.getAsyncClient();
       this.reader =
         new AvroDynamoReader(store, client, props.getDynamoIngestTablePrefix());
     }
@@ -169,7 +167,7 @@ public class TestAvroDynamoIO {
 
     public void verifyTables() {
       // ensure that the expected table got created
-      AmazonDynamoDBAsyncClient client = dynamo.getAsyncClient();
+      AmazonDynamoDBAsyncClient client = tables.getAsyncClient();
       ListTablesResult tables = client.listTables();
       assertEquals(this.tableCount, tables.getTableNames().size());
     }
@@ -232,8 +230,7 @@ public class TestAvroDynamoIO {
   @FunctionalInterface
   private interface Reader {
     Stream<GenericRecord> read(AvroDynamoReader reader, String orgId, String orgMetricType,
-      Range<Instant>
-        range);
+      Range<Instant> range);
   }
 
 }

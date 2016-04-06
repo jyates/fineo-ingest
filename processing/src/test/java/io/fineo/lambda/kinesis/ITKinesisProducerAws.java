@@ -29,7 +29,7 @@ import static org.junit.Assert.assertFalse;
  * Run the kinesis producer against AWS
  */
 @Category(AwsDependentTests.class)
-public class TestKinesisProducerAws {
+public class ITKinesisProducerAws {
 
   private static final Duration TIMEOUT = Duration.ofMinutes(2);
   private static final Duration INTERVAL = Duration.ofSeconds(10);

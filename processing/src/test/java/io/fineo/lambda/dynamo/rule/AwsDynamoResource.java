@@ -61,10 +61,6 @@ public class AwsDynamoResource extends ExternalResource {
     return util.getClient();
   }
 
-  public AmazonDynamoDBAsyncClient getAsyncClient() {
-    return util.getAsyncClient();
-  }
-
   public void setConnectionProperties(Properties prop) {
     util.setConnectionProperties(prop);
   }

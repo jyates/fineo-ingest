@@ -170,7 +170,9 @@ public class KinesisStreamManager implements AwsResource, IKinesisStreams {
         try {
           Thread.currentThread().sleep(i * WAIT_INTERVAL);
         } catch (InterruptedException e) {
-          throw new RuntimeException(e);
+          // remark the interruption
+          Thread.currentThread().interrupt();
+          return null;
         }
         GetRecordsResult result = iter.get();
         ret = result.getRecords().stream().map(Record::getData).collect(Collectors.toList());

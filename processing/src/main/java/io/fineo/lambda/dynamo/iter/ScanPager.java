@@ -7,8 +7,6 @@ import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.amazonaws.services.dynamodbv2.model.ScanResult;
 import io.fineo.lambda.dynamo.ResultOrException;
 import io.fineo.lambda.dynamo.avro.Schema;
-import io.fineo.lambda.dynamo.iter.PagingRunner;
-import io.fineo.lambda.dynamo.iter.Pipe;
 
 import java.util.Collection;
 import java.util.List;
@@ -29,13 +27,16 @@ import java.util.stream.Collectors;
  */
 public class ScanPager extends BasePager<ResultOrException<Map<String, AttributeValue>>> {
 
-  private AmazonDynamoDBAsyncClient client;
-  private ScanRequest scan;
-  private String stopKey;
+  private final AmazonDynamoDBAsyncClient client;
+  private final ScanRequest scan;
+  private final String pkName;
+  private final String stopKey;
 
-  public ScanPager(AmazonDynamoDBAsyncClient client, ScanRequest scan, String stopKey) {
+  public ScanPager(AmazonDynamoDBAsyncClient client, ScanRequest scan, String partitionKeyName,
+    String stopKey) {
     this.client = client;
     this.scan = scan;
+    this.pkName = partitionKeyName;
     this.stopKey = stopKey;
   }
 
@@ -53,8 +54,11 @@ public class ScanPager extends BasePager<ResultOrException<Map<String, Attribute
         List<ResultOrException<Map<String, AttributeValue>>> result =
           scanResult.getItems().stream()
                     .filter(map -> stopKey == null ||
-                                   map.get(Schema.PARTITION_KEY_NAME).getS().compareTo(stopKey) < 0)
+                                   map.get(pkName).getS().compareTo(stopKey) < 0)
                     .map(map -> new ResultOrException<>(map)).collect(Collectors.toList());
+
+        // return all the values
+        queue.addAll(result);
 
         // we dropped off the end of the results that we care about
         if (result.size() < scanResult.getCount() ||
@@ -66,8 +70,6 @@ public class ScanPager extends BasePager<ResultOrException<Map<String, Attribute
           // results
           scan.setExclusiveStartKey(scanResult.getLastEvaluatedKey());
         }
-
-        queue.addAll(result);
       }
     });
   }

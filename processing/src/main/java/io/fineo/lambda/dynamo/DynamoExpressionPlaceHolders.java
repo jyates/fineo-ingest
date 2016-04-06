@@ -23,6 +23,6 @@ public class DynamoExpressionPlaceHolders {
     if (num < 0) {
       num = -num;
     }
-    return ":n" + num;
+    return ":e" + num;
   }
 }

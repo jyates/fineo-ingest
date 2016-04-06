@@ -90,7 +90,7 @@ public class AvroDynamoReader {
       request.setTableName(table.getKey());
       request.setExclusiveStartKey(rangeCreator.apply(table.getValue().getStart()));
       request.setConsistentRead(true);
-      scanners.add(new ScanPager(client, request, stop));
+      scanners.add(new ScanPager(client, request, Schema.PARTITION_KEY_NAME, stop));
     }
 
     // create an iterable around all the requests

@@ -26,9 +26,6 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executors;
 
-/**
- *
- */
 @Category(AwsDependentTests.class)
 public class TestDynamoResource {
 

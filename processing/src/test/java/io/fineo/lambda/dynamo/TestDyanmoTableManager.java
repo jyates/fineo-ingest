@@ -3,7 +3,9 @@ package io.fineo.lambda.dynamo;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import io.fineo.aws.AwsDependentTests;
 import io.fineo.lambda.dynamo.rule.AwsDynamoResource;
+import io.fineo.lambda.dynamo.rule.AwsDynamoTablesResource;
 import org.junit.ClassRule;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.mockito.Mockito;
@@ -14,7 +16,13 @@ import java.util.UUID;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 
+@Category(AwsDependentTests.class)
 public class TestDyanmoTableManager {
+
+  @ClassRule
+  public static AwsDynamoResource dynamo = new AwsDynamoResource();
+  @Rule
+  public AwsDynamoTablesResource tables = new AwsDynamoTablesResource(dynamo, false);
 
   @Test
   public void testGetTableName() throws Exception {
@@ -50,17 +58,13 @@ public class TestDyanmoTableManager {
       DynamoTableManager.getPrefixAndStart(name));
   }
 
-  @ClassRule
-  public static AwsDynamoResource dynamo = new AwsDynamoResource();
-
   @Test
-  @Category(AwsDependentTests.class)
   public void testCreateTable() throws Exception {
-    AmazonDynamoDBAsyncClient client = dynamo.getAsyncClient();
+    AmazonDynamoDBAsyncClient client = tables.getAsyncClient();
 
     DynamoTableManager.DynamoTableCreator loader =
       new DynamoTableManager(client, UUID.randomUUID().toString()).creator(10, 10);
-    String prefix = "prefix";
+    String prefix = tables.getClientProperties().getDynamoIngestTablePrefix();
     String name = DynamoTableManager.TABLE_NAME_PARTS_JOINER.join(prefix, "1", "2");
     loader.createTable(name);
     oneTableWithPrefix(client, prefix);

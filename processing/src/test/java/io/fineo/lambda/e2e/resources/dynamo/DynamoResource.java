@@ -12,6 +12,7 @@ import io.fineo.lambda.dynamo.DynamoTableManager;
 import io.fineo.lambda.dynamo.Range;
 import io.fineo.lambda.dynamo.ResultOrException;
 import io.fineo.lambda.dynamo.avro.AvroDynamoReader;
+import io.fineo.lambda.dynamo.avro.Schema;
 import io.fineo.lambda.dynamo.iter.PageManager;
 import io.fineo.lambda.dynamo.iter.PagingIterator;
 import io.fineo.lambda.dynamo.iter.ScanPager;
@@ -103,7 +104,7 @@ public class DynamoResource implements AwsResource {
         // create a directory for each table
         File out = new File(outputDir, name);
         ScanRequest request = new ScanRequest(name);
-        ScanPager runner = new ScanPager(dynamo, request, null);
+        ScanPager runner = new ScanPager(dynamo, request, Schema.PARTITION_KEY_NAME, null);
         Iterable<ResultOrException<Map<String, AttributeValue>>> iter =
           () -> new PagingIterator<>(5, new PageManager(Lists.newArrayList(runner)));
         DataOutputStream dos = new DataOutputStream(new BufferedOutputStream(new FileOutputStream
@@ -136,24 +137,21 @@ public class DynamoResource implements AwsResource {
     String tablePrefix = props.getDynamoIngestTablePrefix();
     ListTablesResult tablesResult = dynamo.listTables(tablePrefix);
     assertEquals(
-      "Wrong number of tables after prefix" + tablePrefix + ". Got tables: " + tablesResult
-        .getTableNames(), 1, tablesResult.getTableNames().size());
+      "Wrong number of tables after prefix '" + tablePrefix + "'. Got tables: " + tablesResult
+        .getTableNames(), 2, tablesResult.getTableNames().size());
 
     AvroDynamoReader reader = new AvroDynamoReader(getStore(), dynamo, tablePrefix);
     Metric metric = getStore().getMetricMetadata(metadata);
     long ts = metadata.getBaseFields().getTimestamp();
     Range<Instant> range = Range.of(ts, ts + 1);
-    ResultWaiter<List<GenericRecord>> waiter = this.waiter.get()
-                                                          .withDescription(
-                                                            "Some records to appear in dynamo")
-                                                          .withStatus(
-                                                            () -> reader
-                                                              .scan(metadata.getOrgID(), metric,
-                                                                range, null)
-                                                              .collect(Collectors.toList()))
-                                                          .withStatusCheck(
-                                                            list -> ((List<GenericRecord>) list)
-                                                                      .size() > 0);
+    ResultWaiter<List<GenericRecord>> waiter =
+      this.waiter.get()
+                 .withDescription(
+                   "Metadata records to appear in schema store: " + props.getSchemaStoreTable())
+                 .withStatus(() ->
+                   reader.scan(metadata.getOrgID(), metric, range, null)
+                         .collect(Collectors.toList()))
+                 .withStatusCheck(list -> ((List<GenericRecord>) list).size() > 0);
     assertTrue("Didn't get any rows from Dynamo within timeout!", waiter.waitForResult());
     return waiter.getLastStatus();
   }
