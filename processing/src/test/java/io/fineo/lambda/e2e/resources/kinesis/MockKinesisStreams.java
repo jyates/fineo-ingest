@@ -49,22 +49,23 @@ public class MockKinesisStreams implements IKinesisStreams {
 
   @Override
   public void submit(String streamName, ByteBuffer data) {
-    get(streamName).add(Lists.newArrayList(data));
+    List<List<ByteBuffer>> buff = kinesisEvents.get(streamName);
+    buff.add(Lists.newArrayList(data));
   }
 
   @Override
   public BlockingQueue<List<ByteBuffer>> getEventQueue(String stream, boolean start) {
-    List<List<ByteBuffer>> list = get(stream);
+    List<List<ByteBuffer>> list = kinesisEvents.get(stream);
     return start ? new WrappingQueue<>(list, 0) : new WrappingQueue<>(list);
   }
 
-  private List<List<ByteBuffer>> get(String stream) {
+  @Override
+  public void setup(String stream) {
     List<List<ByteBuffer>> buff = kinesisEvents.get(stream);
     if (buff == null) {
       buff = Collections.synchronizedList(new ArrayList<>());
       kinesisEvents.put(stream, buff);
     }
-    return buff;
   }
 
   private class WrappingQueue<T> extends AbstractQueue<T> implements BlockingQueue<T> {

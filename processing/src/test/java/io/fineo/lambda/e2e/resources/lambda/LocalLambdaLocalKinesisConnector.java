@@ -20,6 +20,6 @@ public class LocalLambdaLocalKinesisConnector extends LocalLambdaRemoteKinesisCo
   @Override
   public void connect(LambdaClientProperties props, IKinesisStreams ignored) throws IOException {
     this.kinesis = new MockKinesisStreams();
-    connect();
+    connectStreams();
   }
 }

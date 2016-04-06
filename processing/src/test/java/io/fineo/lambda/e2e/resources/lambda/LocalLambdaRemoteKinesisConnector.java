@@ -44,10 +44,18 @@ public class LocalLambdaRemoteKinesisConnector extends LambdaKinesisConnector<In
   public void connect(LambdaClientProperties props, IKinesisStreams kinesisConnection)
     throws IOException {
     this.kinesis = kinesisConnection;
-    connect();
+    connectStreams();
   }
 
-  protected void connect() {
+  /**
+   * Connect existing streams to the local lambda functions
+   */
+  protected void connectStreams() {
+    // create each stream
+    for(String stream: this.mapping.keySet()){
+      kinesis.setup(stream);
+    }
+
     // ensure that the outputs can actually write back to kinesis
     for (List<IngestUtil.Lambda> lambdas : this.mapping.values()) {
       for (IngestUtil.Lambda lambda : lambdas) {

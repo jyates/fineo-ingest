@@ -42,7 +42,7 @@ public class TestKinesisProducerAws {
   @BeforeClass
   public static void setup() throws Exception {
     manager = new KinesisStreamManager(credentials.getProvider(), new
-      ResultWaiter.ResultWaiterFactory(TIMEOUT, INTERVAL));
+      ResultWaiter.ResultWaiterFactory(TIMEOUT, INTERVAL), tests.getRegion(), 1);
   }
 
   @AfterClass
@@ -53,7 +53,7 @@ public class TestKinesisProducerAws {
   @Test
   public void readWriteStream() throws Exception {
     String streamName = "integration-test-" + UUID.randomUUID().toString();
-    manager.setup(tests.getRegion(), streamName, 1);
+    manager.setup(streamName);
 
     // write some data to the stream
     GenericRecord data = SchemaTestUtils.createRandomRecord();

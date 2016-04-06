@@ -3,7 +3,12 @@ package io.fineo.lambda.e2e;
 import com.google.common.collect.Lists;
 import io.fineo.aws.AwsDependentTests;
 import io.fineo.aws.rule.AwsCredentialResource;
+import io.fineo.lambda.LambdaAvroToStorage;
 import io.fineo.lambda.LambdaClientProperties;
+import io.fineo.lambda.LambdaRawRecordToAvro;
+import io.fineo.lambda.e2e.resources.IngestUtil;
+import io.fineo.lambda.e2e.resources.lambda.LambdaKinesisConnector;
+import io.fineo.lambda.e2e.resources.lambda.LocalLambdaRemoteKinesisConnector;
 import io.fineo.lambda.e2e.resources.manager.AwsResourceManager;
 import io.fineo.lambda.util.LambdaTestUtils;
 import org.apache.commons.logging.Log;
@@ -38,10 +43,20 @@ public class TestEndToEndLambdaSemiLocal {
 
   @Before
   public void connect() throws Exception {
-    this.props = new LambdaClientProperties(getProperties());
+    String uuid = "integration-test-" + System.currentTimeMillis() + "-";
+    this.props = new LambdaClientProperties(getProperties(uuid));
     props.setAwsCredentialProviderForTesting(awsCredentials.getProvider());
 
-    this.manager = null;//new AwsResourceManager(awsCredentials, output);
+    String kinesisIngest = uuid + "ingest";
+    String kinesisConnector = props.getRawToStagedKinesisStreamName();
+    Map<String, List<IngestUtil.Lambda>> mapping =
+      IngestUtil.newBuilder()
+                .start(kinesisIngest, new LambdaRawRecordToAvro())
+                .then(kinesisConnector, new LambdaAvroToStorage())
+                .build();
+    LambdaKinesisConnector connector =
+      new LocalLambdaRemoteKinesisConnector(mapping, kinesisConnector);
+    this.manager = new AwsResourceManager(awsCredentials, output, connector);
     this.runner = new EndToEndTestRunner(props, manager);
   }
 
@@ -61,9 +76,8 @@ public class TestEndToEndLambdaSemiLocal {
     runner.validate();
   }
 
-  private Properties getProperties() throws IOException {
+  private Properties getProperties(String uuid) throws IOException {
     Properties props = new Properties();
-    String uuid = "integration-test-" + System.currentTimeMillis()+"-";
     props.setProperty("integration.test.prefix", uuid);
     // fill in test properties
     props.setProperty("kinesis.url", "kinesis.us-east-1.amazonaws.com");

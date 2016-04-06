@@ -102,8 +102,8 @@ public class ResultWaiter<RESULT> {
     Preconditions.checkArgument(intervalMs <= timeoutMs,
       "Interval [%d] must be <= timeoutMs [%d]", intervalMs, timeoutMs);
 
-    LOG.info("Waiting for [" + description + "]. Max wait: " + timeoutMs / 1000 + "s. Interval: "
-             + this.intervalMs / 1000 + "s");
+    LOG.info("Waiting for [" + description + "]. Max wait: " + timeoutMs / 1000.0 + "s. Interval: "
+             + this.intervalMs / 1000.0 + "s");
     long startTime = System.currentTimeMillis();
     long endTime = startTime + timeoutMs;
     int i = 0;

@@ -30,8 +30,7 @@ public class KinesisProducer {
   private final FirehoseRecordWriter converter;
 
   public KinesisProducer(AmazonKinesisAsyncClient kinesisClient, long kinesisRetries) {
-    this.submitter = new AwsAsyncSubmitter<>(kinesisRetries,
-      kinesisClient::putRecordAsync);
+    this.submitter = new AwsAsyncSubmitter<>(kinesisRetries, kinesisClient::putRecordAsync);
     this.converter = FirehoseRecordWriter.create();
   }
 

@@ -82,22 +82,17 @@ public class AwsResourceManager extends BaseResourceManager {
     }
     resources.add(firehose);
 
-    // setup the kinesis streams
-    String streamName = props.getRawToStagedKinesisStreamName();
-    this.kinesis = new KinesisStreamManager(awsCredentials.getProvider(), waiter);
-    future.run(() -> {
-      kinesis.setup(region, streamName, TestProperties.Kinesis.SHARD_COUNT);
-    });
-    resources.add(kinesis);
-
-    // setup the interconnect between the methods
+    // setup the kinesis streams + interconnection
+    this.kinesis = new KinesisStreamManager(awsCredentials.getProvider(), waiter, region,
+      TestProperties.Kinesis.SHARD_COUNT);
     future.run(() -> {
       try {
-        connector.connect(props, kinesis);
+        connector.connect(props, this.kinesis);
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
     });
+    resources.add(kinesis);
     resources.add(connector);
 
     // wait for all the setup to complete
