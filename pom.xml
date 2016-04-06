@@ -13,7 +13,7 @@
     <module>processing</module>
     <!--<module>batch</module>-->
     <module>beans</module>
-    <!--<module>lambda-validate</module>-->
+    <module>lambda-validate</module>
   </modules>
 
   <properties>
@@ -47,13 +47,15 @@
 
     <!-- Testing Phases -->
     <surefire.awsLocalTests>io.fineo.aws.AwsDependentTests</surefire.awsLocalTests>
-    <surefire.skipSimpleTests>false</surefire.skipSimpleTests>
-    <surefire.skipAwsLocalTests>false</surefire.skipAwsLocalTests>
+    <surefire.skip.simple>false</surefire.skip.simple>
+    <surefire.skip.aws>false</surefire.skip.aws>
     <!-- Integration Tests -->
     <!-- AWS tests that we run  against real resources -->
     <failsafe.aws>io.fineo.aws.AwsDependentTests</failsafe.aws>
-    <failsafe.skipLocal>false</failsafe.skipLocal>
-    <failsafe.skipAws>true</failsafe.skipAws>
+    <failsafe.validation>io.fineo.aws.ValidateDeployment</failsafe.validation>
+    <failsafe.skip.local>false</failsafe.skip.local>
+    <failsafe.skip.aws>true</failsafe.skip.aws>
+    <failsafe.skip.validation>true</failsafe.skip.validation>
   </properties>
 
   <repositories>
@@ -94,7 +96,7 @@
               </goals>
               <configuration>
                 <excludedGroups>${surefire.awsLocalTests}</excludedGroups>
-                <skip>${surefire.skipSimpleTests}</skip>
+                <skip>${surefire.skip.simple}</skip>
               </configuration>
             </execution>
             <execution>
@@ -104,7 +106,7 @@
               </goals>
               <configuration>
                 <groups>${surefire.awsLocalTests}</groups>
-                <skip>${surefire.skipAwsLocalTests}</skip>
+                <skip>${surefire.skip.aws}</skip>
               </configuration>
             </execution>
           </executions>
@@ -120,20 +122,22 @@
               <id>local-integration-tests</id>
               <goals>
                 <goal>integration-test</goal>
+                <goal>verify</goal>
               </goals>
               <configuration>
-                <excludedGroups>${failsafe.aws}</excludedGroups>
-                <skip>${failsafe.skipLocal}</skip>
+                <excludedGroups>${failsafe.aws},${failsafe.validation}</excludedGroups>
+                <skip>${failsafe.skip.local}</skip>
               </configuration>
             </execution>
             <execution>
               <id>aws-integration-tests</id>
               <goals>
                 <goal>integration-test</goal>
+                <goal>verify</goal>
               </goals>
               <configuration>
                 <groups>${failsafe.aws}</groups>
-                <skip>${failsafe.skipAws}</skip>
+                <skip>${failsafe.skip.aws}</skip>
               </configuration>
             </execution>
           </executions>
@@ -167,10 +171,10 @@
         </property>
       </activation>
       <properties>
-        <surefire.skipAwsLocalTests>false</surefire.skipAwsLocalTests>
-        <surefire.skipSimpleTests>false</surefire.skipSimpleTests>
-        <failsafe.skipAws>false</failsafe.skipAws>
-        <failsafe.skipLocal>false</failsafe.skipLocal>
+        <surefire.skip.simple>false</surefire.skip.simple>
+        <surefire.skip.aws>false</surefire.skip.aws>
+        <failsafe.skip.local>false</failsafe.skip.local>
+        <failsafe.skip.aws>false</failsafe.skip.aws>
       </properties>
     </profile>
     <profile>
@@ -181,10 +185,10 @@
         </property>
       </activation>
       <properties>
-        <surefire.skipAwsLocalTests>false</surefire.skipAwsLocalTests>
-        <surefire.skipSimpleTests>true</surefire.skipSimpleTests>
-        <failsafe.skipAws>true</failsafe.skipAws>
-        <failsafe.skipLocal>true</failsafe.skipLocal>
+        <surefire.skip.simple>true</surefire.skip.simple>
+        <surefire.skip.aws>false</surefire.skip.aws>
+        <failsafe.skip.local>true</failsafe.skip.local>
+        <failsafe.skip.aws>true</failsafe.skip.aws>
       </properties>
     </profile>
     <profile>
@@ -195,10 +199,10 @@
         </property>
       </activation>
       <properties>
-        <surefire.skipSimpleTests>false</surefire.skipSimpleTests>
-        <surefire.skipAwsLocalTests>true</surefire.skipAwsLocalTests>
-        <failsafe.skipAws>true</failsafe.skipAws>
-        <failsafe.skipLocal>true</failsafe.skipLocal>
+        <surefire.skip.simple>false</surefire.skip.simple>
+        <surefire.skip.aws>true</surefire.skip.aws>
+        <failsafe.skip.local>true</failsafe.skip.local>
+        <failsafe.skip.aws>true</failsafe.skip.aws>
       </properties>
     </profile>
     <profile>
@@ -209,10 +213,10 @@
         </property>
       </activation>
       <properties>
-        <surefire.skipSimpleTests>true</surefire.skipSimpleTests>
-        <surefire.skipAwsLocalTests>true</surefire.skipAwsLocalTests>
-        <failsafe.skipLocal>false</failsafe.skipLocal>
-        <failsafe.skipAws>true</failsafe.skipAws>
+        <surefire.skip.simple>true</surefire.skip.simple>
+        <surefire.skip.aws>true</surefire.skip.aws>
+        <failsafe.skip.local>false</failsafe.skip.local>
+        <failsafe.skip.aws>true</failsafe.skip.aws>
       </properties>
     </profile>
     <profile>
@@ -223,10 +227,25 @@
         </property>
       </activation>
       <properties>
-        <surefire.skipSimpleTests>true</surefire.skipSimpleTests>
-        <surefire.skipAwsLocalTests>true</surefire.skipAwsLocalTests>
-        <failsafe.skipLocal>true</failsafe.skipLocal>
-        <failsafe.skipAws>false</failsafe.skipAws>
+        <surefire.skip.simple>true</surefire.skip.simple>
+        <surefire.skip.aws>true</surefire.skip.aws>
+        <failsafe.skip.local>true</failsafe.skip.local>
+        <failsafe.skip.aws>false</failsafe.skip.aws>
+      </properties>
+    </profile>
+    <profile>
+      <id>aws-validation</id>
+      <activation>
+        <property>
+          <name>validate</name>
+        </property>
+      </activation>
+      <properties>
+        <surefire.skip.simple>true</surefire.skip.simple>
+        <surefire.skip.aws>true</surefire.skip.aws>
+        <failsafe.skip.local>true</failsafe.skip.local>
+        <failsafe.skip.aws>true</failsafe.skip.aws>
+        <failsafe.skip.validation>false</failsafe.skip.validation>
       </properties>
     </profile>
   </profiles>

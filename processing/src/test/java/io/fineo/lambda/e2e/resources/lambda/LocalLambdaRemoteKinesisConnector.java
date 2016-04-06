@@ -32,11 +32,6 @@ public class LocalLambdaRemoteKinesisConnector extends LambdaKinesisConnector<In
   }
 
   @Override
-  public void write(byte[] data) {
-    write(source, data);
-  }
-
-  @Override
   public void write(String kinesisStream, byte[] data) {
     this.kinesis.submit(kinesisStream, ByteBuffer.wrap(data));
   }

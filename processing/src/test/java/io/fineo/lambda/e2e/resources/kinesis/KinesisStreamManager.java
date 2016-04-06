@@ -225,13 +225,7 @@ public class KinesisStreamManager implements AwsResource, IKinesisStreams {
 
   }
 
-  public void cleanup() throws InterruptedException {
-    FutureWaiter f = new FutureWaiter(
-      MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(this.streamToIterator.size())));
-    cleanup(f);
-    f.await();
-  }
-
+  @Override
   public void cleanup(FutureWaiter futures) {
     // delete the streams
     streamToIterator.keySet().stream().forEach(name -> futures.run(() -> {

@@ -1,5 +1,6 @@
 package io.fineo.lambda.kinesis;
 
+import com.google.common.util.concurrent.MoreExecutors;
 import io.fineo.lambda.e2e.resources.kinesis.KinesisStreamManager;
 import com.google.common.collect.Lists;
 import io.fineo.aws.AwsDependentTests;
@@ -7,6 +8,7 @@ import io.fineo.aws.rule.AwsCredentialResource;
 import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.lambda.util.AwsTestRule;
 import io.fineo.lambda.util.LambdaTestUtils;
+import io.fineo.lambda.util.run.FutureWaiter;
 import io.fineo.lambda.util.run.ResultWaiter;
 import io.fineo.schema.avro.SchemaTestUtils;
 import org.apache.avro.generic.GenericRecord;
@@ -20,6 +22,7 @@ import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
@@ -47,7 +50,10 @@ public class ITKinesisProducerAws {
 
   @AfterClass
   public static void teardown() throws Exception {
-    manager.cleanup();
+    FutureWaiter f = new FutureWaiter(
+      MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(1)));
+    manager.cleanup(f);
+    f.await();
   }
 
   @Test
