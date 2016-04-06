@@ -183,17 +183,36 @@
       <properties>
         <surefire.skipAwsLocalTests>false</surefire.skipAwsLocalTests>
         <surefire.skipSimpleTests>true</surefire.skipSimpleTests>
+        <failsafe.skipAws>true</failsafe.skipAws>
+        <failsafe.skipLocal>true</failsafe.skipLocal>
       </properties>
     </profile>
     <profile>
-      <id>skipSimpleTests</id>
+      <id>localTests</id>
       <activation>
         <property>
-          <name>skipSimpleTests</name>
+          <name>localTests</name>
+        </property>
+      </activation>
+      <properties>
+        <surefire.skipSimpleTests>false</surefire.skipSimpleTests>
+        <surefire.skipAwsLocalTests>true</surefire.skipAwsLocalTests>
+        <failsafe.skipAws>true</failsafe.skipAws>
+        <failsafe.skipLocal>true</failsafe.skipLocal>
+      </properties>
+    </profile>
+    <profile>
+      <id>local-integration-tests</id>
+      <activation>
+        <property>
+          <name>intTest</name>
         </property>
       </activation>
       <properties>
         <surefire.skipSimpleTests>true</surefire.skipSimpleTests>
+        <surefire.skipAwsLocalTests>true</surefire.skipAwsLocalTests>
+        <failsafe.skipLocal>false</failsafe.skipLocal>
+        <failsafe.skipAws>true</failsafe.skipAws>
       </properties>
     </profile>
     <profile>
@@ -204,8 +223,10 @@
         </property>
       </activation>
       <properties>
-        <failsafe.skipAws>false</failsafe.skipAws>
+        <surefire.skipSimpleTests>true</surefire.skipSimpleTests>
+        <surefire.skipAwsLocalTests>true</surefire.skipAwsLocalTests>
         <failsafe.skipLocal>true</failsafe.skipLocal>
+        <failsafe.skipAws>false</failsafe.skipAws>
       </properties>
     </profile>
   </profiles>
