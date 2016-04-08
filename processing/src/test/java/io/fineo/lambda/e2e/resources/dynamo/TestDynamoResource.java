@@ -9,7 +9,7 @@ import io.fineo.lambda.LambdaClientProperties;
 import io.fineo.lambda.dynamo.DynamoTableManager;
 import io.fineo.lambda.dynamo.avro.Schema;
 import io.fineo.lambda.dynamo.rule.AwsDynamoResource;
-import io.fineo.lambda.dynamo.rule.AwsDynamoTablesResource;
+import io.fineo.lambda.dynamo.rule.AwsDynamoSchemaTablesResource;
 import io.fineo.lambda.e2e.TestOutput;
 import io.fineo.lambda.util.run.FutureWaiter;
 import io.fineo.lambda.util.run.ResultWaiter;
@@ -34,7 +34,7 @@ public class TestDynamoResource {
   @ClassRule
   public static AwsDynamoResource dynamoResource = new AwsDynamoResource();
   @Rule
-  public AwsDynamoTablesResource tableResource = new AwsDynamoTablesResource(dynamoResource);
+  public AwsDynamoSchemaTablesResource tableResource = new AwsDynamoSchemaTablesResource(dynamoResource);
   @ClassRule
   public static TestOutput output = new TestOutput(false);
 

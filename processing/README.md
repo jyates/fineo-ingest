@@ -8,27 +8,8 @@ Basic testing requirements:
  * Maven 3.X
  * Java 8
 
-Additidonal deployment requirements
+Additional deployment requirements
  * RVM - Ruby Version Manager
-
-### Testing
-Basic tests are run with:
-
-```
-$ mvn test
-```
-
-AWS component using tests, including running a local DynamoDB instance, can be run (does not 
-run basic tests) with:
-
-```
-$ mvn test -DawsLocalTests
-```
-
-Both sets of tests can be run together with:
-
-```
-$ mvn test -DallTests
 
 ## Deploying
 
@@ -49,3 +30,17 @@ It's a light wrapper around maven that adds properties file we can use to set co
 ### 3. Deploy jar to aws
 
 ```$ deploy/run.rb```
+
+### Deployment Validation
+
+You can deploy a test version with the simple command:
+
+```$ test.sh```
+
+This will build a deployable lambda jar with test versions, deploy it to AWS and then run a validation test against the deployment and then cleanup all the test resources (kinesis pipes, lambda event sources, firehoses, dynamo tables, etc.) used for the validation.
+
+However, the lambda function is **not deleted**, so you will have to publish a new version with a new configuration (see above).  
+
+## Testing
+
+Most testing should be done from the parent ```ingest-parent``` directory to enable you to use the simpler test selection parameters. See the [parent pom](../pom.xml) for the properties you need to set to enable more extensive tests.

@@ -3,7 +3,7 @@ package io.fineo.lambda.dynamo;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import io.fineo.aws.AwsDependentTests;
 import io.fineo.lambda.dynamo.rule.AwsDynamoResource;
-import io.fineo.lambda.dynamo.rule.AwsDynamoTablesResource;
+import io.fineo.lambda.dynamo.rule.AwsDynamoSchemaTablesResource;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
@@ -22,7 +22,7 @@ public class TestDyanmoTableManager {
   @ClassRule
   public static AwsDynamoResource dynamo = new AwsDynamoResource();
   @Rule
-  public AwsDynamoTablesResource tables = new AwsDynamoTablesResource(dynamo, false);
+  public AwsDynamoSchemaTablesResource tables = new AwsDynamoSchemaTablesResource(dynamo, false);
 
   @Test
   public void testGetTableName() throws Exception {

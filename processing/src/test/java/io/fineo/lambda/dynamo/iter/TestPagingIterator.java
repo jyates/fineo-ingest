@@ -1,12 +1,12 @@
 package io.fineo.lambda.dynamo.iter;
 
 import com.google.common.collect.Lists;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Queue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
@@ -193,7 +193,7 @@ public class TestPagingIterator {
       boolean first = true;
 
       @Override
-      protected void page(Pipe queue) {
+      protected void page(Queue<String> queue) {
         if (!first) {
           complete();
           return;
@@ -207,6 +207,7 @@ public class TestPagingIterator {
           }
 
           queue.add(message);
+          batchComplete();
         });
         t.start();
       }
@@ -231,7 +232,7 @@ public class TestPagingIterator {
     }
 
     @Override
-    protected void page(Pipe<T> queue) {
+    protected void page(Queue<T> queue) {
       if (pager.page(queue)) {
         complete();
       }
@@ -240,6 +241,6 @@ public class TestPagingIterator {
 
   @FunctionalInterface
   private interface BatchedPager<T> {
-    boolean page(Pipe<T> queue);
+    boolean page(Queue<T> queue);
   }
 }

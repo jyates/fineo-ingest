@@ -2,7 +2,7 @@ package io.fineo.lambda;
 
 import com.amazonaws.services.dynamodbv2.util.TableUtils;
 import io.fineo.aws.AwsDependentTests;
-import io.fineo.lambda.dynamo.rule.AwsDynamoTablesResource;
+import io.fineo.lambda.dynamo.rule.AwsDynamoSchemaTablesResource;
 import io.fineo.lambda.dynamo.rule.AwsDynamoResource;
 import org.junit.ClassRule;
 import org.junit.Rule;
@@ -20,7 +20,7 @@ public class TestLambdaToAvroWithDynamoStore extends TestLambdaToAvroWithLocalSc
   @ClassRule
   public static AwsDynamoResource dynamoResource = new AwsDynamoResource();
   @Rule
-  public AwsDynamoTablesResource tableResource = new AwsDynamoTablesResource(dynamoResource);
+  public AwsDynamoSchemaTablesResource tableResource = new AwsDynamoSchemaTablesResource(dynamoResource);
 
 
   /**

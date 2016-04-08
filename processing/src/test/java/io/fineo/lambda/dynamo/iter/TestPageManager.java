@@ -3,6 +3,8 @@ package io.fineo.lambda.dynamo.iter;
 import com.google.common.collect.Lists;
 import org.junit.Test;
 
+import java.util.Queue;
+
 import static org.junit.Assert.assertFalse;
 
 public class TestPageManager {
@@ -12,7 +14,7 @@ public class TestPageManager {
     PagingRunner<String> runner = new BasePager<String>() {
 
       @Override
-      public void page(Pipe<String> queue) {
+      public void page(Queue<String> queue) {
         complete();
         return;
       }

@@ -4,14 +4,13 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.Queue;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static java.util.stream.Collectors.toList;
 
-public class PageManager<T> implements VoidCallWithArg<PagingRunner<T>> {
+public class PageManager<T> {
   private static final Log LOG = LogFactory.getLog(PageManager.class);
   private List<PageTracker> runners;
   private PagingIterator<T> parent;
@@ -28,7 +27,7 @@ public class PageManager<T> implements VoidCallWithArg<PagingRunner<T>> {
     this.parent = parent;
   }
 
-  public void update(Queue<T> results) {
+  public void update(Queue<T> results, Runnable batchComplete) {
     // run the runner
     PagingRunner pager = getNextPager();
     if (pager == null) {
@@ -37,26 +36,19 @@ public class PageManager<T> implements VoidCallWithArg<PagingRunner<T>> {
     }
 
     try {
-      pager.page(new Pipe<T>() {
+      pager.page(results, new VoidCallWithArg<PagingRunner<T>>() {
         @Override
-        public void add(T e) {
-          results.add(e);
-          parent.completedBatch();
+        public void call(PagingRunner arg) {
+          PageManager.this.runnerDone(arg);
         }
-
-        @Override
-        public void addAll(Collection<T> resultOrExceptions) {
-          results.addAll(resultOrExceptions);
-          parent.completedBatch();
-        }
-      }, this);
+      }, batchComplete);
     } catch (Exception e) {
       LOG.error("Failed to load next page: ", e);
       throw e;
     }
   }
 
-  public synchronized void call(PagingRunner runner) {
+  public synchronized void runnerDone(PagingRunner runner) {
     // mark the runner as complete
     for (PageTracker tracker : runners) {
       if (tracker.runner == runner) {

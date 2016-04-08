@@ -9,24 +9,24 @@ import com.amazonaws.services.kinesis.model.DescribeStreamRequest;
 import com.amazonaws.services.kinesis.model.DescribeStreamResult;
 import com.amazonaws.services.kinesis.model.GetRecordsResult;
 import com.amazonaws.services.kinesis.model.PutRecordRequest;
+import com.amazonaws.services.kinesis.model.PutRecordResult;
 import com.amazonaws.services.kinesis.model.Record;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.AbstractIterator;
-import com.google.common.util.concurrent.MoreExecutors;
 import io.fineo.lambda.e2e.resources.AwsResource;
 import io.fineo.lambda.kinesis.KinesisProducer;
 import io.fineo.lambda.util.run.FutureWaiter;
 import io.fineo.lambda.util.run.ResultWaiter;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import java.nio.ByteBuffer;
 import java.util.AbstractQueue;
+import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -34,8 +34,8 @@ import java.util.stream.Collectors;
  * Manage interactions with Kinesis streams
  */
 public class KinesisStreamManager implements AwsResource, IKinesisStreams {
-
-  private final Map<String, String> streamToIterator = new HashMap<>(1);
+  private static final Log LOG = LogFactory.getLog(KinesisStreamManager.class);
+  private final List<String> streams = new ArrayList<>();
   private final int kinesisRetries = 3;
 
   private final AWSCredentialsProvider credentials;
@@ -57,7 +57,7 @@ public class KinesisStreamManager implements AwsResource, IKinesisStreams {
   @Override
   public void setup(String streamName) {
     this.kinesis = getKinesis(region);
-    streamToIterator.put(streamName, null);
+    streams.add(streamName);
 
     CreateStreamRequest createStreamRequest = new CreateStreamRequest();
     createStreamRequest.setStreamName(streamName);
@@ -95,7 +95,8 @@ public class KinesisStreamManager implements AwsResource, IKinesisStreams {
       new PutRecordRequest().withStreamName(streamName)
                             .withData(data)
                             .withPartitionKey("1");
-    this.kinesis.putRecord(request);
+    PutRecordResult result = this.kinesis.putRecord(request);
+    LOG.info("Successfully put record in kinesis [" + streamName + "]: " + result);
   }
 
   @Override
@@ -228,7 +229,7 @@ public class KinesisStreamManager implements AwsResource, IKinesisStreams {
   @Override
   public void cleanup(FutureWaiter futures) {
     // delete the streams
-    streamToIterator.keySet().stream().forEach(name -> futures.run(() -> {
+    streams.stream().forEach(name -> futures.run(() -> {
       DeleteStreamRequest deleteStreamRequest = new DeleteStreamRequest();
       deleteStreamRequest.setStreamName(name);
       kinesis.deleteStream(deleteStreamRequest);
@@ -238,6 +239,11 @@ public class KinesisStreamManager implements AwsResource, IKinesisStreams {
             .withStatusNull(() -> kinesis.describeStream(name))
             .waitForResult();
     }));
+  }
+
+  @Override
+  public Iterable<String> getStreamNames() {
+    return this.streams;
   }
 
   public AmazonKinesisAsyncClient getKinesis() {

@@ -2,13 +2,16 @@ package io.fineo.lambda.dynamo.rule;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
-import io.fineo.lambda.LambdaClientProperties;
+import com.google.common.collect.Lists;
 import io.fineo.lambda.dynamo.LocalDynamoTestUtil;
+import io.fineo.lambda.dynamo.iter.PageManager;
+import io.fineo.lambda.dynamo.iter.PagingIterator;
+import io.fineo.lambda.dynamo.iter.TableNamePager;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.junit.rules.ExternalResource;
 
-import java.util.Properties;
+import java.util.Iterator;
 
 /**
  * Manage aws tables and getting a connection to them. Generally, this should be used at the
@@ -20,57 +23,33 @@ public class AwsDynamoTablesResource extends ExternalResource {
 
   private final AwsDynamoResource dynamoResource;
   private LocalDynamoTestUtil util;
-  private final boolean storeTableCreatedDefault;
-  private boolean storeTableCreated;
   private AmazonDynamoDBAsyncClient client;
 
   public AwsDynamoTablesResource(AwsDynamoResource dynamo) {
-    this(dynamo, true);
-  }
-
-  public AwsDynamoTablesResource(AwsDynamoResource dynamo, boolean storeTablesCreatedDefault) {
     this.dynamoResource = dynamo;
-    this.storeTableCreatedDefault = storeTablesCreatedDefault;
-    this.storeTableCreated = storeTableCreatedDefault;
   }
 
   @Override
   protected void after() {
     try {
-      getUtil().cleanupTables(storeTableCreated);
+      // cleanup anything with the ingest prefix. Ingest prefix is assumed to start after any other
+      // table names, for the sake of this test utility, so we just get the last group of tables
+      for (String name : new PagingIterator<>(50,
+        new PageManager<>(Lists.newArrayList(new TableNamePager("", getAsyncClient(), 50))))
+        .iterable()) {
+        LOG.info("Deleting table: " + name);
+        this.getAsyncClient().deleteTable(name);
+      }
     } catch (ResourceNotFoundException e) {
-      LOG.error("\n----------\n Could not delete a table! " + (
-        storeTableCreated ? "Marked" :
-        "Not marked") + " that the store table was expected to be created. Change that "
-                + "expectation with #setStoreTableCreated()\n---------");
+      LOG.error("\n----------\n Could not delete a table! ");
       throw e;
     }
-    storeTableCreated = storeTableCreatedDefault;
 
     // reset any open clients
     if (client != null) {
       client.shutdown();
       client = null;
     }
-  }
-
-  public void setStoreTableCreated(boolean created) {
-    this.storeTableCreated = created;
-  }
-
-  public String getTestTableName() {
-    return getUtil().getCurrentTestTable();
-  }
-
-  public LambdaClientProperties getClientProperties() throws Exception {
-    return getClientProperties(new Properties());
-  }
-
-  public LambdaClientProperties getClientProperties(Properties props) throws Exception {
-    getUtil().setConnectionProperties(props);
-    LambdaClientProperties fProps = new LambdaClientProperties(props);
-    dynamoResource.setCredentials(fProps);
-    return fProps;
   }
 
   public AmazonDynamoDBAsyncClient getAsyncClient() {

@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- *
+ * Connect the named kinesis stream names to remote lambda functions, described by their ARN
  */
 public class RemoteLambdaConnector extends LambdaKinesisConnector<String> {
 
@@ -52,19 +52,21 @@ public class RemoteLambdaConnector extends LambdaKinesisConnector<String> {
 
     // create each stream
     for (String stream : this.mapping.keySet()) {
+      LOG.info("Creating kinesis stream: " + stream);
       kinesis.setup(stream);
     }
 
     // connect the streams to the functions
     for (Map.Entry<String, List<String>> streamToArn : mapping.entrySet()) {
-      String arn = String.format(TestProperties.Kinesis.KINESIS_STREAM_ARN_TO_FORMAT, region,
-        props.getRawToStagedKinesisStreamName());
+      String arn = String
+        .format(TestProperties.Kinesis.KINESIS_STREAM_ARN_TO_FORMAT, region, streamToArn.getKey());
       for (String functionArn : streamToArn.getValue()) {
+        LOG.info("Mapping Kinesis: '" + arn + "' => lambda: '" + functionArn + "'");
         CreateEventSourceMappingRequest mapping = new CreateEventSourceMappingRequest();
         mapping.setFunctionName(functionArn);
         mapping.setEventSourceArn(arn);
         mapping.setBatchSize(1);
-        mapping.setStartingPosition(EventSourcePosition.LATEST);
+        mapping.setStartingPosition(EventSourcePosition.TRIM_HORIZON);
         mapping.setEnabled(true);
         CreateEventSourceMappingResult result = lambda.createEventSourceMapping(mapping);
         this.kinesisToLambdaUUIDs.add(result.getUUID());

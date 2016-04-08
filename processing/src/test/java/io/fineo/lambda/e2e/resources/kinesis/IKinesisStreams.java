@@ -19,4 +19,6 @@ public interface IKinesisStreams {
   BlockingQueue<List<ByteBuffer>> getEventQueue(String stream);
 
   void setup(String stream);
+
+  Iterable<String> getStreamNames();
 }

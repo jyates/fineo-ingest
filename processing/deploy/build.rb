@@ -122,7 +122,7 @@ parser = OptionParser.new do|opts|
     $config.verbose = true
   end
   opts.on("--skip-tests", "Skip running tests when building deployable jar") do |s|
-    $config.skip ="-DskipTests"
+    $config.skip_tests ="-DskipTests"
   end
   opts.on("-v", "--verbose", "Verbose output") do |v|
     $config.verbose = true

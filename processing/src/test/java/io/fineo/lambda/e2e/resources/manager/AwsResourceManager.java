@@ -33,8 +33,7 @@ import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
-import static io.fineo.lambda.LambdaClientProperties.STAGED_PREFIX;
-import static io.fineo.lambda.LambdaClientProperties.StreamType.ARCHIVE;
+import static java.lang.String.format;
 import static org.junit.Assert.assertEquals;
 
 /**
@@ -45,7 +44,7 @@ public class AwsResourceManager extends BaseResourceManager {
   private static final ListeningExecutorService executor = MoreExecutors.listeningDecorator(
     MoreExecutors.getExitingExecutorService((ThreadPoolExecutor) Executors.newCachedThreadPool()));
 
-  private final String region = System.getProperty("aws-region", "us-east-1");
+  private final String region;
 
   private final AwsCredentialResource awsCredentials;
   private final TestOutput output;
@@ -58,10 +57,11 @@ public class AwsResourceManager extends BaseResourceManager {
   private boolean cleanup;
 
   public AwsResourceManager(AwsCredentialResource awsCredentials, TestOutput output,
-    LambdaKinesisConnector connector) {
+    LambdaKinesisConnector connector, String region) {
     super(connector);
     this.awsCredentials = awsCredentials;
     this.output = output;
+    this.region = region;
   }
 
   /**
@@ -141,11 +141,17 @@ public class AwsResourceManager extends BaseResourceManager {
           LOG.error("We didn't start the test correctly!");
           firehose.ensureNoDataStored();
         } else {
-          if (!status.isRawToAvroSuccessful()) {
-            cloneRawToAvroData(status);
-          } else {
-            cloneAvroToStorageData(status);
+          // just get all the data, maybe we messed up the test
+          cloneS3(LambdaClientProperties.RAW_PREFIX);
+          cloneS3(LambdaClientProperties.STAGED_PREFIX);
+
+          // copy kinesis data
+          File out = output.newFolder("kinesis");
+          for (String streamName : kinesis.getStreamNames()) {
+            ResourceUtils.writeStream(streamName, out, () -> this.connector.getWrites(streamName));
           }
+          // copy any dynamo data
+          dynamo.copyStoreTables(output.newFolder(LambdaClientProperties.STAGED_PREFIX, "dynamo"));
         }
       }
     } finally {
@@ -163,37 +169,11 @@ public class AwsResourceManager extends BaseResourceManager {
     futures.await();
   }
 
-  /**
-   * Copy all the resources that were part of the failure to local disk fpor the raw -> avro stage
-   */
-  private void cloneRawToAvroData(EndtoEndSuccessStatus status) throws IOException {
-    cloneS3(LambdaClientProperties.RAW_PREFIX, status);
-  }
-
-  /**
-   * Copy all the resources that were part of the failure to local disk fpor the raw -> avro stage
-   */
-  private void cloneAvroToStorageData(EndtoEndSuccessStatus status) throws IOException {
-    cloneS3(LambdaClientProperties.STAGED_PREFIX, status);
-    // we didn't even archive anything, so clone down the kinesis contents
-    if (!status.getCorrectFirehoses().contains(new Pair<>(STAGED_PREFIX, ARCHIVE))) {
-      String streamName = props.getRawToStagedKinesisStreamName();
-      File out = output.newFolder(LambdaClientProperties.STAGED_PREFIX, "kinesis");
-      ResourceUtils.writeStream(streamName, out, () -> this.connector.getWrites(streamName));
-    }
-
-    // copy any data from Dynamo
-    dynamo.copyStoreTables(output.newFolder(LambdaClientProperties.STAGED_PREFIX, "dynamo"));
-  }
-
-  private void cloneS3(String stage, EndtoEndSuccessStatus status) throws IOException {
+  private void cloneS3(String stage) throws IOException {
     List<Pair<String, LambdaClientProperties.StreamType>> toClone = new ArrayList<>(3);
-    LOG.debug("Raw -> Avro successful - cleaning up all endpoints");
     for (LambdaClientProperties.StreamType t : LambdaClientProperties.StreamType.values()) {
-      String firehose = props.getFirehoseStreamName(stage, t);
-      if (status.getCorrectFirehoses().contains(firehose)) {
-        toClone.add(new Pair<>(stage, t));
-      }
+      LOG.debug(format("Cloning s3 [%s => %s]", stage, t));
+      toClone.add(new Pair<>(stage, t));
     }
     File dir = output.newFolder(stage, "s3");
     firehose.clone(toClone, dir);

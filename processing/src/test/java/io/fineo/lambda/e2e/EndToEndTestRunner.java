@@ -140,7 +140,7 @@ public class EndToEndTestRunner {
   }
 
   private void verifyNoStageErrors(String stage, Function<List<ByteBuffer>, String> errorResult) {
-    LOG.info("Checking to make sure that there are no errors in stage: "+stage);
+    LOG.info("Checking to make sure that there are no errors in stage: " + stage);
     verifyNoFirehoseWrites(errorResult, stage, PROCESSING_ERROR, COMMIT_ERROR);
   }
 
@@ -208,6 +208,7 @@ public class EndToEndTestRunner {
     }
 
     public void sending(Map<String, Object> json) {
+      LOG.info("Sending message: " + json);
       this.json = json;
     }
   }

@@ -68,6 +68,11 @@ public class MockKinesisStreams implements IKinesisStreams {
     }
   }
 
+  @Override
+  public Iterable<String> getStreamNames() {
+    return kinesisEvents.keySet();
+  }
+
   private class WrappingQueue<T> extends AbstractQueue<T> implements BlockingQueue<T> {
 
     private static final int WAIT_INTERVAL = 100;

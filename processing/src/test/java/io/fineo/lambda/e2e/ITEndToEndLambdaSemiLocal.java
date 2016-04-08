@@ -2,19 +2,15 @@ package io.fineo.lambda.e2e;
 
 import com.google.common.collect.Lists;
 import io.fineo.aws.AwsDependentTests;
-import io.fineo.aws.rule.AwsCredentialResource;
 import io.fineo.lambda.LambdaAvroToStorage;
 import io.fineo.lambda.LambdaClientProperties;
 import io.fineo.lambda.LambdaRawRecordToAvro;
 import io.fineo.lambda.e2e.resources.IngestUtil;
 import io.fineo.lambda.e2e.resources.lambda.LambdaKinesisConnector;
 import io.fineo.lambda.e2e.resources.lambda.LocalLambdaRemoteKinesisConnector;
-import io.fineo.lambda.e2e.resources.manager.AwsResourceManager;
 import io.fineo.lambda.util.LambdaTestUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.junit.After;
-import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -28,49 +24,30 @@ import java.util.Properties;
  * AWS itself
  */
 @Category(AwsDependentTests.class)
-public class ITEndToEndLambdaSemiLocal {
+public class ITEndToEndLambdaSemiLocal extends BaseITEndToEndAwsServices {
   private static final Log LOG = LogFactory.getLog(ITEndToEndLambdaSemiLocal.class);
 
-  @ClassRule
-  public static AwsCredentialResource awsCredentials = new AwsCredentialResource();
-  @ClassRule
-  public static TestOutput output = new TestOutput(false);
-
-  private LambdaClientProperties props;
-  private EndToEndTestRunner runner;
-  private AwsResourceManager manager;
-
-  @After
-  public void cleanup() throws Exception {
-    if (this.runner != null) {
-      this.runner.cleanup();
-    } else {
-      this.manager.cleanup(null);
-    }
+  public ITEndToEndLambdaSemiLocal(){
+    super(true);
   }
 
-  @Test(timeout = 600000)
+  @Test(timeout = 800000)
   public void testEndToEndSuccess() throws Exception {
     String uuid = "integration-test-" + System.currentTimeMillis() + "-";
-    this.props = new LambdaClientProperties(getProperties(uuid));
-    props.setAwsCredentialProviderForTesting(awsCredentials.getProvider());
+    setProperties(new LambdaClientProperties(getProperties(uuid)));
 
     String kinesisIngest = uuid + "ingest";
-    String kinesisConnector = props.getRawToStagedKinesisStreamName();
+    String kinesisConnector = getProps().getRawToStagedKinesisStreamName();
     Map<String, List<IngestUtil.Lambda>> mapping =
       IngestUtil.newBuilder()
-                .start(kinesisIngest, new LambdaRawRecordToAvro().setPropertiesForTesting(props))
-                .then(kinesisConnector, new LambdaAvroToStorage().setPropertiesForTesting(props))
+                .start(kinesisIngest,
+                  new LambdaRawRecordToAvro().setPropertiesForTesting(getProps()))
+                .then(kinesisConnector,
+                  new LambdaAvroToStorage().setPropertiesForTesting(getProps()))
                 .build();
     LambdaKinesisConnector connector =
       new LocalLambdaRemoteKinesisConnector(mapping, kinesisIngest);
-    this.manager = new AwsResourceManager(awsCredentials, output, connector);
-    manager.cleanupResourcesOnFailure(true);
-    this.runner = new EndToEndTestRunner(props, manager);
-
-    Map<String, Object> json = LambdaTestUtils.createRecords(1, 1)[0];
-    runner.run(json);
-    runner.validate();
+    run(connector, LambdaTestUtils.createRecords(1, 1));
   }
 
   private Properties getProperties(String uuid) throws IOException {

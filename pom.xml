@@ -233,20 +233,5 @@
         <failsafe.skip.aws>false</failsafe.skip.aws>
       </properties>
     </profile>
-    <profile>
-      <id>aws-validation</id>
-      <activation>
-        <property>
-          <name>validate</name>
-        </property>
-      </activation>
-      <properties>
-        <surefire.skip.simple>true</surefire.skip.simple>
-        <surefire.skip.aws>true</surefire.skip.aws>
-        <failsafe.skip.local>true</failsafe.skip.local>
-        <failsafe.skip.aws>true</failsafe.skip.aws>
-        <failsafe.skip.validation>false</failsafe.skip.validation>
-      </properties>
-    </profile>
   </profiles>
 </project>

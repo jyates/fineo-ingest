@@ -5,9 +5,13 @@ import io.fineo.lambda.StreamProducer;
 import io.fineo.lambda.e2e.resources.IngestUtil;
 import io.fineo.lambda.e2e.resources.kinesis.IKinesisStreams;
 import io.fineo.lambda.util.run.FutureWaiter;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -21,6 +25,7 @@ import java.util.concurrent.Executors;
  */
 public class LocalLambdaRemoteKinesisConnector extends LambdaKinesisConnector<IngestUtil.Lambda> {
 
+  private static final Log LOG = LogFactory.getLog(LocalLambdaRemoteKinesisConnector.class);
   protected IKinesisStreams kinesis;
   private ExecutorService executor = Executors.newSingleThreadExecutor();
   private boolean done;
@@ -70,17 +75,24 @@ public class LocalLambdaRemoteKinesisConnector extends LambdaKinesisConnector<In
 
       while (!done) {
         for (Map.Entry<String, List<IngestUtil.Lambda>> stream : mapping.entrySet()) {
-          BlockingQueue<List<ByteBuffer>> queue = streams.get(stream.getKey());
+          String streamName = stream.getKey();
+          LOG.debug("Reading from stream -> " + streamName);
+          BlockingQueue<List<ByteBuffer>> queue = streams.get(streamName);
           List<ByteBuffer> data = queue.poll();
           // while there is more data to read from the queue, read it
           while (data != null) {
             for (IngestUtil.Lambda method : stream.getValue()) {
+              LOG.info("--- Starting Method Call ---");
+              Instant start = Instant.now();
               method.call(data);
+              Duration done = Duration.between(start, Instant.now());
+              LOG.info("---> Duration: " + done.toMillis() + " ms for " + method);
             }
             data = queue.poll();
           }
         }
       }
+      LOG.info("Done connecting to local streams!");
     });
   }
 

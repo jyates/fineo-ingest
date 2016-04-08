@@ -16,9 +16,8 @@ import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.google.common.collect.Lists;
 import io.fineo.aws.AwsDependentTests;
 import io.fineo.lambda.dynamo.ResultOrException;
-import io.fineo.lambda.dynamo.avro.Schema;
 import io.fineo.lambda.dynamo.rule.AwsDynamoResource;
-import io.fineo.lambda.dynamo.rule.AwsDynamoTablesResource;
+import io.fineo.lambda.dynamo.rule.AwsDynamoSchemaTablesResource;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
@@ -38,7 +37,7 @@ public class TestScanPager {
   @ClassRule
   public static AwsDynamoResource dynamoResource = new AwsDynamoResource();
   @Rule
-  public AwsDynamoTablesResource tableResource = new AwsDynamoTablesResource(dynamoResource);
+  public AwsDynamoSchemaTablesResource tableResource = new AwsDynamoSchemaTablesResource(dynamoResource);
 
   private final String primaryKey = "pk";
 

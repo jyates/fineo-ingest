@@ -1,9 +1,11 @@
 package io.fineo.lambda.dynamo.iter;
 
 import com.google.common.collect.AbstractIterator;
+import com.google.common.util.concurrent.ForwardingBlockingQueue;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import java.util.Collection;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -37,7 +39,7 @@ public class PagingIterator<T> extends AbstractIterator<T> {
   private int count = 0;
   private Object poison = new Object();
   private final PageManager<T> supplier;
-  private BlockingQueue items = new LinkedBlockingQueue<>();
+  private TrackedBlockingQueue items = new TrackedBlockingQueue(new LinkedBlockingQueue<>());
   private volatile boolean closed;
 
   public PagingIterator(int prefetchSize, PageManager<T> supplier) {
@@ -46,7 +48,7 @@ public class PagingIterator<T> extends AbstractIterator<T> {
     this.supplier.prepare(this);
   }
 
-  public Iterable<T> iterable(){
+  public Iterable<T> iterable() {
     return () -> this;
   }
 
@@ -99,12 +101,53 @@ public class PagingIterator<T> extends AbstractIterator<T> {
   public void completedBatch() {
     boolean closed = openRequest.compareAndSet(true, false);
     assert closed : "No open request to close!";
+    // check to see that something was added to the queue
+    if (items.wasAdded()) {
+      items.setAdded(false);
+    } else {
+      makeRequest();
+    }
   }
 
   private void makeRequest() {
     // make the request if we don't have any open request
     if (openRequest.compareAndSet(false, true)) {
-      supplier.update(items);
+      supplier.update(items, () -> completedBatch());
+    }
+  }
+
+  private class TrackedBlockingQueue<E> extends ForwardingBlockingQueue<E> {
+
+    private final BlockingQueue<E> delegate;
+    private boolean added;
+
+    public TrackedBlockingQueue(BlockingQueue<E> delegate) {
+      this.delegate = delegate;
+    }
+
+    @Override
+    protected BlockingQueue<E> delegate() {
+      return delegate;
+    }
+
+    @Override
+    public boolean addAll(Collection<? extends E> collection) {
+      this.added = true;
+      return super.addAll(collection);
+    }
+
+    @Override
+    public boolean add(E element) {
+      this.added = true;
+      return super.add(element);
+    }
+
+    public boolean wasAdded() {
+      return added;
+    }
+
+    public void setAdded(boolean added) {
+      this.added = added;
     }
   }
 }

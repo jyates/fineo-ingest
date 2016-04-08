@@ -11,7 +11,7 @@ path =File.expand_path(File.dirname(__FILE__))
 lambda = "#{path}/.."
 jar_dir = "#{lambda}/target"
 build_script = "#{lambda}/build.sh"
-$lambda_validation = "#{path}/../lambda-validate"
+$lambda_validation = "#{path}/../../lambda-validate"
 
 # List of the functions and properties about them
 functions = [
@@ -28,8 +28,8 @@ functions = [
     description: "Stores the avro-formated bytes into Dynamo and S3",
     handler: "io.fineo.lambda.LambdaAvroToStorage::handler",
     role: "arn:aws:iam::766732214526:role/Lambda-Dynamo-Ingest-Role",
-    timeout: 10, # seconds
-    memory_size: 128 # MB
+    timeout: 40, # seconds
+    memory_size: 256 # MB
   }
 ]
 
@@ -97,7 +97,8 @@ end
 
 def runTest(opts)
   logging = opts.test_log ? "-Dtest.output.to.file=false" : ""
-  cmd = "mvn -f #{$lambda_validation} clean test -DallTests #{logging}"
+  debug = opts.test_debug ? "-Dmaven.failsafe.debug" : ""
+  cmd = "mvn -f #{$lambda_validation} clean verify -Dvalidate #{logging} #{debug}"
   puts "Running: #{cmd}" if opts.verbose
   system cmd
 end
@@ -137,6 +138,9 @@ parser = OptionParser.new do |opts|
   "#{options.test_log}") do |t|
     options.test = true
     options.test_log = t if !t.nil?
+  end
+  opts.on("--test-debug", "If the junit test should wait for a debugger to attach") do |s|
+    options.test_debug = true
   end
   opts.on('-f', '--force', "Force with first acceptable jar. Default: #{options.force}") do |f|
     options.force = true
@@ -178,8 +182,9 @@ require 'aws-sdk'
 require 'yaml'
 begin
   creds = YAML.load(File.read(options.credentials))
-rescue
-  raise "Could not read credentials file at: #{options.credentials}"
+rescue Exception => e
+  puts "Could not read credentials file at: #{options.credentials}"
+  raise e
 end
 
 # Actually create the lambda function

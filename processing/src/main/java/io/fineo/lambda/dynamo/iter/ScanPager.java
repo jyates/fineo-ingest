@@ -5,25 +5,20 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.amazonaws.services.dynamodbv2.model.ScanResult;
-import io.fineo.lambda.dynamo.ResultOrException;
-import io.fineo.lambda.dynamo.avro.Schema;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.stream.Collectors;
 
 /**
  * Page a scan across a dynamoDB table. Page size is determined by the provided {@link
  * ScanRequest}. This just handles asynchronously providing the result (or exception) to the
- * result queue in {@link #page(Pipe)}. All elements are added to the {@link Pipe} in a single
- * call, either {@link Pipe#add(Object)} or {@link Pipe#addAll(Collection)}.
+ * result queue.
  * <p>
  * Note that the {@link ScanRequest} will be changed over the course of this scanner - a copy
  * should be made if you want to reuse it.
  * </p>
- *
- * @see Pipe
  */
 public class ScanPager extends BasePager<ResultOrException<Map<String, AttributeValue>>> {
 
@@ -41,7 +36,7 @@ public class ScanPager extends BasePager<ResultOrException<Map<String, Attribute
   }
 
   @Override
-  public void page(Pipe<ResultOrException<Map<String, AttributeValue>>> queue) {
+  public void page(Queue<ResultOrException<Map<String, AttributeValue>>> queue) {
     client.scanAsync(scan, new AsyncHandler<ScanRequest, ScanResult>() {
       @Override
       public void onError(Exception exception) {
@@ -59,6 +54,7 @@ public class ScanPager extends BasePager<ResultOrException<Map<String, Attribute
 
         // return all the values
         queue.addAll(result);
+        batchComplete();
 
         // we dropped off the end of the results that we care about
         if (result.size() < scanResult.getCount() ||

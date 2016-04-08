@@ -61,7 +61,7 @@ public class LambdaRawRecordToAvro extends IngestBaseLambda implements StreamPro
       // when we create the schema bridge, but that requires a bit more refactoring than I want
       // to do right now for the schema bridge. Maybe an easy improvement later.
       String orgId = record.getStringByField(AvroSchemaEncoder.ORG_ID_KEY);
-      LOG.trace("got org id");
+      LOG.trace("got org id" + orgId + " for key: " + AvroSchemaEncoder.ORG_ID_KEY);
       // sometimes this throws illegal argument, e.g. record not valid, so we fall back on the
       // error handler
       AvroSchemaEncoder bridge = AvroSchemaEncoder.create(store, record);

@@ -10,7 +10,7 @@ import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.lambda.dynamo.avro.AvroDynamoReader;
 import io.fineo.lambda.dynamo.avro.AvroToDynamoWriter;
 import io.fineo.lambda.dynamo.rule.AwsDynamoResource;
-import io.fineo.lambda.dynamo.rule.AwsDynamoTablesResource;
+import io.fineo.lambda.dynamo.rule.AwsDynamoSchemaTablesResource;
 import io.fineo.lambda.util.SchemaUtil;
 import io.fineo.schema.avro.AvroSchemaEncoder;
 import io.fineo.schema.avro.RecordMetadata;
@@ -46,7 +46,7 @@ public class TestAvroDynamoIO {
   @ClassRule
   public static AwsDynamoResource dynamo = new AwsDynamoResource();
   @Rule
-  public AwsDynamoTablesResource tables = new AwsDynamoTablesResource(dynamo, false);
+  public AwsDynamoSchemaTablesResource tables = new AwsDynamoSchemaTablesResource(dynamo, false);
 
   @Test
   public void testSingleWrite() throws Exception {

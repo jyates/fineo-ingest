@@ -139,20 +139,15 @@ public class FirehoseResource implements AwsResource {
     long timeout = streams.getTimeout(prefix);
 
     // read the data from S3 to ensure it matches the raw data sent
-    ResultWaiter<ObjectListing> wait = waiter.get()
-                                             .withInterval(READ_S3_INTERVAL)
-                                             .withTimeout(Math.max(timeout, READ_S3_INTERVAL))
-                                             .withDescription(
-                                               "Firehose -> s3 [" + TestProperties.Firehose
-                                                 .S3_BUCKET_NAME + "/" + prefix
-                                               + "] flush; "
-                                               + "max expceted: ~60sec")
-                                             .withStatus(() -> s3
-                                               .listObjects(TestProperties.Firehose.S3_BUCKET_NAME,
-                                                 prefix))
-                                             .withStatusCheck(
-                                               listing -> ((ObjectListing) listing)
-                                                            .getObjectSummaries().size() > 0);
+    ResultWaiter<ObjectListing> wait =
+      waiter.get()
+            .withInterval(READ_S3_INTERVAL)
+            .withTimeout(Math.max(timeout, READ_S3_INTERVAL))
+            .withDescription(
+              "Firehose -> s3 [" + TestProperties.Firehose.S3_BUCKET_NAME + "/" + prefix + "] "
+              + "flush; max expceted: ~60sec")
+            .withStatus(() -> s3.listObjects(TestProperties.Firehose.S3_BUCKET_NAME, prefix))
+            .withStatusCheck(listing -> ((ObjectListing) listing).getObjectSummaries().size() > 0);
     if (!wait.waitForResult()) {
       return new ArrayList<>(0);
     }
