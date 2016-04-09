@@ -5,6 +5,7 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.amazonaws.services.dynamodbv2.model.ScanResult;
+import io.fineo.lambda.dynamo.ResultOrException;
 
 import java.util.List;
 import java.util.Map;

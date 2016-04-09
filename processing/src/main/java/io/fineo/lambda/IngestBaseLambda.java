@@ -41,7 +41,10 @@ public abstract class IngestBaseLambda implements TestableLambda {
   @Override
   public void handleEventInternal(KinesisEvent event) throws IOException {
     LOG.trace("Entering handler");
+
+    int count = 0;
     for (KinesisEvent.KinesisEventRecord rec : event.getRecords()) {
+      count++;
       try {
         ByteBuffer data = rec.getKinesis().getData();
         data.mark();
@@ -53,6 +56,7 @@ public abstract class IngestBaseLambda implements TestableLambda {
         addRecordError(rec);
       }
     }
+    LOG.info("Handled " + count + " kinesis records");
 
     flushErrors();
 
