@@ -9,6 +9,7 @@ import io.fineo.lambda.e2e.resources.lambda.LocalLambdaLocalKinesisConnector;
 import io.fineo.lambda.e2e.resources.lambda.LocalLambdaRemoteKinesisConnector;
 import io.fineo.lambda.util.LambdaTestUtils;
 import io.fineo.lambda.e2e.resources.manager.MockResourceManager;
+import io.fineo.lambda.util.ResourceManager;
 import org.junit.Test;
 
 import java.util.List;
@@ -35,6 +36,10 @@ public class TestEndToEndLambdaLocal {
    */
   @Test
   public void testHappyPath() throws Exception {
+    runTest().getRunner().cleanup();
+  }
+
+  public static TestState runTest() throws Exception {
     Properties props = new Properties();
     // firehose outputs
     props
@@ -56,15 +61,38 @@ public class TestEndToEndLambdaLocal {
                 .build();
     LambdaKinesisConnector connector =
       new LocalLambdaLocalKinesisConnector(stageMap, INGEST_CONNECTOR);
-    EndToEndTestRunner runner =
-      new EndToEndTestRunner(new LambdaClientProperties(props),
-        new MockResourceManager(connector, start, storage));
+    ResourceManager manager = new MockResourceManager(connector, start, storage);
+    EndToEndTestRunner runner = new EndToEndTestRunner(new LambdaClientProperties(props), manager);
 
     Map<String, Object> json = LambdaTestUtils.createRecords(1, 1)[0];
     runner.run(json);
-
     runner.validate();
 
-    runner.cleanup();
+    return new TestState(stageMap, runner, manager);
+  }
+
+  public static class TestState {
+    private Map<String, List<IngestUtil.Lambda>> stageMap;
+    private EndToEndTestRunner runner;
+    private ResourceManager resources;
+
+    public TestState(Map<String, List<IngestUtil.Lambda>> stageMap, EndToEndTestRunner runner,
+      ResourceManager resources) {
+      this.stageMap = stageMap;
+      this.runner = runner;
+      this.resources = resources;
+    }
+
+    public Map<String, List<IngestUtil.Lambda>> getStageMap() {
+      return stageMap;
+    }
+
+    public EndToEndTestRunner getRunner() {
+      return runner;
+    }
+
+    public ResourceManager getResources() {
+      return resources;
+    }
   }
 }

@@ -11,8 +11,8 @@
 
   <modules>
     <module>processing</module>
-    <module>batch</module>
     <module>lambda-validate</module>
+    <module>batch2</module>
   </modules>
 
   <properties>
@@ -146,6 +146,19 @@
           <artifactId>maven-dependency-plugin</artifactId>
           <version>${maven.dependency.version}</version>
         </plugin>
+        <!-- Create the test jar -->
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-jar-plugin</artifactId>
+          <version>2.6</version>
+          <executions>
+            <execution>
+              <goals>
+                <goal>test-jar</goal>
+              </goals>
+            </execution>
+          </executions>
+        </plugin>
       </plugins>
     </pluginManagement>
     <plugins>
@@ -157,24 +170,58 @@
           <target>1.8</target>
         </configuration>
       </plugin>
-      <!-- Create the test jar -->
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-jar-plugin</artifactId>
-        <version>2.6</version>
-        <executions>
-          <execution>
-            <goals>
-              <goal>test-jar</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
     </plugins>
   </build>
 
   <dependencyManagement>
     <dependencies>
+      <dependency>
+        <groupId>io.fineo.etl</groupId>
+        <artifactId>processing</artifactId>
+        <version>${project.version}</version>
+        <classifier>aws</classifier>
+        <scope>test</scope>
+        <exclusions>
+          <exclusion>
+            <artifactId>*</artifactId>
+            <groupId>*</groupId>
+          </exclusion>
+        </exclusions>
+      </dependency>
+      <dependency>
+        <groupId>io.fineo.etl</groupId>
+        <artifactId>processing</artifactId>
+        <version>${project.version}</version>
+        <exclusions>
+          <exclusion>
+            <artifactId>com.amazonaws</artifactId>
+            <groupId>*</groupId>
+          </exclusion>
+        </exclusions>
+      </dependency>
+      <dependency>
+        <groupId>io.fineo.etl</groupId>
+        <artifactId>processing</artifactId>
+        <version>${project.version}</version>
+        <classifier>tests</classifier>
+        <scope>test</scope>
+        <exclusions>
+          <exclusion>
+            <artifactId>com.amazonaws</artifactId>
+            <groupId>*</groupId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.slf4j</groupId>
+            <artifactId>*</artifactId>
+          </exclusion>
+        </exclusions>
+      </dependency>
+      <dependency>
+        <groupId>io.fineo.schema</groupId>
+        <artifactId>schema-mgmt</artifactId>
+        <version>1.0-SNAPSHOT</version>
+      </dependency>
+      <!-- Test dependencies -->
       <dependency>
         <groupId>junit</groupId>
         <artifactId>junit</artifactId>

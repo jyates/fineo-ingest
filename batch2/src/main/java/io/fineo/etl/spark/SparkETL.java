@@ -21,7 +21,6 @@ import io.fineo.etl.options.ETLOptions;
 import org.apache.avro.file.MultiSchemaFileReader;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.hadoop.io.compress.GzipCodec;
 import org.apache.spark.SparkConf;
 import org.apache.spark.SparkContext;
 import org.apache.spark.api.java.JavaPairRDD;

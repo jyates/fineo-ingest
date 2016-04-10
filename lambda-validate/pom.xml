@@ -54,12 +54,6 @@
       <version>${project.version}</version>
       <classifier>aws</classifier>
       <scope>test</scope>
-      <exclusions>
-        <exclusion>
-          <artifactId>*</artifactId>
-          <groupId>*</groupId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
       <groupId>io.fineo.etl</groupId>
@@ -67,16 +61,6 @@
       <version>${project.version}</version>
       <classifier>tests</classifier>
       <scope>test</scope>
-      <exclusions>
-        <exclusion>
-          <artifactId>com.amazonaws</artifactId>
-          <groupId>*</groupId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.slf4j</groupId>
-          <artifactId>*</artifactId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
       <groupId>io.fineo.schema</groupId>

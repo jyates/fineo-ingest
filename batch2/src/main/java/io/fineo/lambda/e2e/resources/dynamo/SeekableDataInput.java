@@ -1,4 +1,4 @@
-package io.fineo.etl;
+package io.fineo.lambda.e2e.resources.dynamo;
 
 import org.apache.avro.file.SeekableInput;
 import org.apache.hadoop.fs.FSDataInputStream;
