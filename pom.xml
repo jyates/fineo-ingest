@@ -11,8 +11,7 @@
 
   <modules>
     <module>processing</module>
-    <module>lambda-validate</module>
-    <module>batch2</module>
+    <module>batch</module>
   </modules>
 
   <properties>
@@ -192,12 +191,6 @@
         <groupId>io.fineo.etl</groupId>
         <artifactId>processing</artifactId>
         <version>${project.version}</version>
-        <exclusions>
-          <exclusion>
-            <artifactId>com.amazonaws</artifactId>
-            <groupId>*</groupId>
-          </exclusion>
-        </exclusions>
       </dependency>
       <dependency>
         <groupId>io.fineo.etl</groupId>
@@ -206,10 +199,6 @@
         <classifier>tests</classifier>
         <scope>test</scope>
         <exclusions>
-          <exclusion>
-            <artifactId>com.amazonaws</artifactId>
-            <groupId>*</groupId>
-          </exclusion>
           <exclusion>
             <groupId>org.slf4j</groupId>
             <artifactId>*</artifactId>
@@ -220,6 +209,13 @@
         <groupId>io.fineo.schema</groupId>
         <artifactId>schema-mgmt</artifactId>
         <version>1.0-SNAPSHOT</version>
+      </dependency>
+      <dependency>
+        <groupId>io.fineo.schema</groupId>
+        <artifactId>schema-mgmt</artifactId>
+        <version>1.0-SNAPSHOT</version>
+        <classifier>tests</classifier>
+        <scope>test</scope>
       </dependency>
       <!-- Test dependencies -->
       <dependency>
@@ -314,6 +310,17 @@
         <failsafe.skip.local>true</failsafe.skip.local>
         <failsafe.skip.aws>false</failsafe.skip.aws>
       </properties>
+    </profile>
+    <profile>
+      <id>add-lambda-validation</id>
+      <activation>
+        <property>
+          <name>validate</name>
+        </property>
+      </activation>
+      <modules>
+        <module>lambda-validate</module>
+      </modules>
     </profile>
   </profiles>
 </project>

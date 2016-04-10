@@ -2,10 +2,6 @@
 
 Pipeline to ingest reads from customers
 
-## Building
-
-```beans-tomcat``` builds to a ```war``` type, which have a maven bug that prevents it from working with ```mvn test```. Instead, you have to run at least up to the ```package``` phase.
-
 ### Test Phases
 
 Tests are broken out into five phases, of which only the first three run

@@ -38,6 +38,10 @@ public class ETLOptions {
     this.opts = opts;
   }
 
+  // For programmatic use
+  public ETLOptions(){
+  }
+
   public boolean help() {
     return this.help;
   }

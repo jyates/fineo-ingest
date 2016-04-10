@@ -9,13 +9,13 @@
     <version>1.0-SNAPSHOT</version>
   </parent>
 
-  <artifactId>batch2</artifactId>
+  <artifactId>batch</artifactId>
   <properties>
     <scala.base.version>2.10</scala.base.version>
     <scala.major.version>2.10.5</scala.major.version>
     <scala.version-next>2.11</scala.version-next>
+    <spark.version>1.6.1</spark.version>
   </properties>
-
 
   <build>
     <plugins>
@@ -71,8 +71,6 @@
     <dependency>
       <groupId>io.fineo.etl</groupId>
       <artifactId>processing</artifactId>
-      <classifier>tests</classifier>
-      <scope>test</scope>
     </dependency>
 
     <dependency>
@@ -83,7 +81,13 @@
     <dependency>
       <groupId>org.apache.spark</groupId>
       <artifactId>spark-core_${scala.base.version}</artifactId>
-      <version>1.5.0</version>
+      <version>${spark.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.holdenkarau</groupId>
+      <artifactId>spark-testing-base_2.10</artifactId>
+      <version>${spark.version}_0.3.2</version>
+      <scope>test</scope>
     </dependency>
 
     <dependency>
@@ -93,6 +97,11 @@
     </dependency>
 
     <!-- Test Dependencies -->
+    <dependency>
+      <groupId>io.fineo.schema</groupId>
+      <artifactId>schema-mgmt</artifactId>
+      <classifier>tests</classifier>
+    </dependency>
     <dependency>
       <groupId>io.fineo.etl</groupId>
       <artifactId>processing</artifactId>
@@ -107,6 +116,11 @@
     <dependency>
       <groupId>io.fineo.aws</groupId>
       <artifactId>aws-common</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-all</artifactId>
       <scope>test</scope>
     </dependency>
   </dependencies>

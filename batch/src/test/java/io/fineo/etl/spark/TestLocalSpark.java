@@ -15,6 +15,7 @@ package io.fineo.etl.spark;/*
  * limitations under the License.
  */
 
+import com.holdenkarau.spark.testing.SharedJavaSparkContext;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -24,14 +25,11 @@ import org.junit.Test;
 /**
  *
  */
-public class TestLocalSpark {
+public class TestLocalSpark extends SharedJavaSparkContext{
 
   @Test
   public void testWordCount() {
-    SparkConf conf = new SparkConf().setAppName("org.sparkexample.WordCount").setMaster("local");
-    JavaSparkContext context = new JavaSparkContext(conf);
-
-    JavaRDD<String> file = context.textFile("README.md");
+    JavaRDD<String> file = this.jsc().textFile("README.md");
     System.out.println(file.count());
   }
 }

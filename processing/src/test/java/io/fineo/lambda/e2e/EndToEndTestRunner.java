@@ -193,6 +193,10 @@ public class EndToEndTestRunner {
                .filter(entry -> AvroSchemaEncoder.IS_BASE_FIELD.negate().test(entry.getKey()));
   }
 
+  public LambdaClientProperties getProps(){
+    return this.props;
+  }
+
   private class ProgressTracker {
     private final SchemaStore store;
     private byte[] sent;
