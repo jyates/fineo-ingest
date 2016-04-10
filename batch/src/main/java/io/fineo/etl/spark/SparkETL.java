@@ -15,11 +15,12 @@ package io.fineo.etl.spark;/*
  * limitations under the License.
  */
 
-import io.fineo.etl.SeekableDataInput;
+import com.google.common.collect.AbstractIterator;
 import io.fineo.etl.options.ETLOptionBuilder;
 import io.fineo.etl.options.ETLOptions;
 import org.apache.avro.file.MultiSchemaFileReader;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.hadoop.fs.AvroFSInput;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -39,7 +40,6 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 
 public class SparkETL {
@@ -55,12 +55,12 @@ public class SparkETL {
     URI root = new URI(opts.root());
     FileSystem fs = FileSystem.get(root, context.hadoopConfiguration());
     Path rootPath = fs.resolvePath(new Path(root.getPath()));
-    List<Path> sources = new ArrayList<>();
+    List<FileStatus> sources = new ArrayList<>();
     RemoteIterator<LocatedFileStatus> iter = fs.listFiles(rootPath, true);
-    while(iter.hasNext()){
+    while (iter.hasNext()) {
       LocatedFileStatus status = iter.next();
-      if(!status.isDirectory()){
-        sources.add(status.getPath());
+      if (!status.isDirectory()) {
+        sources.add(status);
       }
     }
 
@@ -107,58 +107,31 @@ public class SparkETL {
       Tuple2<String, PortableDataStream> tuple) throws Exception {
       PortableDataStream stream = tuple._2();
       FSDataInputStream in = (FSDataInputStream) stream.open();
-//      FSDataInputStream in = new FSDataInputStream(new ByteArrayInputStream(new byte[]{1} ));
-      return new GenericRecordReader(in);
+      GenericRecordReader reader = new GenericRecordReader(in);
+      return () -> reader;
     }
   }
 
-  private static class GenericRecordReader implements Iterable<GenericRecord> {
+  private static class GenericRecordReader extends AbstractIterator<GenericRecord> {
 
     private final FSDataInputStream in;
+    private final MultiSchemaFileReader<GenericRecord> reader;
 
-    private GenericRecordReader(FSDataInputStream in) {
+    private GenericRecordReader(FSDataInputStream in) throws IOException {
       this.in = in;
+      this.reader = new MultiSchemaFileReader<>(new AvroFSInput(in, in.available()));
     }
 
     @Override
-    public Iterator<GenericRecord> iterator() {
+    protected GenericRecord computeNext() {
       try {
-        return new Iterator<GenericRecord>() {
-          MultiSchemaFileReader<GenericRecord> reader =
-            new MultiSchemaFileReader<>(new SeekableDataInput(in));
-          GenericRecord next;
-          boolean exhausted = false;
-
-          @Override
-          public boolean hasNext() {
-            if (next == null) {
-              tryNext();
-            }
-            exhausted = next == null;
-            return exhausted;
-          }
-
-          @Override
-          public GenericRecord next() {
-            if (next == null) {
-              tryNext();
-            }
-            return next;
-          }
-
-          private void tryNext() {
-            if (exhausted) {
-              return;
-            }
-            try {
-              next = reader.next(next);
-            } catch (IOException e) {
-              throw new RuntimeException(e);
-            }
-          }
-        };
+        GenericRecord next = reader.next();
+        if (next == null) {
+          endOfData();
+        }
+        return next;
       } catch (IOException e) {
-        throw new RuntimeException("Could not open iterator on stream!");
+        throw new RuntimeException(e);
       }
     }
   }

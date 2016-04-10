@@ -1,17 +1,24 @@
 package org.apache.avro.file;
 
-import com.google.common.collect.Lists;
 import io.fineo.schema.avro.SchemaTestUtils;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.function.Function;
+import java.util.zip.GZIPOutputStream;
 
+import static com.google.common.collect.Lists.newArrayList;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -24,7 +31,9 @@ public class TestFirehoseReadWrite {
 
   @Test
   public void testReadWriteSingleRecord() throws Exception {
-    writeAndVerifyRecordsAndCodec(SchemaTestUtils.createRandomRecord());
+    writeAndVerifyRecordsAndCodec(
+      SchemaTestUtils.createRandomRecord("orgId", "metricType", System.currentTimeMillis(), 1, 100)
+                     .get(0));
   }
 
   @Test
@@ -33,13 +42,37 @@ public class TestFirehoseReadWrite {
       SchemaTestUtils.createRandomRecord(), SchemaTestUtils.createRandomRecord());
   }
 
+  @Test
+  public void testReadSequentialRecords() throws Exception {
+    FirehoseRecordWriter writer = FirehoseRecordWriter.create();
+    GenericRecord record1 = SchemaTestUtils.createRandomRecord();
+    byte[] data = write(writer, record1).getKey();
+    byte[] data2 = write(writer, record1).getKey();
+    ByteArrayOutputStream bos = new ByteArrayOutputStream();
+    bos.write(data);
+    bos.write(data2);
+    bos.close();
+
+    byte[] raw = bos.toByteArray();
+    FirehoseRecordReader<GenericRecord> reader = FirehoseRecordReader.create(ByteBuffer.wrap(raw));
+    assertEquals(record1,reader.next());
+    assertEquals(record1,reader.next());
+    assertNull(reader.next());
+
+    reader = FirehoseRecordReader.create(new SeekableByteArrayInput(raw));
+    assertEquals(record1,reader.next());
+    assertEquals(record1,reader.next());
+    assertNull(reader.next());
+  }
+
   private void writeAndVerifyRecordsAndCodec(GenericRecord... records)
     throws IOException {
+    // null codec and deflator
     FirehoseRecordWriter writer = new FirehoseRecordWriter();
     writeAndVerifyRecords(writer, records);
 
-    writer = new FirehoseRecordWriter();
-    writer.setCodec(CodecFactory.bzip2Codec());
+    // defaults
+    writer = FirehoseRecordWriter.create();
     writeAndVerifyRecords(writer, records);
   }
 
@@ -52,18 +85,15 @@ public class TestFirehoseReadWrite {
    */
   private void writeAndVerifyRecords(FirehoseRecordWriter writer, GenericRecord... records)
     throws IOException {
-    ByteArrayOutputStream out = new ByteArrayOutputStream();
     for (GenericRecord record : records) {
-      LOG.info("Wrote record: " + record + ", schema: " + record.getSchema());
-      ByteBuffer bb = writer.write(record);
-      out.write(bb.array(), bb.arrayOffset(), bb.limit());
+      String out = record.toString();
+      LOG.info("Incoming size: " + out.getBytes().length);
     }
+    byte[] raw = write(writer, records).getLeft();
 
-    out.close();
     // read back in the record
-    byte[] raw = out.toByteArray();
     FirehoseRecordReader<GenericRecord> reader = FirehoseRecordReader.create(ByteBuffer.wrap(raw));
-    List<GenericRecord> recordList = Lists.newArrayList(records);
+    List<GenericRecord> recordList = newArrayList(records);
     LOG.info("Starting with expected records: " + recordList);
     for (int i = 0; i < records.length; i++) {
       GenericRecord record1 = reader.next();
@@ -73,24 +103,45 @@ public class TestFirehoseReadWrite {
     }
   }
 
+  private Pair<String, CodecFactory> pair(String bzip, CodecFactory codecFactory) {
+    return new ImmutablePair<>(bzip, codecFactory);
+  }
+
+  private Pair<byte[], Long> write(FirehoseRecordWriter writer,
+    GenericRecord... records)
+    throws IOException {
+    long start = System.nanoTime();
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    for (GenericRecord record : records) {
+      ByteBuffer bb = writer.write(record);
+      out.write(bb.array(), bb.arrayOffset(), bb.limit());
+    }
+    out.close();
+    long stop = System.nanoTime();
+    return new ImmutablePair<>(out.toByteArray(), stop - start);
+  }
+
   /**
    * Ensure that we read from the correct position in the byte buffer, which in this test should
    * cause a failure in the reading
    *
    * @throws Exception
    */
-  @Test
+  @Test(expected = IllegalArgumentException.class)
   public void failReadMalformedByteBuffer() throws Exception {
     GenericRecord record = SchemaTestUtils.createRandomRecord();
     FirehoseRecordWriter writer = new FirehoseRecordWriter();
     ByteBuffer buff = writer.write(record);
     ByteBuffer malformed = ByteBufferUtils.skipFirstByteCopy(buff);
     FirehoseRecordReader reader = FirehoseRecordReader.create(malformed);
-    try {
-      reader.next();
-      fail("Should not have been able to parse a record!");
-    }catch (IOException e){
-      // expected
-    }
+    reader.next();
   }
+
+  private static Function<OutputStream, OutputStream> GZIP = out -> {
+    try {
+      return new GZIPOutputStream(out);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+  };
 }

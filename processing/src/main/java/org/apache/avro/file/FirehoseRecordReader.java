@@ -1,13 +1,17 @@
 package org.apache.avro.file;
 
+import com.google.common.base.Preconditions;
 import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericRecord;
 
+import java.io.BufferedInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 /**
- * Reader of a firehose written file. Records are assumed to have been written
+ * Reader of a {@link FirehoseRecordWriter} written file.
  */
 public class FirehoseRecordReader<D> {
 
@@ -15,8 +19,11 @@ public class FirehoseRecordReader<D> {
   private final GenericDatumReader<D> datum;
   private final TranslatedSeekableInput translated;
   private DataFileReader<D> reader;
+  // reusing this bytes makes this very not thread-safe, but it is efficient!
+  byte[] bytes = new byte[OFFSET_COUNT_LENGTH];
 
-  private FirehoseRecordReader(TranslatedSeekableInput input, GenericDatumReader<D> reader) throws IOException {
+  private FirehoseRecordReader(TranslatedSeekableInput input, GenericDatumReader<D> reader)
+    throws IOException {
     this.datum = reader;
     this.translated = input;
   }
@@ -32,19 +39,42 @@ public class FirehoseRecordReader<D> {
         return null;
       }
       datum.setExpected(null);
-      // seek out the next length into a byte array
-      this.translated.nextBlock(OFFSET_COUNT_LENGTH);
-      byte[] bytes = new byte[OFFSET_COUNT_LENGTH];
-      translated.read(bytes, 0, bytes.length);
-      // bytebuffer is better than DataInputStream here b/c DIS chokes on some lengths when reading
-      // back 4 bytes...yeah, I dunno.
-      int recordLength = readInt(bytes);
+
+      byte[] magic = readFourByteBlock();
+      Preconditions.checkArgument(Arrays.equals(magic, FirehoseRecordWriter.MAGIC),
+        "First byte does not match expected magic %s!",
+        Arrays.toString(FirehoseRecordWriter.MAGIC));
+
+      int deflator = readInt();
+      int recordLength = readInt();
       translated.nextBlock(recordLength);
-      reader = new DataFileReader<>(translated, datum);
+      SeekableInput currentInput;
+      // if we have a deflator, wrap the current translator with the deflating translator
+      if (DeflatorFactory.DeflatorFactoryEnum.NULL.ordinal() == deflator) {
+        currentInput = translated;
+      } else {
+        DeflatorFactory factory =
+          DeflatorFactory.DeflatorFactoryEnum.values()[deflator].getFactory();
+        DataFileReader.SeekableInputStream in = new DataFileReader.SeekableInputStream(translated);
+        InputStream stream = factory.inflate(in);
+        // wrap that stream into a seekableinput
+        currentInput = new SeekableBufferedStream(new BufferedInputStream(stream));
+      }
+      reader = new DataFileReader<>(currentInput, datum);
       return next(reuse);
     }
     return reader.next(reuse);
+  }
 
+  private int readInt() throws IOException {
+    return readInt(readFourByteBlock());
+  }
+
+  private byte[] readFourByteBlock() throws IOException {
+    // seek out the next length into a byte array
+    this.translated.nextBlock(OFFSET_COUNT_LENGTH);
+    translated.read(bytes, 0, bytes.length);
+    return bytes;
   }
 
   private boolean moreData() throws IOException {
@@ -64,6 +94,11 @@ public class FirehoseRecordReader<D> {
       ((bytes[1] & 0xff) << 16) |
       ((bytes[2] & 0xff) << 8) |
       ((bytes[3] & 0xff)));
+  }
+
+  public static FirehoseRecordReader<GenericRecord> create(SeekableInput input) throws Exception {
+    return new FirehoseRecordReader<>(new TranslatedSeekableInput(0, 0, input),
+      new GenericDatumReader<>());
   }
 
   public static FirehoseRecordReader<GenericRecord> create(ByteBuffer data) throws IOException {
