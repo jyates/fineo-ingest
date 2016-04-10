@@ -13,88 +13,12 @@
   <artifactId>batch</artifactId>
 
   <properties>
-    <surefire.version>2.19</surefire.version>
-
     <scala.base.version>2.10</scala.base.version>
     <scala.major.version>2.10.5</scala.major.version>
     <scala.version-next>2.11</scala.version-next>
-    <!-- Test setup -->
-    <test.output.to.file>true</test.output.to.file>
-    <test.exclude.pattern></test.exclude.pattern>
-    <surefire.s3tests>io.fineo.aws.AwsDependentTests</surefire.s3tests>
-    <surefire.skipSimpleTests>false</surefire.skipSimpleTests>
-    <surefire.skipS3Tests>true</surefire.skipS3Tests>
   </properties>
 
   <build>
-    <pluginManagement>
-      <plugins>
-        <plugin>
-          <groupId>org.apache.maven.plugins</groupId>
-          <artifactId>maven-compiler-plugin</artifactId>
-          <version>3.3</version>
-          <configuration>
-            <source>1.8</source>
-            <target>1.8</target>
-          </configuration>
-        </plugin>
-        <plugin>
-          <!-- Configuration for two distinct phases of test execution. First phase just
-           supports local, non-s3 requiring tests. The second phase is just the tests
-           that require a connection to s3 manipulate buckets/files there. -->
-          <groupId>org.apache.maven.plugins</groupId>
-          <artifactId>maven-surefire-plugin</artifactId>
-          <version>${surefire.version}</version>
-          <!-- Generic testing configuration for all packages -->
-          <configuration>
-            <redirectTestOutputToFile>${test.output.to.file}</redirectTestOutputToFile>
-            <skip>true</skip>
-            <argLine>-enableassertions -Djava.security.egd=file:/dev/./urandom</argLine>
-            <excludes>
-              <!-- users can add -D option to skip particular test classes
-             ex: mvn test -Dtest.exclude.pattern=**/TestFoo.java,**/TestBar.java
-              -->
-              <exclude>${test.exclude.pattern}</exclude>
-            </excludes>
-          </configuration>
-          <executions>
-            <execution>
-              <id>local-tests</id>
-              <goals>
-                <goal>test</goal>
-              </goals>
-              <configuration>
-                <excludedGroups>${surefire.s3tests}</excludedGroups>
-                <skip>${surefire.skipSimpleTests}</skip>
-              </configuration>
-            </execution>
-            <execution>
-              <id>s3tests</id>
-              <goals>
-                <goal>test</goal>
-              </goals>
-              <configuration>
-                <groups>${surefire.s3tests}</groups>
-                <skip>${surefire.skipS3Tests}</skip>
-              </configuration>
-            </execution>
-          </executions>
-        </plugin>
-        <!-- Create the test jar -->
-        <plugin>
-          <groupId>org.apache.maven.plugins</groupId>
-          <artifactId>maven-jar-plugin</artifactId>
-          <version>2.6</version>
-          <executions>
-            <execution>
-              <goals>
-                <goal>test-jar</goal>
-              </goals>
-            </execution>
-          </executions>
-        </plugin>
-      </plugins>
-    </pluginManagement>
     <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
@@ -161,17 +85,15 @@
       <artifactId>commons-cli</artifactId>
       <version>1.2<!-- match hadoop version --></version>
     </dependency>
+
+    <!-- Test Dependencies -->
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
-      <version>4.12</version>
-      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>io.fineo.aws</groupId>
       <artifactId>aws-common</artifactId>
-      <version>1.0-SNAPSHOT</version>
-      <scope>test</scope>
     </dependency>
   </dependencies>
 

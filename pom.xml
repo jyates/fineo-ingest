@@ -11,7 +11,7 @@
 
   <modules>
     <module>processing</module>
-    <!--<module>batch</module>-->
+    <module>batch</module>
     <module>lambda-validate</module>
   </modules>
 
@@ -157,8 +157,44 @@
           <target>1.8</target>
         </configuration>
       </plugin>
+      <!-- Create the test jar -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <version>2.6</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>test-jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
     </plugins>
   </build>
+
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>junit</groupId>
+        <artifactId>junit</artifactId>
+        <version>4.12</version>
+        <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>io.fineo.aws</groupId>
+        <artifactId>aws-common</artifactId>
+        <version>1.0-SNAPSHOT</version>
+        <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.mockito</groupId>
+        <artifactId>mockito-all</artifactId>
+        <version>${mockito.version}</version>
+        <scope>test</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
 
   <profiles>
     <!-- Setup the different test phases -->

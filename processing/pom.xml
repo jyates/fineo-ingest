@@ -13,7 +13,6 @@
   <artifactId>processing</artifactId>
 
   <properties>
-
     <!-- Plugin Versions -->
     <maven.dependency.version>2.10</maven.dependency.version>
     <maven.compiler.version>3.3</maven.compiler.version>
@@ -83,13 +82,10 @@
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
-      <version>${junit.version}</version>
-      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.mockito</groupId>
       <artifactId>mockito-all</artifactId>
-      <version>${mockito.version}</version>
     </dependency>
     <dependency>
       <groupId>io.fineo.schema</groupId>
@@ -107,8 +103,6 @@
     <dependency>
       <groupId>io.fineo.aws</groupId>
       <artifactId>aws-common</artifactId>
-      <version>1.0-SNAPSHOT</version>
-      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>com.google.inject</groupId>
