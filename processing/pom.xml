@@ -72,12 +72,6 @@
       <artifactId>schema-mgmt</artifactId>
       <version>${fineo-schema-mgmt.version}</version>
     </dependency>
-    <!--<dependency>-->
-      <!--<groupId>org.apache.hadoop</groupId>-->
-      <!--<artifactId>hadoop-common</artifactId>-->
-      <!--<version>${hadoop.version}</version>-->
-      <!--<scope>test</scope>-->
-    <!--</dependency>-->
     <dependency>
       <groupId>com.fasterxml.jackson.jr</groupId>
       <artifactId>jackson-jr-objects</artifactId>

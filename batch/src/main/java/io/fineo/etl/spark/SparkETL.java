@@ -18,11 +18,11 @@ package io.fineo.etl.spark;/*
 import com.google.common.collect.AbstractIterator;
 import io.fineo.etl.options.ETLOptionBuilder;
 import io.fineo.etl.options.ETLOptions;
-import org.apache.avro.file.MultiSchemaFileReader;
+import io.fineo.schema.avro.RecordMetadata;
+import org.apache.avro.file.FirehoseRecordReader;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.hadoop.fs.AvroFSInput;
 import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.fs.Path;
@@ -55,12 +55,12 @@ public class SparkETL {
     URI root = new URI(opts.root());
     FileSystem fs = FileSystem.get(root, context.hadoopConfiguration());
     Path rootPath = fs.resolvePath(new Path(root.getPath()));
-    List<FileStatus> sources = new ArrayList<>();
+    List<Path> sources = new ArrayList<>();
     RemoteIterator<LocatedFileStatus> iter = fs.listFiles(rootPath, true);
     while (iter.hasNext()) {
       LocatedFileStatus status = iter.next();
       if (!status.isDirectory()) {
-        sources.add(status);
+        sources.add(status.getPath());
       }
     }
 
@@ -79,9 +79,10 @@ public class SparkETL {
 
     // combine into new single partition and remove duplicates
     JavaRDD<GenericRecord> records = context.union(avroRecords).distinct();
-
-    // map to bytes, save
-    records.saveAsTextFile(opts.archive(), GzipCodec.class);
+    records.map(record -> {
+      RecordMetadata metadata = RecordMetadata.get(record);
+      metadata.getOrgID()
+    })
 
     // map to [tenant, [...fields...]
 
@@ -114,12 +115,10 @@ public class SparkETL {
 
   private static class GenericRecordReader extends AbstractIterator<GenericRecord> {
 
-    private final FSDataInputStream in;
-    private final MultiSchemaFileReader<GenericRecord> reader;
+    private final FirehoseRecordReader<GenericRecord> reader;
 
-    private GenericRecordReader(FSDataInputStream in) throws IOException {
-      this.in = in;
-      this.reader = new MultiSchemaFileReader<>(new AvroFSInput(in, in.available()));
+    private GenericRecordReader(FSDataInputStream in) throws Exception {
+      this.reader = FirehoseRecordReader.create(new AvroFSInput(in, in.available()));
     }
 
     @Override
