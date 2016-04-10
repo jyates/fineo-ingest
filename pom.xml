@@ -12,7 +12,6 @@
   <modules>
     <module>processing</module>
     <!--<module>batch</module>-->
-    <module>beans</module>
     <module>lambda-validate</module>
   </modules>
 
