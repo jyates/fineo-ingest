@@ -1,7 +1,11 @@
 package io.fineo.lambda.e2e;
 
+import com.google.inject.Guice;
+import com.google.inject.Injector;
 import io.fineo.aws.rule.AwsCredentialResource;
+import io.fineo.lambda.configure.DynamoModule;
 import io.fineo.lambda.configure.LambdaClientProperties;
+import io.fineo.lambda.configure.LambdaModule;
 import io.fineo.lambda.e2e.resources.lambda.LambdaKinesisConnector;
 import io.fineo.lambda.e2e.resources.manager.AwsResourceManager;
 import org.apache.commons.logging.Log;
@@ -10,6 +14,7 @@ import org.junit.After;
 import org.junit.ClassRule;
 
 import java.util.Map;
+import java.util.Properties;
 
 /**
  * Base class for tests that use the {@link AwsResourceManager} and the {@link EndToEndTestRunner}
@@ -58,9 +63,16 @@ public class BaseITEndToEndAwsServices {
     runner.validate();
   }
 
-  protected void setProperties(LambdaClientProperties props) throws Exception {
-    this.props = props;
-    props.setAwsCredentialProviderForTesting(awsCredentials.getProvider());
+  protected void setProperties(Properties properties) {
+    Injector injector =
+      Guice.createInjector(new LambdaModule(properties, () -> awsCredentials.getProvider()),
+        new DynamoModule());
+    this.props = injector.getInstance(LambdaClientProperties.class);
+  }
+
+  protected void setProperties(LambdaClientProperties properties) {
+    properties.setCredentials(() -> awsCredentials.getProvider());
+    this.props = properties;
   }
 
   protected LambdaClientProperties getProps() {

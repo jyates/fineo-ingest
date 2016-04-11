@@ -93,7 +93,7 @@ public class SparkETL {
     List<Tuple2<String, String>> types = typeToRecord.keys().collect();
 
     // get the schemas for each type
-    LambdaClientProperties props = new LambdaClientProperties(opts.props());
+    LambdaClientProperties props = null;//new LambdaClientProperties(opts.props());
     SchemaStore store = props.createSchemaStore();
     Schema.Parser parser = new Schema.Parser();
     List<Tuple2<StructType, JavaRDD<Row>>> schemas = new ArrayList<>();

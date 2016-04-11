@@ -3,10 +3,12 @@ package io.fineo.lambda.dynamo;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.amazonaws.services.dynamodbv2.model.ListTablesResult;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
+import com.google.inject.AbstractModule;
 import io.fineo.aws.AwsDependentTests;
 import io.fineo.internal.customer.BaseFields;
 import io.fineo.lambda.configure.LambdaClientProperties;
 import io.fineo.lambda.aws.MultiWriteFailures;
+import io.fineo.lambda.configure.PropertiesModule;
 import io.fineo.lambda.dynamo.avro.AvroDynamoReader;
 import io.fineo.lambda.dynamo.avro.AvroToDynamoWriter;
 import io.fineo.lambda.dynamo.rule.AwsDynamoResource;
@@ -148,8 +150,8 @@ public class TestAvroDynamoIO {
       dynamo.setConnectionProperties(prop);
 
       // setup the writer/reader
-      LambdaClientProperties props = new LambdaClientProperties(prop);
-      dynamo.setCredentials(props);
+      LambdaClientProperties props =
+        LambdaClientProperties.create(new PropertiesModule(prop), dynamo.getCredentialsModule());
       this.writer = AvroToDynamoWriter.create(props);
       AmazonDynamoDBAsyncClient client = tables.getAsyncClient();
       this.reader =

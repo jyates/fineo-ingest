@@ -34,7 +34,7 @@ public class ITEndToEndLambdaSemiLocal extends BaseITEndToEndAwsServices {
   @Test(timeout = 800000)
   public void testEndToEndSuccess() throws Exception {
     String uuid = "integration-test-" + System.currentTimeMillis() + "-";
-    setProperties(new LambdaClientProperties(getProperties(uuid)));
+    setProperties(getProperties(uuid));
 
     String kinesisIngest = uuid + "ingest";
     String kinesisConnector = getProps().getRawToStagedKinesisStreamName();

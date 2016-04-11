@@ -1,8 +1,10 @@
 package io.fineo.lambda.dynamo.rule;
 
+import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
+import com.google.inject.AbstractModule;
+import com.google.inject.Provides;
 import io.fineo.aws.rule.AwsCredentialResource;
-import io.fineo.lambda.configure.LambdaClientProperties;
 import io.fineo.lambda.dynamo.LocalDynamoTestUtil;
 import org.junit.rules.ExternalResource;
 
@@ -64,11 +66,20 @@ public class AwsDynamoResource extends ExternalResource {
     util.setConnectionProperties(prop);
   }
 
-  public void setCredentials(LambdaClientProperties props) throws Exception {
-    props.setAwsCredentialProviderForTesting(this.getCredentials().getFakeProvider());
-  }
-
   public void cleanup() {
     this.util.cleanupTables(false);
+  }
+
+  public AbstractModule getCredentialsModule() {
+    return new AbstractModule() {
+      @Override
+      protected void configure() {
+      }
+
+      @Provides
+      public AWSCredentialsProvider getCreds() {
+        return getCredentials().getFakeProvider();
+      }
+    };
   }
 }

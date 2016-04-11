@@ -1,8 +1,12 @@
 package io.fineo.lambda.dynamo.rule;
 
+import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
+import com.google.inject.AbstractModule;
+import com.google.inject.Provides;
 import io.fineo.lambda.configure.LambdaClientProperties;
+import io.fineo.lambda.configure.PropertiesModule;
 import io.fineo.lambda.dynamo.LocalDynamoTestUtil;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -28,7 +32,8 @@ public class AwsDynamoSchemaTablesResource extends ExternalResource {
     this(dynamo, true);
   }
 
-  public AwsDynamoSchemaTablesResource(AwsDynamoResource dynamo, boolean storeTablesCreatedDefault) {
+  public AwsDynamoSchemaTablesResource(AwsDynamoResource dynamo,
+    boolean storeTablesCreatedDefault) {
     this.dynamoResource = dynamo;
     this.storeTableCreatedDefault = storeTablesCreatedDefault;
     this.storeTableCreated = storeTableCreatedDefault;
@@ -68,9 +73,23 @@ public class AwsDynamoSchemaTablesResource extends ExternalResource {
 
   public LambdaClientProperties getClientProperties(Properties props) throws Exception {
     getUtil().setConnectionProperties(props);
-    LambdaClientProperties fProps = new LambdaClientProperties(props);
-    dynamoResource.setCredentials(fProps);
+    LambdaClientProperties fProps = LambdaClientProperties
+      .create(new PropertiesModule(props), dynamoResource.getCredentialsModule(),
+        getDynamoModule());
     return fProps;
+  }
+
+  public AbstractModule getDynamoModule() {
+    return new AbstractModule() {
+      @Override
+      protected void configure() {
+      }
+
+      @Provides
+      public AmazonDynamoDBAsyncClient getDynamo() {
+        return getAsyncClient();
+      }
+    };
   }
 
   public AmazonDynamoDBAsyncClient getAsyncClient() {

@@ -1,5 +1,6 @@
 package io.fineo.lambda.e2e;
 
+import com.google.inject.AbstractModule;
 import io.fineo.lambda.LambdaAvroToStorage;
 import io.fineo.lambda.configure.LambdaClientProperties;
 import io.fineo.lambda.LambdaRawRecordToAvro;
@@ -18,7 +19,8 @@ import java.util.Properties;
 import static io.fineo.lambda.configure.LambdaClientProperties.RAW_PREFIX;
 import static io.fineo.lambda.configure.LambdaClientProperties.STAGED_PREFIX;
 import static io.fineo.lambda.configure.LambdaClientProperties.StreamType.ARCHIVE;
-import static io.fineo.lambda.configure.LambdaClientProperties.getFirehoseStreamPropertyVisibleForTesting;
+import static io.fineo.lambda.configure.LambdaClientProperties
+  .getFirehoseStreamPropertyVisibleForTesting;
 
 /**
  * Test the end-to-end workflow of the lambda architecture.
@@ -61,7 +63,13 @@ public class TestEndToEndLambdaLocal {
     LambdaKinesisConnector connector =
       new LocalLambdaLocalKinesisConnector(stageMap, INGEST_CONNECTOR);
     ResourceManager manager = new MockResourceManager(connector, start, storage);
-    EndToEndTestRunner runner = new EndToEndTestRunner(new LambdaClientProperties(props), manager);
+    EndToEndTestRunner runner = new EndToEndTestRunner(LambdaClientProperties.create(
+      new AbstractModule() {
+        @Override
+        protected void configure() {
+          bind(Properties.class).toInstance(props);
+        }
+      }), manager);
 
     Map<String, Object> json = LambdaTestUtils.createRecords(1, 1)[0];
     runner.run(json);

@@ -7,8 +7,11 @@ import com.amazonaws.services.kinesis.AmazonKinesisAsyncClient;
 import com.amazonaws.services.kinesisfirehose.AmazonKinesisFirehoseAsyncClient;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
+import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
+import com.google.inject.Inject;
 import com.google.inject.Injector;
+import com.google.inject.Provider;
 import io.fineo.schema.store.SchemaStore;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -22,7 +25,6 @@ import java.util.Properties;
  */
 public class LambdaClientProperties {
 
-  private static final Log LOG = LogFactory.getLog(LambdaClientProperties.class);
   private static final String PROP_FILE_NAME = "fineo-lambda.properties";
   public static final String TEST_PREFIX = "fineo.integration.test.prefix";
 
@@ -38,41 +40,41 @@ public class LambdaClientProperties {
   public static final String DYNAMO_WRITE_LIMIT = "fineo.dynamo.limit.write";
   public static final String DYNAMO_RETRIES = "fineo.dynamo.limit.retries";
 
-
-  private AWSCredentialsProvider provider;
-
-  private final Properties props;
-  private final Injector injector;
-
   public static final String FIREHOSE_URL = "fineo.firehose.url";
   /* These prefixes combine with the StreamType below to generate the full property names */
   public static final String RAW_PREFIX = "fineo.firehose.raw";
   public static final String STAGED_PREFIX = "fineo.firehose.staged";
 
-  public enum StreamType {
-    ARCHIVE("archive"), PROCESSING_ERROR("error"), COMMIT_ERROR("error.commit");
-
-    private final String suffix;
-
-    StreamType(String suffix) {
-      this.suffix = suffix;
-    }
-
-    String getPropertyKey(String prefix) {
-      return prefix + "." + suffix;
-    }
-  }
+  private Provider<AWSCredentialsProvider> credentials;
+  private Provider<AmazonDynamoDBAsyncClient> dynamo;
+  private Provider<SchemaStore> storeProvider;
+  private Properties props;
 
   /**
-   * Use the static {@link #load()} to createTable properties. This is only exposed <b>FOR
-   * TESTING</b>
-   *
-   * @param props
+   * Use the static {@link #load()}. This is only exposed <b>FOR TESTING</b> and injection
    */
   @VisibleForTesting
-  public LambdaClientProperties(Properties props) {
+  public LambdaClientProperties() {
+  }
+
+  @Inject(optional = true)
+  public void setCredentials(Provider<AWSCredentialsProvider> credentials) {
+    this.credentials = credentials;
+  }
+
+  @Inject(optional = true)
+  public void setDynamo(Provider<AmazonDynamoDBAsyncClient> dynamo) {
+    this.dynamo = dynamo;
+  }
+
+  @Inject(optional = true)
+  public void setStoreProvider(Provider<SchemaStore> storeProvider) {
+    this.storeProvider = storeProvider;
+  }
+
+  @Inject(optional = true)
+  public void setProps(Properties props) {
     this.props = props;
-    this.injector = Guice.createInjector(new LambdaModule(props), new DynamoModule());
   }
 
   public static LambdaClientProperties load() throws IOException {
@@ -84,26 +86,32 @@ public class LambdaClientProperties {
     Preconditions.checkArgument(input != null, "Could not load properties file: " + file);
     Properties props = new Properties();
     props.load(input);
-    LambdaClientProperties fProps = new LambdaClientProperties(props);
-    fProps.provider = new DefaultAWSCredentialsProviderChain();
-    return fProps;
+    DefaultAWSCredentialsProviderChain provider = new DefaultAWSCredentialsProviderChain();
+    Injector injector =
+      Guice.createInjector(new LambdaModule(props, () -> provider), new DynamoModule());
+    return injector.getInstance(LambdaClientProperties.class);
+  }
+
+  public static LambdaClientProperties create(AbstractModule... modules) {
+    Injector injector = Guice.createInjector(modules);
+    return injector.getInstance(LambdaClientProperties.class);
   }
 
   public AmazonDynamoDBAsyncClient getDynamo() {
-    return injector.getInstance(AmazonDynamoDBAsyncClient.class);
+    return dynamo.get();
   }
 
   public SchemaStore createSchemaStore() {
-    return injector.getInstance(SchemaStore.class);
+    return storeProvider.get();
   }
 
   @VisibleForTesting
-  public String getSchemaStoreTable(){
+  public String getSchemaStoreTable() {
     return props.getProperty(DYNAMO_SCHEMA_STORE_TABLE);
   }
 
   public AmazonKinesisAsyncClient getKinesisClient() {
-    AmazonKinesisAsyncClient client = new AmazonKinesisAsyncClient(provider);
+    AmazonKinesisAsyncClient client = new AmazonKinesisAsyncClient(credentials.get());
     client.setEndpoint(this.getKinesisEndpoint());
     return client;
   }
@@ -118,7 +126,7 @@ public class LambdaClientProperties {
 
   public AmazonKinesisFirehoseAsyncClient createFireHose() {
     AmazonKinesisFirehoseAsyncClient firehoseClient =
-      new AmazonKinesisFirehoseAsyncClient(this.provider);
+      new AmazonKinesisFirehoseAsyncClient(this.credentials.get());
     firehoseClient.setEndpoint(this.getFirehoseUrl());
     return firehoseClient;
   }
@@ -132,7 +140,7 @@ public class LambdaClientProperties {
   }
 
   @VisibleForTesting
-  public static String getFirehoseStreamPropertyVisibleForTesting(String phase, StreamType type){
+  public static String getFirehoseStreamPropertyVisibleForTesting(String phase, StreamType type) {
     return type.getPropertyKey(phase);
   }
 
@@ -156,29 +164,35 @@ public class LambdaClientProperties {
     return Long.valueOf(props.getProperty(KINESIS_RETRIES));
   }
 
-  public AWSCredentialsProvider getProvider() {
-    return provider;
-  }
 
-  @VisibleForTesting
-  public void setAwsCredentialProviderForTesting(AWSCredentialsProvider provider) throws Exception {
-    this.provider = provider;
+  public AWSCredentialsProvider getProvider() {
+    return credentials.get();
   }
 
   public static LambdaClientProperties createForTesting(Properties props,
     SchemaStore schemaStore) {
-    LambdaClientProperties client = new LambdaClientProperties(props) {
-      @Override
-      public SchemaStore createSchemaStore() {
-        return schemaStore;
-      }
-    };
-
-    return client;
+    LambdaClientProperties lProps = new LambdaClientProperties();
+    lProps.setProps(props);
+    lProps.setStoreProvider(() -> schemaStore);
+    return lProps;
   }
 
   @VisibleForTesting
-  public String getTestPrefix(){
+  public String getTestPrefix() {
     return props.getProperty(TEST_PREFIX);
+  }
+
+  public enum StreamType {
+    ARCHIVE("archive"), PROCESSING_ERROR("error"), COMMIT_ERROR("error.commit");
+
+    private final String suffix;
+
+    StreamType(String suffix) {
+      this.suffix = suffix;
+    }
+
+    String getPropertyKey(String prefix) {
+      return prefix + "." + suffix;
+    }
   }
 }

@@ -23,14 +23,19 @@ import static io.fineo.lambda.configure.LambdaClientProperties.*;
 public class LambdaModule extends AbstractModule {
   private static final Log LOG = LogFactory.getLog(LambdaModule.class);
   private final Properties props;
+  private final Provider<AWSCredentialsProvider> creds;
 
-  public LambdaModule(Properties props) {
+  public LambdaModule(Properties props, Provider<AWSCredentialsProvider> credentials) {
     this.props = props;
+    this.creds = credentials;
   }
 
   @Override
   protected void configure() {
+    // legacy binding for reading properties directly
+    bind(Properties.class).toInstance(props);
     Names.bindProperties(this.binder(), props);
+    bind(AWSCredentialsProvider.class).toProvider(creds);
   }
 
   @Provides
