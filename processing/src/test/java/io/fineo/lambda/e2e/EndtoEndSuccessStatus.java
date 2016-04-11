@@ -1,6 +1,6 @@
 package io.fineo.lambda.e2e;
 
-import io.fineo.lambda.LambdaClientProperties;
+import io.fineo.lambda.configure.LambdaClientProperties;
 import io.fineo.schema.Pair;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;

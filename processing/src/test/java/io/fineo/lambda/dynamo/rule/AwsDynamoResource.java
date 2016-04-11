@@ -1,9 +1,8 @@
 package io.fineo.lambda.dynamo.rule;
 
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
 import io.fineo.aws.rule.AwsCredentialResource;
-import io.fineo.lambda.LambdaClientProperties;
+import io.fineo.lambda.configure.LambdaClientProperties;
 import io.fineo.lambda.dynamo.LocalDynamoTestUtil;
 import org.junit.rules.ExternalResource;
 

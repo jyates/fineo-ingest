@@ -7,7 +7,7 @@ import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Joiner;
 import io.fineo.internal.customer.BaseFields;
-import io.fineo.lambda.LambdaClientProperties;
+import io.fineo.lambda.configure.LambdaClientProperties;
 import io.fineo.lambda.aws.AwsAsyncRequest;
 import io.fineo.lambda.aws.AwsAsyncSubmitter;
 import io.fineo.lambda.aws.MultiWriteFailures;

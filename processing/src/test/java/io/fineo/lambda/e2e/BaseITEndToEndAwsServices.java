@@ -1,7 +1,7 @@
 package io.fineo.lambda.e2e;
 
 import io.fineo.aws.rule.AwsCredentialResource;
-import io.fineo.lambda.LambdaClientProperties;
+import io.fineo.lambda.configure.LambdaClientProperties;
 import io.fineo.lambda.e2e.resources.lambda.LambdaKinesisConnector;
 import io.fineo.lambda.e2e.resources.manager.AwsResourceManager;
 import org.apache.commons.logging.Log;

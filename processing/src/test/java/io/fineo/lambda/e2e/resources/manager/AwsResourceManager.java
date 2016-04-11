@@ -4,7 +4,7 @@ import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
 import io.fineo.aws.rule.AwsCredentialResource;
-import io.fineo.lambda.LambdaClientProperties;
+import io.fineo.lambda.configure.LambdaClientProperties;
 import io.fineo.lambda.e2e.EndToEndTestRunner;
 import io.fineo.lambda.e2e.EndtoEndSuccessStatus;
 import io.fineo.lambda.e2e.TestOutput;

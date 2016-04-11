@@ -1,6 +1,6 @@
 package io.fineo.lambda.util;
 
-import io.fineo.lambda.LambdaClientProperties;
+import io.fineo.lambda.configure.LambdaClientProperties;
 import io.fineo.lambda.e2e.EndtoEndSuccessStatus;
 import io.fineo.schema.avro.RecordMetadata;
 import io.fineo.schema.store.SchemaStore;

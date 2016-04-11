@@ -7,7 +7,7 @@ import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import io.fineo.internal.customer.Metric;
-import io.fineo.lambda.LambdaClientProperties;
+import io.fineo.lambda.configure.LambdaClientProperties;
 import io.fineo.lambda.dynamo.DynamoTableManager;
 import io.fineo.lambda.dynamo.Range;
 import io.fineo.lambda.dynamo.ResultOrException;

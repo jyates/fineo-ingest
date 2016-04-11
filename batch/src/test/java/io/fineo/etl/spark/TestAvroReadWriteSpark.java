@@ -1,11 +1,16 @@
 package io.fineo.etl.spark;
 
 import com.holdenkarau.spark.testing.SharedJavaSparkContext;
+import io.fineo.aws.AwsDependentTests;
 import io.fineo.etl.options.ETLOptions;
-import io.fineo.lambda.LambdaClientProperties;
+import io.fineo.lambda.configure.LambdaClientProperties;
+import io.fineo.lambda.dynamo.rule.AwsDynamoResource;
+import io.fineo.lambda.dynamo.rule.AwsDynamoSchemaTablesResource;
+import io.fineo.lambda.e2e.EndToEndTestRunner;
 import io.fineo.lambda.e2e.TestEndToEndLambdaLocal;
 import io.fineo.lambda.e2e.TestOutput;
 import io.fineo.lambda.util.ResourceManager;
+import io.fineo.schema.store.SchemaStore;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.logging.Log;
@@ -13,29 +18,37 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.compress.GzipCodec;
 import org.junit.Before;
+import org.junit.ClassRule;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.fineo.lambda.LambdaClientProperties.STAGED_PREFIX;
-import static io.fineo.lambda.LambdaClientProperties.StreamType.ARCHIVE;
+import static io.fineo.lambda.configure.LambdaClientProperties.STAGED_PREFIX;
+import static io.fineo.lambda.configure.LambdaClientProperties.StreamType.ARCHIVE;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 /**
  * Simple test class that ensures we can read/write avro files from spark
  */
+@Category(AwsDependentTests.class)
 public class TestAvroReadWriteSpark extends SharedJavaSparkContext {
 
   private static final Log LOG = LogFactory.getLog(TestAvroReadWriteSpark.class);
+
+  @ClassRule
+  public static final AwsDynamoResource dynamo = new AwsDynamoResource();
+  @Rule
+  public final AwsDynamoSchemaTablesResource tables =
+    new AwsDynamoSchemaTablesResource(dynamo, false);
   @Rule
   public TestOutput folder = new TestOutput(false);
 
@@ -69,11 +82,22 @@ public class TestAvroReadWriteSpark extends SharedJavaSparkContext {
     opts.archive(base + archiveOut.getAbsolutePath());
     opts.root(base + ingest.getAbsolutePath());
 
+    // get properties that read/write to the local dyanmodb schema store
+    props = tables.getClientProperties();
+    SchemaStore store = props.createSchemaStore();
+    EndToEndTestRunner.ProgressTracker progress = state.getRunner().getProgress();
+    // register the record we sent with the local schema store since we use the fully local runner
+    EndToEndTestRunner.updateSchemaStore(store, progress.getJson());
+
+    // actually run the job
     SparkETL etl = new SparkETL(opts);
     etl.run(jsc());
+  }
 
-    ensureOnlyOneRecordWithData(archiveOut, "part-00000.gz", "part-00001.gz");
 
+  @Test
+  @Ignore("Not yet implemented")
+  public void testNonStringTypesInUnknownFields() throws Exception {
   }
 
   private void ensureOnlyOneRecordWithData(File archive, String... paths)

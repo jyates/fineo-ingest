@@ -2,7 +2,7 @@ package io.fineo.lambda.dynamo.rule;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
-import io.fineo.lambda.LambdaClientProperties;
+import io.fineo.lambda.configure.LambdaClientProperties;
 import io.fineo.lambda.dynamo.LocalDynamoTestUtil;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;

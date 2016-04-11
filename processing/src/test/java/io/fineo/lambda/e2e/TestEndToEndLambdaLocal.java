@@ -1,12 +1,11 @@
 package io.fineo.lambda.e2e;
 
 import io.fineo.lambda.LambdaAvroToStorage;
-import io.fineo.lambda.LambdaClientProperties;
+import io.fineo.lambda.configure.LambdaClientProperties;
 import io.fineo.lambda.LambdaRawRecordToAvro;
 import io.fineo.lambda.e2e.resources.IngestUtil;
 import io.fineo.lambda.e2e.resources.lambda.LambdaKinesisConnector;
 import io.fineo.lambda.e2e.resources.lambda.LocalLambdaLocalKinesisConnector;
-import io.fineo.lambda.e2e.resources.lambda.LocalLambdaRemoteKinesisConnector;
 import io.fineo.lambda.util.LambdaTestUtils;
 import io.fineo.lambda.e2e.resources.manager.MockResourceManager;
 import io.fineo.lambda.util.ResourceManager;
@@ -16,10 +15,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
-import static io.fineo.lambda.LambdaClientProperties.RAW_PREFIX;
-import static io.fineo.lambda.LambdaClientProperties.STAGED_PREFIX;
-import static io.fineo.lambda.LambdaClientProperties.StreamType.ARCHIVE;
-import static io.fineo.lambda.LambdaClientProperties.getFirehoseStreamPropertyVisibleForTesting;
+import static io.fineo.lambda.configure.LambdaClientProperties.RAW_PREFIX;
+import static io.fineo.lambda.configure.LambdaClientProperties.STAGED_PREFIX;
+import static io.fineo.lambda.configure.LambdaClientProperties.StreamType.ARCHIVE;
+import static io.fineo.lambda.configure.LambdaClientProperties.getFirehoseStreamPropertyVisibleForTesting;
 
 /**
  * Test the end-to-end workflow of the lambda architecture.

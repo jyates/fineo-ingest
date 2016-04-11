@@ -3,7 +3,7 @@ package io.fineo.lambda.archive;
 import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
 import com.amazonaws.services.lambda.runtime.events.SNSEvent;
 import com.google.common.base.Functions;
-import io.fineo.lambda.LambdaClientProperties;
+import io.fineo.lambda.configure.LambdaClientProperties;
 import io.fineo.lambda.firehose.FirehoseBatchWriter;
 
 import java.io.IOException;

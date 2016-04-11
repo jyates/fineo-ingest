@@ -6,6 +6,7 @@ import com.google.common.annotations.VisibleForTesting;
 import io.fineo.etl.processing.JsonParser;
 import io.fineo.internal.customer.Malformed;
 import io.fineo.lambda.aws.MultiWriteFailures;
+import io.fineo.lambda.configure.LambdaClientProperties;
 import io.fineo.lambda.firehose.FirehoseBatchWriter;
 import io.fineo.lambda.kinesis.KinesisProducer;
 import io.fineo.schema.MapRecord;

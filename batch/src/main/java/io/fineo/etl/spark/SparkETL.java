@@ -1,24 +1,15 @@
-package io.fineo.etl.spark;/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to you under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+package io.fineo.etl.spark;
 
 import com.google.common.collect.AbstractIterator;
 import io.fineo.etl.options.ETLOptionBuilder;
 import io.fineo.etl.options.ETLOptions;
+import io.fineo.internal.customer.BaseFields;
+import io.fineo.internal.customer.Metric;
+import io.fineo.lambda.configure.LambdaClientProperties;
+import io.fineo.schema.avro.AvroSchemaEncoder;
 import io.fineo.schema.avro.RecordMetadata;
+import io.fineo.schema.store.SchemaStore;
+import org.apache.avro.Schema;
 import org.apache.avro.file.FirehoseRecordReader;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.hadoop.fs.AvroFSInput;
@@ -27,13 +18,20 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.RemoteIterator;
-import org.apache.hadoop.io.compress.GzipCodec;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.input.PortableDataStream;
+import org.apache.spark.sql.Row;
+import org.apache.spark.sql.RowFactory;
+import org.apache.spark.sql.catalyst.util.DateTimeUtils;
+import org.apache.spark.sql.hive.HiveContext;
+import org.apache.spark.sql.types.DataType;
+import org.apache.spark.sql.types.DataTypes;
+import org.apache.spark.sql.types.StructField;
+import org.apache.spark.sql.types.StructType;
 import scala.Tuple2;
 
 import java.io.IOException;
@@ -41,9 +39,12 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Stream;
 
 public class SparkETL {
 
+  private static final String DATE_KEY = "date";
   private final ETLOptions opts;
 
   public SparkETL(ETLOptions opts) {
@@ -77,28 +78,119 @@ public class SparkETL {
       avroRecords[i] = content.flatMap(new RecordMapper());
     }
 
-    // combine into new single partition and remove duplicates
+    // combine and distinct the records
     JavaRDD<GenericRecord> records = context.union(avroRecords).distinct();
-    records.map(record -> {
-      RecordMetadata metadata = RecordMetadata.get(record);
-      metadata.getOrgID()
-    })
 
-    // map to [tenant, [...fields...]
+    // convert them into (org, metricId) -> records
+    JavaPairRDD<Tuple2<String, String>, Iterable<GenericRecord>> typeToRecord =
+      records.mapToPair(record -> {
+        RecordMetadata metadata = RecordMetadata.get(record);
+        return new Tuple2<>(new Tuple2<>(metadata.getOrgID(), metadata.getMetricCanonicalType()),
+          record);
+      }).groupByKey();
 
-    // get the current schema
+    // collect all the keys on THIS MACHINE. Its not completely scalable, but works enough #startup
+    List<Tuple2<String, String>> types = typeToRecord.keys().collect();
 
+    // get the schemas for each type
+    LambdaClientProperties props = new LambdaClientProperties(opts.props());
+    SchemaStore store = props.createSchemaStore();
+    Schema.Parser parser = new Schema.Parser();
+    List<Tuple2<StructType, JavaRDD<Row>>> schemas = new ArrayList<>();
+    for (Tuple2<String, String> type : types) {
+      JavaRDD<GenericRecord> grouped = getRddByKey(typeToRecord, type);
+      Metric metric = store.getMetricMetadata(type._1(), type._2());
+      String schemaString = metric.getMetricSchema();
+      Schema parsed = parser.parse(schemaString);
+      Map<String, List<String>> canonicalNameToAlias =
+        metric.getMetadata().getCanonicalNamesToAliases();
+      JavaRDD<Row> rows = grouped.map(record -> {
+        Schema schema = parser.parse(schemaString);
+        RecordMetadata metadata = RecordMetadata.get(record);
+        BaseFields base = metadata.getBaseFields();
+        List<Object> fields = new ArrayList<>();
+        // populate the partitions
+        fields.add(type._1());
+        fields.add(type._2());
+        fields.add(DateTimeUtils.millisToDays(base.getTimestamp()));
+        fields.add(base.getTimestamp());
 
-    // separate out files that don't have a tenant id... how did these get here?
-    //TODO send a cloudwatch notification with the count
+        // populate the other fields, as we have them
+        streamSchemaWithoutBaseFields(schema)
+          .map(field -> field.name())
+          .forEach(name -> {
+            Object value = record.get(name);
+            // we don't know about that schema type, but maybe the schema has been updated
+            // and have it as an alias
+            if (value == null) {
+              List<String> aliases = canonicalNameToAlias.get(name);
+              for (String alias : aliases) {
+                value = base.getUnknownFields().get(alias);
+                if (value != null) {
+                  break;
+                }
+              }
+            }
+            fields.add(value);
+          });
 
-    // dedup per company
+        return RowFactory.create(fields.toArray());
+      });
 
-    // commit schema back
+      // map each schema to a struct
+      List<StructField> fields = new ArrayList<>();
+      // base fields that we have to have in each record
+      fields.add(
+        DataTypes.createStructField(AvroSchemaEncoder.ORG_ID_KEY, DataTypes.StringType, false));
+      fields.add(DataTypes
+        .createStructField(AvroSchemaEncoder.ORG_METRIC_TYPE_KEY, DataTypes.StringType, false));
+      fields.add(DataTypes.createStructField(DATE_KEY, DataTypes.DateType, false));
+      fields.add(
+        DataTypes.createStructField(AvroSchemaEncoder.TIMESTAMP_KEY, DataTypes.LongType, false));
+      streamSchemaWithoutBaseFields(parsed)
+        .forEach(field -> {
+          fields.add(DataTypes.createStructField(field.name(), getSparkType(field), true));
+        });
+      schemas.add(new Tuple2<>(DataTypes.createStructType(fields), rows));
+    }
 
-    // write RS formatted files
+    // store the files by partition
+    HiveContext sql = new HiveContext(context);
+    schemas.stream().forEach(tuple -> {
+      sql.createDataFrame(tuple._2(), tuple._1())
+         .write()
+         .format("orc")
+         .partitionBy(AvroSchemaEncoder.ORG_ID_KEY, AvroSchemaEncoder.ORG_METRIC_TYPE_KEY, DATE_KEY)
+         .save(opts.archive());
+    });
+  }
 
-    // write RS manifest
+  private DataType getSparkType(Schema.Field field) {
+    switch (field.schema().getType()) {
+      case BOOLEAN:
+        return DataTypes.BooleanType;
+      case STRING:
+        return DataTypes.StringType;
+      case BYTES:
+        return DataTypes.BinaryType;
+      case INT:
+        return DataTypes.IntegerType;
+      case LONG:
+        return DataTypes.LongType;
+      case DOUBLE:
+        return DataTypes.DoubleType;
+      default:
+        throw new IllegalArgumentException("No spark type available for: " + field);
+    }
+  }
+
+  private static Stream<Schema.Field> streamSchemaWithoutBaseFields(Schema schema) {
+    return schema.getFields().stream().sequential()
+                 .filter(field -> !field.name().equals(AvroSchemaEncoder.BASE_FIELDS_KEY));
+  }
+
+  private <A, B> JavaRDD getRddByKey(JavaPairRDD<A, Iterable<B>> pairRDD, A key) {
+    return pairRDD.filter(v -> v._1().equals(key)).values();//.flatMap(tuples -> tuples);
   }
 
   private static class RecordMapper

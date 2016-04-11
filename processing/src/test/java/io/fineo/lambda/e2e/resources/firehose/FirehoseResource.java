@@ -19,7 +19,7 @@ import com.amazonaws.services.s3.model.S3ObjectSummary;
 import com.amazonaws.util.IOUtils;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
-import io.fineo.lambda.LambdaClientProperties;
+import io.fineo.lambda.configure.LambdaClientProperties;
 import io.fineo.lambda.e2e.resources.AwsResource;
 import io.fineo.lambda.e2e.resources.ResourceUtils;
 import io.fineo.lambda.e2e.resources.S3Resource;

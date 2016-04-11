@@ -1,21 +1,17 @@
-package io.fineo.lambda;
+package io.fineo.lambda.configure;
 
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
-import com.amazonaws.regions.RegionUtils;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
-import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
-import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.amazonaws.services.kinesis.AmazonKinesisAsyncClient;
 import com.amazonaws.services.kinesisfirehose.AmazonKinesisFirehoseAsyncClient;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
-import io.fineo.schema.aws.dynamodb.DynamoDBRepository;
+import com.google.inject.Guice;
+import com.google.inject.Injector;
 import io.fineo.schema.store.SchemaStore;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.schemarepo.ValidatorFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -30,7 +26,7 @@ public class LambdaClientProperties {
   private static final String PROP_FILE_NAME = "fineo-lambda.properties";
   public static final String TEST_PREFIX = "fineo.integration.test.prefix";
 
-  private final java.lang.String KINESIS_URL = "fineo.kinesis.url";
+  public final java.lang.String KINESIS_URL = "fineo.kinesis.url";
   public static final String KINESIS_PARSED_RAW_OUT_STREAM_NAME = "fineo.kinesis.parsed";
   public final String KINESIS_RETRIES = "fineo.kinesis.retries";
 
@@ -42,11 +38,13 @@ public class LambdaClientProperties {
   public static final String DYNAMO_WRITE_LIMIT = "fineo.dynamo.limit.write";
   public static final String DYNAMO_RETRIES = "fineo.dynamo.limit.retries";
 
+
   private AWSCredentialsProvider provider;
 
   private final Properties props;
+  private final Injector injector;
 
-  static final String FIREHOSE_URL = "fineo.firehose.url";
+  public static final String FIREHOSE_URL = "fineo.firehose.url";
   /* These prefixes combine with the StreamType below to generate the full property names */
   public static final String RAW_PREFIX = "fineo.firehose.raw";
   public static final String STAGED_PREFIX = "fineo.firehose.staged";
@@ -74,6 +72,7 @@ public class LambdaClientProperties {
   @VisibleForTesting
   public LambdaClientProperties(Properties props) {
     this.props = props;
+    this.injector = Guice.createInjector(new LambdaModule(props), new DynamoModule());
   }
 
   public static LambdaClientProperties load() throws IOException {
@@ -91,32 +90,11 @@ public class LambdaClientProperties {
   }
 
   public AmazonDynamoDBAsyncClient getDynamo() {
-    LOG.debug("Creating dynamo with provider: " + provider);
-    AmazonDynamoDBAsyncClient client = new AmazonDynamoDBAsyncClient(provider);
-    LOG.debug("Got client, setting endpoint");
-    String region = props.getProperty(DYNAMO_REGION);
-    if (region != null) {
-      client.setRegion(RegionUtils.getRegion(region));
-    } else {
-      client.setEndpoint(props.getProperty(DYNAMO_URL_FOR_TESTING));
-    }
-
-    return client;
+    return injector.getInstance(AmazonDynamoDBAsyncClient.class);
   }
 
   public SchemaStore createSchemaStore() {
-    AmazonDynamoDBClient client = getDynamo();
-    LOG.debug("Got dynamo client");
-    CreateTableRequest create =
-      DynamoDBRepository.getBaseTableCreate(getSchemaStoreTable());
-    create.setProvisionedThroughput(new ProvisionedThroughput()
-      .withReadCapacityUnits(getDynamoReadMax())
-      .withWriteCapacityUnits(getDynamoWriteMax()));
-    LOG.debug("Creating schema repository");
-    DynamoDBRepository repo =
-      new DynamoDBRepository(new ValidatorFactory.Builder().build(), client, create);
-    LOG.debug("created schema repository");
-    return new SchemaStore(repo);
+    return injector.getInstance(SchemaStore.class);
   }
 
   @VisibleForTesting

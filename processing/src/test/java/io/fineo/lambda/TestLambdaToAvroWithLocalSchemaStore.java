@@ -4,6 +4,7 @@ import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.Futures;
 import io.fineo.lambda.aws.MultiWriteFailures;
+import io.fineo.lambda.configure.LambdaClientProperties;
 import io.fineo.lambda.kinesis.KinesisProducer;
 import io.fineo.lambda.e2e.EndToEndTestRunner;
 import io.fineo.lambda.util.LambdaTestUtils;

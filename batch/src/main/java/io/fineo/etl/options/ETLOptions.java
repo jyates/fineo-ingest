@@ -22,6 +22,8 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.schemarepo.Repository;
 
+import java.util.Properties;
+
 /**
  * Bean for storing the current options and helper methods for things like printing the help.
  */
@@ -92,5 +94,11 @@ public class ETLOptions {
 
   public void schema(Repository repo) {
     this.repo = repo;
+  }
+
+  public Properties props() {
+    Properties props = new Properties();
+    props.setProperty("a", "b");
+    return props;
   }
 }

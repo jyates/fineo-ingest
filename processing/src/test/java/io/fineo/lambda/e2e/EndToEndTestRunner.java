@@ -2,7 +2,7 @@ package io.fineo.lambda.e2e;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
-import io.fineo.lambda.LambdaClientProperties;
+import io.fineo.lambda.configure.LambdaClientProperties;
 import io.fineo.lambda.util.LambdaTestUtils;
 import io.fineo.lambda.util.ResourceManager;
 import io.fineo.lambda.util.SchemaUtil;
@@ -24,11 +24,11 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static io.fineo.lambda.LambdaClientProperties.RAW_PREFIX;
-import static io.fineo.lambda.LambdaClientProperties.STAGED_PREFIX;
-import static io.fineo.lambda.LambdaClientProperties.StreamType.ARCHIVE;
-import static io.fineo.lambda.LambdaClientProperties.StreamType.COMMIT_ERROR;
-import static io.fineo.lambda.LambdaClientProperties.StreamType.PROCESSING_ERROR;
+import static io.fineo.lambda.configure.LambdaClientProperties.RAW_PREFIX;
+import static io.fineo.lambda.configure.LambdaClientProperties.STAGED_PREFIX;
+import static io.fineo.lambda.configure.LambdaClientProperties.StreamType.ARCHIVE;
+import static io.fineo.lambda.configure.LambdaClientProperties.StreamType.COMMIT_ERROR;
+import static io.fineo.lambda.configure.LambdaClientProperties.StreamType.PROCESSING_ERROR;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -193,11 +193,15 @@ public class EndToEndTestRunner {
                .filter(entry -> AvroSchemaEncoder.IS_BASE_FIELD.negate().test(entry.getKey()));
   }
 
-  public LambdaClientProperties getProps(){
+  public LambdaClientProperties getProps() {
     return this.props;
   }
 
-  private class ProgressTracker {
+  public ProgressTracker getProgress() {
+    return this.progress;
+  }
+
+  public class ProgressTracker {
     private final SchemaStore store;
     private byte[] sent;
     private Map<String, Object> json;
@@ -214,6 +218,18 @@ public class EndToEndTestRunner {
     public void sending(Map<String, Object> json) {
       LOG.info("Sending message: " + json);
       this.json = json;
+    }
+
+    public byte[] getSent() {
+      return sent;
+    }
+
+    public Map<String, Object> getJson() {
+      return json;
+    }
+
+    public GenericRecord getAvro() {
+      return avro;
     }
   }
 }

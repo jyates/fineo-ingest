@@ -7,7 +7,7 @@ import com.amazonaws.services.kinesisfirehose.model.PutRecordBatchResult;
 import com.amazonaws.services.kinesisfirehose.model.Record;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
-import io.fineo.lambda.LambdaClientProperties;
+import io.fineo.lambda.configure.LambdaClientProperties;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 

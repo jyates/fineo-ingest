@@ -1,14 +1,13 @@
 package io.fineo.lambda.e2e.resources.manager;
 
 import io.fineo.lambda.LambdaAvroToStorage;
-import io.fineo.lambda.LambdaClientProperties;
+import io.fineo.lambda.configure.LambdaClientProperties;
 import io.fineo.lambda.LambdaRawRecordToAvro;
 import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.lambda.dynamo.avro.AvroToDynamoWriter;
 import io.fineo.lambda.e2e.resources.IngestUtil;
 import io.fineo.lambda.e2e.resources.TestProperties;
 import io.fineo.lambda.e2e.resources.lambda.LambdaKinesisConnector;
-import io.fineo.lambda.e2e.resources.lambda.LocalLambdaRemoteKinesisConnector;
 import io.fineo.lambda.firehose.FirehoseBatchWriter;
 import io.fineo.lambda.util.run.ResultWaiter;
 import io.fineo.schema.avro.RecordMetadata;
@@ -27,8 +26,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
-import static io.fineo.lambda.LambdaClientProperties.RAW_PREFIX;
-import static io.fineo.lambda.LambdaClientProperties.STAGED_PREFIX;
+import static io.fineo.lambda.configure.LambdaClientProperties.RAW_PREFIX;
+import static io.fineo.lambda.configure.LambdaClientProperties.STAGED_PREFIX;
 import static io.fineo.lambda.e2e.EndToEndTestRunner.verifyRecordMatchesJson;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;

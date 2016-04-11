@@ -1,6 +1,7 @@
 package io.fineo.lambda;
 
 import io.fineo.aws.ValidateDeployment;
+import io.fineo.lambda.configure.LambdaClientProperties;
 import io.fineo.lambda.e2e.BaseITEndToEndAwsServices;
 import io.fineo.lambda.e2e.resources.TestProperties;
 import io.fineo.lambda.resources.RemoteLambdaConnector;

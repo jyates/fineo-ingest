@@ -1,6 +1,6 @@
 package io.fineo.lambda.e2e.resources.lambda;
 
-import io.fineo.lambda.LambdaClientProperties;
+import io.fineo.lambda.configure.LambdaClientProperties;
 import io.fineo.lambda.e2e.resources.AwsResource;
 import io.fineo.lambda.e2e.resources.kinesis.IKinesisStreams;
 
