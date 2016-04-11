@@ -1,39 +1,29 @@
 package io.fineo.lambda.configure;
 
-import com.amazonaws.regions.RegionUtils;
+import com.amazonaws.auth.AWSCredentialsProvider;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Provides;
-import com.google.inject.name.Named;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 public class DynamoModule extends AbstractModule {
-  private String region;
-  private String endpoint;
+
+  private static final Log LOG = LogFactory.getLog(DynamoModule.class);
 
   @Override
   protected void configure() {
   }
 
   @Provides
-  public AwsDynamoConfigurator getDynamoConfig() {
-    return client -> {
-      if (region != null) {
-        client.setRegion(RegionUtils.getRegion(region));
-      } else {
-        client.setEndpoint(endpoint);
-      }
-    };
-  }
-
-  @Inject(optional = true)
-  public void setDynamoRegion(@Named(LambdaClientProperties.DYNAMO_REGION) String region) {
-    this.region = region;
-  }
-
-
-  @Inject(optional = true)
-  public void setDynamoEndpointForTesting(
-    @Named(LambdaClientProperties.DYNAMO_URL_FOR_TESTING) String endpoint) {
-    this.endpoint = endpoint;
+  @Inject
+  public AmazonDynamoDBAsyncClient getDynamoClient(AWSCredentialsProvider provider,
+    AwsDynamoConfigurator configurator) {
+    LOG.debug("Creating dynamo with provider: " + provider);
+    AmazonDynamoDBAsyncClient client = new AmazonDynamoDBAsyncClient(provider);
+    configurator.configure(client);
+    LOG.debug("Got client, setting endpoint");
+    return client;
   }
 }

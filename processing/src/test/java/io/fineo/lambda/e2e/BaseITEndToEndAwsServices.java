@@ -4,6 +4,7 @@ import com.google.inject.Guice;
 import com.google.inject.Injector;
 import io.fineo.aws.rule.AwsCredentialResource;
 import io.fineo.lambda.configure.DynamoModule;
+import io.fineo.lambda.configure.DynamoRegionConfigurator;
 import io.fineo.lambda.configure.LambdaClientProperties;
 import io.fineo.lambda.configure.LambdaModule;
 import io.fineo.lambda.e2e.resources.lambda.LambdaKinesisConnector;
@@ -64,9 +65,10 @@ public class BaseITEndToEndAwsServices {
   }
 
   protected void setProperties(Properties properties) {
+    properties.setProperty(LambdaClientProperties.DYNAMO_REGION, region);
     Injector injector =
-      Guice.createInjector(new LambdaModule(properties, () -> awsCredentials.getProvider()),
-        new DynamoModule());
+      Guice.createInjector(new LambdaModule(properties),
+        new DynamoModule(), new DynamoRegionConfigurator());
     this.props = injector.getInstance(LambdaClientProperties.class);
   }
 

@@ -6,6 +6,7 @@ import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import io.fineo.lambda.configure.LambdaClientProperties;
+import io.fineo.lambda.configure.LambdaModule;
 import io.fineo.lambda.configure.PropertiesModule;
 import io.fineo.lambda.dynamo.LocalDynamoTestUtil;
 import org.apache.commons.logging.Log;
@@ -74,9 +75,13 @@ public class AwsDynamoSchemaTablesResource extends ExternalResource {
   public LambdaClientProperties getClientProperties(Properties props) throws Exception {
     getUtil().setConnectionProperties(props);
     LambdaClientProperties fProps = LambdaClientProperties
-      .create(new PropertiesModule(props), dynamoResource.getCredentialsModule(),
+      .create(new LambdaModule(props), dynamoResource.getCredentialsModule(),
         getDynamoModule());
     return fProps;
+  }
+
+  public void setConnectionProperties(Properties props){
+    getUtil().setConnectionProperties(props);
   }
 
   public AbstractModule getDynamoModule() {

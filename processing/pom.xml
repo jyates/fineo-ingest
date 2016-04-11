@@ -109,11 +109,6 @@
       <groupId>io.fineo.aws</groupId>
       <artifactId>aws-common</artifactId>
     </dependency>
-    <dependency>
-      <groupId>com.google.inject</groupId>
-      <artifactId>guice</artifactId>
-      <version>4.0</version>
-    </dependency>
   </dependencies>
 
   <!-- Build the output jar -->

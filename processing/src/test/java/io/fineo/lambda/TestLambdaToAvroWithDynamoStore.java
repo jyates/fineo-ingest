@@ -3,6 +3,8 @@ package io.fineo.lambda;
 import com.amazonaws.services.dynamodbv2.util.TableUtils;
 import io.fineo.aws.AwsDependentTests;
 import io.fineo.lambda.configure.LambdaClientProperties;
+import io.fineo.lambda.configure.LambdaModule;
+import io.fineo.lambda.configure.PropertiesModule;
 import io.fineo.lambda.dynamo.rule.AwsDynamoSchemaTablesResource;
 import io.fineo.lambda.dynamo.rule.AwsDynamoResource;
 import org.junit.ClassRule;
@@ -21,7 +23,7 @@ public class TestLambdaToAvroWithDynamoStore extends TestLambdaToAvroWithLocalSc
   @ClassRule
   public static AwsDynamoResource dynamoResource = new AwsDynamoResource();
   @Rule
-  public AwsDynamoSchemaTablesResource tableResource = new AwsDynamoSchemaTablesResource(dynamoResource);
+  public AwsDynamoSchemaTablesResource tables = new AwsDynamoSchemaTablesResource(dynamoResource);
 
 
   /**
@@ -32,13 +34,15 @@ public class TestLambdaToAvroWithDynamoStore extends TestLambdaToAvroWithLocalSc
   @Test
   public void testCreateSchemaStore() throws Exception {
     getClientProperties().createSchemaStore();
-    TableUtils
-      .waitUntilExists(dynamoResource.getClient(), tableResource.getTestTableName(), 1000, 100);
+    TableUtils.waitUntilExists(dynamoResource.getClient(), tables.getTestTableName(), 1000, 100);
   }
 
   @Override
   protected LambdaClientProperties getClientProperties() throws Exception {
     Properties props = getMockProps();
-    return tableResource.getClientProperties(props);
+    tables.setConnectionProperties(props);
+    return LambdaClientProperties
+      .create(new LambdaModule(props), dynamoResource.getCredentialsModule(),
+        tables.getDynamoModule());
   }
 }

@@ -23,11 +23,9 @@ import static io.fineo.lambda.configure.LambdaClientProperties.*;
 public class LambdaModule extends AbstractModule {
   private static final Log LOG = LogFactory.getLog(LambdaModule.class);
   private final Properties props;
-  private final Provider<AWSCredentialsProvider> creds;
 
-  public LambdaModule(Properties props, Provider<AWSCredentialsProvider> credentials) {
+  public LambdaModule(Properties props) {
     this.props = props;
-    this.creds = credentials;
   }
 
   @Override
@@ -35,18 +33,6 @@ public class LambdaModule extends AbstractModule {
     // legacy binding for reading properties directly
     bind(Properties.class).toInstance(props);
     Names.bindProperties(this.binder(), props);
-    bind(AWSCredentialsProvider.class).toProvider(creds);
-  }
-
-  @Provides
-  @Inject
-  public AmazonDynamoDBAsyncClient getDynamoClient(AWSCredentialsProvider provider,
-    AwsDynamoConfigurator configurator) {
-    LOG.debug("Creating dynamo with provider: " + provider);
-    AmazonDynamoDBAsyncClient client = new AmazonDynamoDBAsyncClient(provider);
-    configurator.configure(client);
-    LOG.debug("Got client, setting endpoint");
-    return client;
   }
 
   @Provides

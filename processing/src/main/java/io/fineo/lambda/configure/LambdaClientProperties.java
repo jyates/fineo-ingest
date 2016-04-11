@@ -13,8 +13,6 @@ import com.google.inject.Inject;
 import com.google.inject.Injector;
 import com.google.inject.Provider;
 import io.fineo.schema.store.SchemaStore;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -86,9 +84,9 @@ public class LambdaClientProperties {
     Preconditions.checkArgument(input != null, "Could not load properties file: " + file);
     Properties props = new Properties();
     props.load(input);
-    DefaultAWSCredentialsProviderChain provider = new DefaultAWSCredentialsProviderChain();
     Injector injector =
-      Guice.createInjector(new LambdaModule(props, () -> provider), new DynamoModule());
+      Guice.createInjector(new LambdaModule(props), new DefaultCredentialsModule(),
+        new DynamoModule(), new DynamoRegionConfigurator());
     return injector.getInstance(LambdaClientProperties.class);
   }
 
