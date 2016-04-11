@@ -18,10 +18,13 @@ public class TestPagingIterator {
   @Test
   public void singleWriteAndDone() throws Exception {
     List<String> supply = Lists.newArrayList("one");
-    BatchedPager<String> func = queue -> {
-      String s = supply.remove(0);
-      queue.add(s);
-      return true;
+    PagingRunner<String> func = new BasePager<String>() {
+      @Override
+      protected void page(Queue<String> queue) {
+        String s = supply.remove(0);
+        queue.add(s);
+        complete();
+      }
     };
     PagingIterator<String> iter = iterator(2, func);
     assertTrue(iter.hasNext());
@@ -34,14 +37,18 @@ public class TestPagingIterator {
     AtomicInteger counter = new AtomicInteger(0);
     List<List<String>> supply = Lists.newArrayList(Lists.newArrayList("one", "two"), Lists
       .newArrayList("three"));
-    BatchedPager<String> func = queue -> {
-      counter.incrementAndGet();
-      if (supply.size() == 0) {
-        return true;
+    PagingRunner<String> func = new BasePager<String>() {
+      @Override
+      protected void page(Queue<String> queue) {
+        counter.incrementAndGet();
+        if (supply.size() == 0) {
+          complete();
+          return;
+        }
+        List<String> s = supply.remove(0);
+        queue.addAll(s);
+        batchComplete();
       }
-      List<String> s = supply.remove(0);
-      queue.addAll(s);
-      return false;
     };
     int prefetch = 1;
     PagingIterator<String> iter = iterator(prefetch, func);
@@ -58,16 +65,20 @@ public class TestPagingIterator {
   public void testPrefetchCounter() throws Exception {
     AtomicInteger counter = new AtomicInteger(0);
     List<String> supply = Lists.newArrayList("one", "two");
-    BatchedPager<String> func = queue -> {
-      if (counter.get() == 0) {
-        queue.add(supply.remove(0));
-      } else if (counter.get() == 1) {
-        queue.addAll(supply);
-      } else if (counter.get() == 2) {
-        return true;
+    PagingRunner<String> func = new BasePager<String>() {
+      @Override
+      protected void page(Queue<String> queue) {
+        if (counter.get() == 0) {
+          queue.add(supply.remove(0));
+        } else if (counter.get() == 1) {
+          queue.addAll(supply);
+        } else if (counter.get() == 2) {
+          complete();
+          return;
+        }
+        counter.incrementAndGet();
+        batchComplete();
       }
-      counter.incrementAndGet();
-      return false;
     };
     int prefetch = 0;
     PagingIterator<String> iter = iterator(prefetch, func);
@@ -87,14 +98,17 @@ public class TestPagingIterator {
   public void testPrefetchWhenNotClosed() {
     AtomicInteger counter = new AtomicInteger(0);
     List<String> supply = Lists.newArrayList("one");
-    BatchedPager<String> func = strings -> {
-      counter.incrementAndGet();
-      if (supply.size() > 0) {
-        strings.add(supply.remove(0));
-      } else {
-        return true;
+    PagingRunner<String> func = new BasePager<String>() {
+      @Override
+      protected void page(Queue<String> queue) {
+        counter.incrementAndGet();
+        if (supply.size() > 0) {
+          queue.add(supply.remove(0));
+        } else {
+          complete();
+        }
+        batchComplete();
       }
-      return false;
     };
     int prefetch = 0;
     PagingIterator<String> iter = iterator(prefetch, func);
@@ -108,17 +122,19 @@ public class TestPagingIterator {
   public void testNoPrefetchWhenClosed() throws Exception {
     AtomicInteger counter = new AtomicInteger(0);
     List<String> supply = Lists.newArrayList("one", "two", "three");
-    BatchedPager<String> func = strings -> {
-      counter.incrementAndGet();
-      if (counter.get() == 1) {
-        strings.add(supply.remove(0));
-      } else if (counter.get() == 2) {
-        strings.addAll(supply);
-      } else if (counter.get() == 3) {
-        return true;
+    PagingRunner<String> func = new BasePager<String>() {
+      @Override
+      protected void page(Queue<String> strings) {
+        counter.incrementAndGet();
+        if (counter.get() == 1) {
+          strings.add(supply.remove(0));
+        } else if (counter.get() == 2) {
+          strings.addAll(supply);
+        } else if (counter.get() == 3) {
+          complete();
+        }
+        batchComplete();
       }
-
-      return false;
     };
     int prefetch = 0;
     PagingIterator<String> iter = iterator(prefetch, func);
@@ -143,8 +159,13 @@ public class TestPagingIterator {
 
   @Test(expected = NoSuchElementException.class)
   public void testExceptionWhenNoMoreElements() throws Exception {
-    BatchedPager<String> func = strings -> true;
-    PagingIterator<String> iter = iterator(1, func);
+    PagingIterator<String> iter = iterator(1, new PagingRunner<String>() {
+      @Override
+      public void page(Queue queue, VoidCallWithArg<PagingRunner<String>> doneNotifier,
+        Runnable batchComplete) {
+        doneNotifier.call(this);
+      }
+    });
     assertFalse(iter.hasNext());
     iter.next();
   }
@@ -161,17 +182,18 @@ public class TestPagingIterator {
   public void testBatchSizeLessThanPageSize() throws Exception {
     AtomicInteger counter = new AtomicInteger(0);
     List<String> supply = Lists.newArrayList("one", "two");
-    BatchedPager<String> func = strings -> {
-      counter.incrementAndGet();
-      if (counter.get() == 1) {
-        strings.add(supply.remove(0));
-        return false;
-      } else if (counter.get() == 2) {
-        strings.addAll(supply);
-        return true;
+    PagingRunner<String> func = new BasePager<String>() {
+      @Override
+      protected void page(Queue<String> strings) {
+        counter.incrementAndGet();
+        if (counter.get() == 1) {
+          strings.add(supply.remove(0));
+        } else if (counter.get() == 2) {
+          strings.addAll(supply);
+          complete();
+        }
+        batchComplete();
       }
-
-      throw new RuntimeException("Should not reach here!");
     };
     int prefetch = 3;
     PagingIterator<String> iter = iterator(prefetch, func);
@@ -218,25 +240,9 @@ public class TestPagingIterator {
     assertFalse(iter.hasNext());
   }
 
-  private <T> PagingIterator<T> iterator(int prefetch, BatchedPager<T> func) {
-    PageManager<T> manager = new PageManager<>(Lists.newArrayList(new PageRunner<>(func)));
+  private <T> PagingIterator<T> iterator(int prefetch, PagingRunner<T> runner) {
+    PageManager<T> manager = new PageManager<>(Lists.newArrayList(runner));
     return new PagingIterator<>(prefetch, manager);
-  }
-
-  private static class PageRunner<T> extends BasePager<T> {
-
-    private final BatchedPager<T> pager;
-
-    private PageRunner(BatchedPager<T> pager) {
-      this.pager = pager;
-    }
-
-    @Override
-    protected void page(Queue<T> queue) {
-      if (pager.page(queue)) {
-        complete();
-      }
-    }
   }
 
   @FunctionalInterface

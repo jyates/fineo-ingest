@@ -99,8 +99,14 @@ public class PagingIterator<T> extends AbstractIterator<T> {
   }
 
   public void completedBatch() {
-    boolean closed = openRequest.compareAndSet(true, false);
-    assert closed : "No open request to close!";
+    // ignore any notifications if we are closed. This can happen when a runner calls complete
+    // and then batchcomplete
+    if (this.closed) {
+      return;
+    }
+
+    boolean requestClosed = openRequest.compareAndSet(true, false);
+    assert requestClosed : "No open request to close!";
     // check to see that something was added to the queue
     if (items.wasAdded()) {
       items.setAdded(false);
