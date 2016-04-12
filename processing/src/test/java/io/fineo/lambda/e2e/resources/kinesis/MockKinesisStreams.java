@@ -73,6 +73,12 @@ public class MockKinesisStreams implements IKinesisStreams {
     return kinesisEvents.keySet();
   }
 
+  public void reset() {
+    for (List<List<ByteBuffer>> events : kinesisEvents.values()) {
+      events.clear();
+    }
+  }
+
   private class WrappingQueue<T> extends AbstractQueue<T> implements BlockingQueue<T> {
 
     private static final int WAIT_INTERVAL = 100;

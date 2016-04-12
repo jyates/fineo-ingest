@@ -32,4 +32,6 @@ public abstract class LambdaKinesisConnector<T> implements AwsResource {
     throws IOException;
 
   public abstract List<ByteBuffer> getWrites(String streamName);
+
+  public void reset(){}
 }

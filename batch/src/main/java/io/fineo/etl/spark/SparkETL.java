@@ -134,6 +134,10 @@ public class SparkETL {
          .partitionBy(AvroSchemaEncoder.ORG_ID_KEY, AvroSchemaEncoder.ORG_METRIC_TYPE_KEY, DATE_KEY)
          .save(opts.archive());
     });
+
+    // finished, move the input files to a completed directory
+    fs.rename(rootPath, new Path(new Path(opts.completed()),
+      Long.toString(System.currentTimeMillis())));
   }
 
   /**

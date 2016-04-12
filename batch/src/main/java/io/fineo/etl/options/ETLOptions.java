@@ -37,6 +37,7 @@ public class ETLOptions {
   private String archive;
   private Repository repo;
   private LambdaClientProperties props;
+  private String completedDir;
 
   public ETLOptions(Options opts) {
     this.opts = opts;
@@ -104,5 +105,13 @@ public class ETLOptions {
 
   public void setProps(LambdaClientProperties props) {
     this.props = props;
+  }
+
+  public String completed() {
+    return this.completedDir;
+  }
+
+  public void setCompletedDir(String completedDir) {
+    this.completedDir = completedDir;
   }
 }

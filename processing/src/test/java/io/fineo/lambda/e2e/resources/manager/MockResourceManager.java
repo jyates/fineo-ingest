@@ -1,9 +1,9 @@
 package io.fineo.lambda.e2e.resources.manager;
 
 import io.fineo.lambda.LambdaAvroToStorage;
-import io.fineo.lambda.configure.LambdaClientProperties;
 import io.fineo.lambda.LambdaRawRecordToAvro;
 import io.fineo.lambda.aws.MultiWriteFailures;
+import io.fineo.lambda.configure.LambdaClientProperties;
 import io.fineo.lambda.dynamo.avro.AvroToDynamoWriter;
 import io.fineo.lambda.e2e.resources.IngestUtil;
 import io.fineo.lambda.e2e.resources.TestProperties;
@@ -30,7 +30,6 @@ import static io.fineo.lambda.configure.LambdaClientProperties.RAW_PREFIX;
 import static io.fineo.lambda.configure.LambdaClientProperties.STAGED_PREFIX;
 import static io.fineo.lambda.e2e.EndToEndTestRunner.verifyRecordMatchesJson;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 /**
  * Manage a set of mock resources for the lambda workflow
@@ -141,5 +140,13 @@ public class MockResourceManager extends BaseResourceManager {
               return null;
             }).when(firehose).addToBatch(Mockito.any());
           });
+  }
+
+  @Override
+  public void reset() {
+    for (List<ByteBuffer> firehose : firehoseWrites.values()) {
+      firehose.clear();
+    }
+    this.connector.reset();
   }
 }

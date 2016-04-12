@@ -22,4 +22,9 @@ public class LocalLambdaLocalKinesisConnector extends LocalLambdaRemoteKinesisCo
     this.kinesis = new MockKinesisStreams();
     connectStreams();
   }
+
+  @Override
+  public void reset() {
+    ((MockKinesisStreams)this.kinesis).reset();
+  }
 }

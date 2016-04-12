@@ -41,6 +41,10 @@ public class TestEndToEndLambdaLocal {
   }
 
   public static TestState runTest() throws Exception {
+    return runTest(LambdaTestUtils.createRecords(1, 1)[0]);
+  }
+
+  public static TestState runTest(Map<String, Object> json) throws Exception {
     Properties props = new Properties();
     // firehose outputs
     props
@@ -71,11 +75,15 @@ public class TestEndToEndLambdaLocal {
         }
       }), manager);
 
-    Map<String, Object> json = LambdaTestUtils.createRecords(1, 1)[0];
+    TestState state = new TestState(stageMap, runner, manager);
+    run(state, json);
+    return state;
+  }
+
+  public static void run(TestState state, Map<String, Object> json) throws Exception {
+    EndToEndTestRunner runner = state.getRunner();
     runner.run(json);
     runner.validate();
-
-    return new TestState(stageMap, runner, manager);
   }
 
   public static class TestState {
