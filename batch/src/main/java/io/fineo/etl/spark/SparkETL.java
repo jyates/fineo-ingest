@@ -3,7 +3,6 @@ package io.fineo.etl.spark;
 import com.google.common.collect.AbstractIterator;
 import io.fineo.etl.options.ETLOptionBuilder;
 import io.fineo.etl.options.ETLOptions;
-import io.fineo.internal.customer.BaseFields;
 import io.fineo.internal.customer.Metric;
 import io.fineo.lambda.configure.LambdaClientProperties;
 import io.fineo.schema.avro.AvroSchemaEncoder;
@@ -25,8 +24,6 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.input.PortableDataStream;
 import org.apache.spark.sql.Row;
-import org.apache.spark.sql.RowFactory;
-import org.apache.spark.sql.catalyst.util.DateTimeUtils;
 import org.apache.spark.sql.hive.HiveContext;
 import org.apache.spark.sql.types.DataType;
 import org.apache.spark.sql.types.DataTypes;
@@ -38,13 +35,16 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
+import static com.google.common.collect.Lists.newArrayList;
+
 public class SparkETL {
 
-  private static final String DATE_KEY = "date";
+  public static final String DATE_KEY = "date";
   private final ETLOptions opts;
 
   public SparkETL(ETLOptions opts) {
@@ -93,7 +93,7 @@ public class SparkETL {
     List<Tuple2<String, String>> types = typeToRecord.keys().collect();
 
     // get the schemas for each type
-    LambdaClientProperties props = null;//new LambdaClientProperties(opts.props());
+    LambdaClientProperties props = opts.props();
     SchemaStore store = props.createSchemaStore();
     Schema.Parser parser = new Schema.Parser();
     List<Tuple2<StructType, JavaRDD<Row>>> schemas = new ArrayList<>();
@@ -102,40 +102,11 @@ public class SparkETL {
       Metric metric = store.getMetricMetadata(type._1(), type._2());
       String schemaString = metric.getMetricSchema();
       Schema parsed = parser.parse(schemaString);
-      Map<String, List<String>> canonicalNameToAlias =
-        metric.getMetadata().getCanonicalNamesToAliases();
-      JavaRDD<Row> rows = grouped.map(record -> {
-        Schema schema = parser.parse(schemaString);
-        RecordMetadata metadata = RecordMetadata.get(record);
-        BaseFields base = metadata.getBaseFields();
-        List<Object> fields = new ArrayList<>();
-        // populate the partitions
-        fields.add(type._1());
-        fields.add(type._2());
-        fields.add(DateTimeUtils.millisToDays(base.getTimestamp()));
-        fields.add(base.getTimestamp());
-
-        // populate the other fields, as we have them
-        streamSchemaWithoutBaseFields(schema)
-          .map(field -> field.name())
-          .forEach(name -> {
-            Object value = record.get(name);
-            // we don't know about that schema type, but maybe the schema has been updated
-            // and have it as an alias
-            if (value == null) {
-              List<String> aliases = canonicalNameToAlias.get(name);
-              for (String alias : aliases) {
-                value = base.getUnknownFields().get(alias);
-                if (value != null) {
-                  break;
-                }
-              }
-            }
-            fields.add(value);
-          });
-
-        return RowFactory.create(fields.toArray());
-      });
+      Map<String, List<String>> canonicalToAliases = removeUnserializableAvroTypesFromMap(
+        metric.getMetadata().getCanonicalNamesToAliases());
+      JavaRDD<Row> rows = grouped.map(
+        new RowConverter(schemaString, canonicalToAliases, type._1(),
+          type._2()));
 
       // map each schema to a struct
       List<StructField> fields = new ArrayList<>();
@@ -165,6 +136,22 @@ public class SparkETL {
     });
   }
 
+  /**
+   * We cannot serialize avro classes with the Java serializer, which is currently the only
+   * serializer that is supported for serializing closures
+   *
+   * @param map multimap of string -> string
+   * @return the same map, with as many of the same values as possible.
+   */
+  private Map<String, List<String>> removeUnserializableAvroTypesFromMap(
+    Map<String, List<String>> map) {
+    Map<String, List<String>> ret = new HashMap<>(map.size());
+    for (Map.Entry<String, List<String>> entry : map.entrySet()) {
+      ret.put(entry.getKey(), newArrayList(entry.getValue()));
+    }
+    return ret;
+  }
+
   private DataType getSparkType(Schema.Field field) {
     switch (field.schema().getType()) {
       case BOOLEAN:
@@ -184,13 +171,13 @@ public class SparkETL {
     }
   }
 
-  private static Stream<Schema.Field> streamSchemaWithoutBaseFields(Schema schema) {
+  static Stream<Schema.Field> streamSchemaWithoutBaseFields(Schema schema) {
     return schema.getFields().stream().sequential()
                  .filter(field -> !field.name().equals(AvroSchemaEncoder.BASE_FIELDS_KEY));
   }
 
   private <A, B> JavaRDD getRddByKey(JavaPairRDD<A, Iterable<B>> pairRDD, A key) {
-    return pairRDD.filter(v -> v._1().equals(key)).values();//.flatMap(tuples -> tuples);
+    return pairRDD.filter(v -> v._1().equals(key)).values().flatMap(tuples -> tuples);
   }
 
   private static class RecordMapper

@@ -40,9 +40,6 @@ public class TestLambdaToAvroWithDynamoStore extends TestLambdaToAvroWithLocalSc
   @Override
   protected LambdaClientProperties getClientProperties() throws Exception {
     Properties props = getMockProps();
-    tables.setConnectionProperties(props);
-    return LambdaClientProperties
-      .create(new LambdaModule(props), dynamoResource.getCredentialsModule(),
-        tables.getDynamoModule());
+    return tables.getClientProperties(props);
   }
 }

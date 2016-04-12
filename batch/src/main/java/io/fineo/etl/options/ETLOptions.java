@@ -17,6 +17,7 @@
 package io.fineo.etl.options;
 
 import io.fineo.etl.spark.SparkETL;
+import io.fineo.lambda.configure.LambdaClientProperties;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
@@ -35,6 +36,7 @@ public class ETLOptions {
   private String root;
   private String archive;
   private Repository repo;
+  private LambdaClientProperties props;
 
   public ETLOptions(Options opts) {
     this.opts = opts;
@@ -96,9 +98,11 @@ public class ETLOptions {
     this.repo = repo;
   }
 
-  public Properties props() {
-    Properties props = new Properties();
-    props.setProperty("a", "b");
-    return props;
+  public LambdaClientProperties props() {
+    return this.props;
+  }
+
+  public void setProps(LambdaClientProperties props) {
+    this.props = props;
   }
 }

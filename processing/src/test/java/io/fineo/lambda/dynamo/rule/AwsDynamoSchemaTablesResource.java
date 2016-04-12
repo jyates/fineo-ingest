@@ -1,13 +1,11 @@
 package io.fineo.lambda.dynamo.rule;
 
-import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import io.fineo.lambda.configure.LambdaClientProperties;
 import io.fineo.lambda.configure.LambdaModule;
-import io.fineo.lambda.configure.PropertiesModule;
 import io.fineo.lambda.dynamo.LocalDynamoTestUtil;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -78,10 +76,6 @@ public class AwsDynamoSchemaTablesResource extends ExternalResource {
       .create(new LambdaModule(props), dynamoResource.getCredentialsModule(),
         getDynamoModule());
     return fProps;
-  }
-
-  public void setConnectionProperties(Properties props){
-    getUtil().setConnectionProperties(props);
   }
 
   public AbstractModule getDynamoModule() {

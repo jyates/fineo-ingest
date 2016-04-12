@@ -3,6 +3,8 @@ package io.fineo.etl.spark;
 import com.holdenkarau.spark.testing.SharedJavaSparkContext;
 import io.fineo.aws.AwsDependentTests;
 import io.fineo.etl.options.ETLOptions;
+import io.fineo.internal.customer.Metadata;
+import io.fineo.internal.customer.Metric;
 import io.fineo.lambda.configure.LambdaClientProperties;
 import io.fineo.lambda.dynamo.rule.AwsDynamoResource;
 import io.fineo.lambda.dynamo.rule.AwsDynamoSchemaTablesResource;
@@ -10,45 +12,58 @@ import io.fineo.lambda.e2e.EndToEndTestRunner;
 import io.fineo.lambda.e2e.TestEndToEndLambdaLocal;
 import io.fineo.lambda.e2e.TestOutput;
 import io.fineo.lambda.util.ResourceManager;
+import io.fineo.schema.avro.AvroSchemaEncoder;
+import io.fineo.schema.avro.AvroSchemaManager;
 import io.fineo.schema.store.SchemaStore;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.compress.GzipCodec;
+import org.apache.spark.sql.DataFrame;
+import org.apache.spark.sql.Row;
+import org.apache.spark.sql.hive.HiveContext;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import scala.collection.JavaConversions;
+import scala.collection.convert.Wrappers$;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
+import java.sql.Date;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
+import static com.google.common.collect.Lists.newArrayList;
+import static io.fineo.etl.spark.SparkETL.DATE_KEY;
 import static io.fineo.lambda.configure.LambdaClientProperties.STAGED_PREFIX;
 import static io.fineo.lambda.configure.LambdaClientProperties.StreamType.ARCHIVE;
+import static io.fineo.schema.avro.AvroSchemaEncoder.ORG_ID_KEY;
+import static io.fineo.schema.avro.AvroSchemaEncoder.ORG_METRIC_TYPE_KEY;
+import static io.fineo.schema.avro.AvroSchemaEncoder.TIMESTAMP_KEY;
 import static org.junit.Assert.assertEquals;
 
 /**
  * Simple test class that ensures we can read/write avro files from spark
  */
-@Category(AwsDependentTests.class)
 public class TestAvroReadWriteSpark extends SharedJavaSparkContext {
 
   private static final Log LOG = LogFactory.getLog(TestAvroReadWriteSpark.class);
 
-  @ClassRule
-  public static final AwsDynamoResource dynamo = new AwsDynamoResource();
-  @Rule
-  public final AwsDynamoSchemaTablesResource tables =
-    new AwsDynamoSchemaTablesResource(dynamo, false);
   @Rule
   public TestOutput folder = new TestOutput(false);
 
@@ -57,6 +72,12 @@ public class TestAvroReadWriteSpark extends SharedJavaSparkContext {
     conf().set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
           .set("spark.kryo.registrator", "io.fineo.etl.AvroKyroRegistrator");
     super.runBefore();
+  }
+
+  @After
+  public void cleanupMetastore() throws IOException {
+    File file = new File("metastore_db");
+    FileUtils.deleteDirectory(file);
   }
 
   @Test
@@ -82,16 +103,56 @@ public class TestAvroReadWriteSpark extends SharedJavaSparkContext {
     opts.archive(base + archiveOut.getAbsolutePath());
     opts.root(base + ingest.getAbsolutePath());
 
-    // get properties that read/write to the local dyanmodb schema store
-    props = tables.getClientProperties();
-    SchemaStore store = props.createSchemaStore();
-    EndToEndTestRunner.ProgressTracker progress = state.getRunner().getProgress();
-    // register the record we sent with the local schema store since we use the fully local runner
-    EndToEndTestRunner.updateSchemaStore(store, progress.getJson());
+    // reuse the same store from the test runner
+    props.setStoreProvider(() -> state.getResources().getStore());
+    opts.setProps(props);
 
     // actually run the job
     SparkETL etl = new SparkETL(opts);
     etl.run(jsc());
+
+    // remove any previous history, so we don't try and read the old metastore
+    cleanupMetastore();
+
+    // read all the rows that we stored
+    HiveContext sql = new HiveContext(jsc());
+    DataFrame records = sql.read().format("orc").load(opts.archive());
+    records.registerTempTable("table");
+    Row[] rows = sql.sql("SELECT * FROM table").collect();
+    assertEquals("Wrong number of rows! Got: " + Arrays.toString(rows), 1, rows.length);
+
+    // check the content against the object
+    Row row = rows[0];
+    Map<String, Object> msg = state.getRunner().getProgress().getJson();
+    int i = 0;
+    String orgId = (String) msg.get(ORG_ID_KEY);
+
+    Map<String, Object> fields = new HashMap<>();
+    fields.put(ORG_ID_KEY, orgId);
+    SchemaStore store = props.createSchemaStore();
+    Metadata metadata = store.getSchemaTypes(orgId);
+    String metricName = metadata.getCanonicalNamesToAliases().keySet().iterator().next();
+    Metric metric = store.getMetricMetadata(orgId, metricName);
+    Map<String, String> aliasToCName = AvroSchemaManager.getAliasRemap(metric);
+    fields.put(ORG_METRIC_TYPE_KEY, metricName);
+    long ts = (long) msg.get(TIMESTAMP_KEY);
+    fields.put(TIMESTAMP_KEY, ts);
+    fields.put(DATE_KEY, new Date(ts).toString());
+    // add non-base fields
+    for (String field : msg.keySet()) {
+      if (AvroSchemaEncoder.IS_BASE_FIELD.negate().test(field)) {
+        String cname = aliasToCName.get(field);
+        fields.put(cname, msg.get(field));
+      }
+    }
+
+    scala.collection.Map<String, Object> rowFields =
+      row.getValuesMap(JavaConversions.asScalaBuffer(newArrayList(fields.keySet())));
+    assertEquals(fields.size(), rowFields.size());
+    for (Map.Entry<String, Object> field : fields.entrySet()) {
+      assertEquals("Mismatch for " + field.getKey(), field.getValue(),
+        rowFields.get(field.getKey()).get());
+    }
   }
 
 
