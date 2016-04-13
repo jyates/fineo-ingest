@@ -24,12 +24,14 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.input.PortableDataStream;
 import org.apache.spark.sql.Row;
+import org.apache.spark.sql.SaveMode;
 import org.apache.spark.sql.hive.HiveContext;
 import org.apache.spark.sql.types.DataType;
 import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 import scala.Tuple2;
+import scala.Tuple3;
 
 import java.io.IOException;
 import java.net.URI;
@@ -96,7 +98,7 @@ public class SparkETL {
     LambdaClientProperties props = opts.props();
     SchemaStore store = props.createSchemaStore();
     Schema.Parser parser = new Schema.Parser();
-    List<Tuple2<StructType, JavaRDD<Row>>> schemas = new ArrayList<>();
+    List<Tuple3<JavaRDD<Row>, StructType, String>> schemas = new ArrayList<>();
     for (Tuple2<String, String> type : types) {
       JavaRDD<GenericRecord> grouped = getRddByKey(typeToRecord, type);
       Metric metric = store.getMetricMetadata(type._1(), type._2());
@@ -104,9 +106,8 @@ public class SparkETL {
       Schema parsed = parser.parse(schemaString);
       Map<String, List<String>> canonicalToAliases = removeUnserializableAvroTypesFromMap(
         metric.getMetadata().getCanonicalNamesToAliases());
-      JavaRDD<Row> rows = grouped.map(
-        new RowConverter(schemaString, canonicalToAliases, type._1(),
-          type._2()));
+      JavaRDD<Row> rows =
+        grouped.map(new RowConverter(schemaString, canonicalToAliases, type._1(), type._2()));
 
       // map each schema to a struct
       List<StructField> fields = new ArrayList<>();
@@ -122,22 +123,39 @@ public class SparkETL {
         .forEach(field -> {
           fields.add(DataTypes.createStructField(field.name(), getSparkType(field), true));
         });
-      schemas.add(new Tuple2<>(DataTypes.createStructType(fields), rows));
+      schemas.add(
+        new Tuple3<>(rows, DataTypes.createStructType(fields), metric.getMetadata().getVersion()));
     }
 
     // store the files by partition
     HiveContext sql = new HiveContext(context);
-    schemas.stream().forEach(tuple -> {
-      sql.createDataFrame(tuple._2(), tuple._1())
+    schemas.stream().forEach(rowsAndSchemaAndSchemaVersion -> {
+      sql.createDataFrame(rowsAndSchemaAndSchemaVersion._1(), rowsAndSchemaAndSchemaVersion._2())
          .write()
          .format("orc")
+         .mode(SaveMode.Append)
          .partitionBy(AvroSchemaEncoder.ORG_ID_KEY, AvroSchemaEncoder.ORG_METRIC_TYPE_KEY, DATE_KEY)
-         .save(opts.archive());
+         .save(opts.archive() + "/" + rowsAndSchemaAndSchemaVersion._3());
     });
 
-    // finished, move the input files to a completed directory
-    fs.rename(rootPath, new Path(new Path(opts.completed()),
-      Long.toString(System.currentTimeMillis())));
+    archiveCompletedFiles(fs, sources, opts.completed());
+  }
+
+  private void archiveCompletedFiles(FileSystem fs, List<Path> sources, String archiveDir)
+    throws IOException {
+    Path archive = new Path(opts.completed(), Long.toString(System.currentTimeMillis()));
+    boolean success = fs.mkdirs(archive);
+    if (!success) {
+      if (!fs.exists(archive)) {
+        throw new IOException("Could not create completed archive directory:" + archive);
+      }
+    }
+    for (Path source : sources) {
+      Path target = new Path(archive, source.getName());
+      if (!fs.rename(source, target)) {
+        throw new IOException("Could not archive " + source + " -> " + target);
+      }
+    }
   }
 
   /**

@@ -56,6 +56,7 @@ public class BaseITEndToEndAwsServices {
     this.manager = new AwsResourceManager(awsCredentials, output, connector, region);
     this.manager.cleanupResourcesOnFailure(cleanup);
     this.runner = new EndToEndTestRunner(props, manager);
+    runner.setup();
 
     for (Map<String, Object> json : msgs) {
       runner.run(json);

@@ -26,6 +26,4 @@ public interface ResourceManager {
   SchemaStore getStore();
 
   void verifyDynamoWrites(RecordMetadata metadata, Map<String, Object> json);
-
-  default void reset(){}
 }

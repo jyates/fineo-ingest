@@ -5,6 +5,7 @@ import io.fineo.lambda.LambdaRawRecordToAvro;
 import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.lambda.configure.LambdaClientProperties;
 import io.fineo.lambda.dynamo.avro.AvroToDynamoWriter;
+import io.fineo.lambda.e2e.EndtoEndSuccessStatus;
 import io.fineo.lambda.e2e.resources.IngestUtil;
 import io.fineo.lambda.e2e.resources.TestProperties;
 import io.fineo.lambda.e2e.resources.lambda.LambdaKinesisConnector;
@@ -13,6 +14,8 @@ import io.fineo.lambda.util.run.ResultWaiter;
 import io.fineo.schema.avro.RecordMetadata;
 import io.fineo.schema.store.SchemaStore;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.mockito.Mockito;
 import org.schemarepo.InMemoryRepository;
 import org.schemarepo.ValidatorFactory;
@@ -57,7 +60,7 @@ public class MockResourceManager extends BaseResourceManager {
   public void setup(LambdaClientProperties props) throws NoSuchMethodException, IOException {
     setupMocks(props);
     // setup each stage
-    this.store = new SchemaStore(new InMemoryRepository(ValidatorFactory.EMPTY));
+    this.store = props.createSchemaStore();
     start
       .setupForTesting(props, store, null,
         firehoses
@@ -93,8 +96,10 @@ public class MockResourceManager extends BaseResourceManager {
     ResultWaiter<List<ByteBuffer>> wait =
       waiter.get()
             .withDescription("Waiting for firehose writes to propagate...")
-            .withStatus(() -> this.firehoseWrites.get(streamName))
-            .withStatusCheck(a -> a != null);
+            .withStatusNull(() -> {
+              List<ByteBuffer> writes = this.firehoseWrites.get(streamName);
+              return writes != null && writes.size() > 0 ? writes : null;
+            }).withDoneWhenNotNull();
     wait.waitForResult();
     return wait.getLastStatus();
   }
@@ -142,11 +147,12 @@ public class MockResourceManager extends BaseResourceManager {
           });
   }
 
-  @Override
-  public void reset() {
+  public void cleanup(EndtoEndSuccessStatus status) throws Exception {
     for (List<ByteBuffer> firehose : firehoseWrites.values()) {
       firehose.clear();
     }
+
+    this.dynamoWrites.clear();
     this.connector.reset();
   }
 }

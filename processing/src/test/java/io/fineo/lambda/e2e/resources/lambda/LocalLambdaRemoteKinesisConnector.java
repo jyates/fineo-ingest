@@ -27,7 +27,7 @@ public class LocalLambdaRemoteKinesisConnector extends LambdaKinesisConnector<In
 
   private static final Log LOG = LogFactory.getLog(LocalLambdaRemoteKinesisConnector.class);
   protected IKinesisStreams kinesis;
-  private ExecutorService executor = Executors.newSingleThreadExecutor();
+  private ExecutorService executor;
   private boolean done;
 
   public LocalLambdaRemoteKinesisConnector(
@@ -52,6 +52,8 @@ public class LocalLambdaRemoteKinesisConnector extends LambdaKinesisConnector<In
    * Connect existing streams to the local lambda functions
    */
   protected void connectStreams() {
+    this.executor = Executors.newSingleThreadExecutor();
+
     // create each stream
     for (String stream : this.mapping.keySet()) {
       kinesis.setup(stream);

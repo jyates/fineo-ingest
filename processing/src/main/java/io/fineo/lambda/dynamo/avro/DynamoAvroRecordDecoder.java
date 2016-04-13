@@ -44,7 +44,7 @@ public class DynamoAvroRecordDecoder {
   }
 
   public GenericRecord decode(String orgId, Map<String, AttributeValue> row) {
-    Metadata org = store.getSchemaTypes(orgId);
+    Metadata org = store.getOrgMetadata(orgId);
     String partitionKey = row.get(io.fineo.lambda.dynamo.avro.Schema.PARTITION_KEY_NAME).getS();
     // skip past the org in the key
     String metricID = partitionKey.substring(orgId.length());

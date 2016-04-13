@@ -5,6 +5,7 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Provides;
+import com.google.inject.Singleton;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -18,6 +19,7 @@ public class DynamoModule extends AbstractModule {
 
   @Provides
   @Inject
+  @Singleton
   public AmazonDynamoDBAsyncClient getDynamoClient(AWSCredentialsProvider provider,
     AwsDynamoConfigurator configurator) {
     LOG.debug("Creating dynamo with provider: " + provider);

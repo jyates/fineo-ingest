@@ -74,9 +74,7 @@ public class MockKinesisStreams implements IKinesisStreams {
   }
 
   public void reset() {
-    for (List<List<ByteBuffer>> events : kinesisEvents.values()) {
-      events.clear();
-    }
+    kinesisEvents.clear();
   }
 
   private class WrappingQueue<T> extends AbstractQueue<T> implements BlockingQueue<T> {
@@ -85,10 +83,6 @@ public class MockKinesisStreams implements IKinesisStreams {
     private final List<T> backingList;
     private final int offset;
     private int index = 0;
-
-    public WrappingQueue(List<T> byteBuffers) {
-      this(byteBuffers, byteBuffers.size());
-    }
 
     public WrappingQueue(List<T> byteBuffers, int offset) {
       this.backingList = byteBuffers;
@@ -142,10 +136,16 @@ public class MockKinesisStreams implements IKinesisStreams {
 
     @Override
     public T peek() {
-      if (backingList.size() == (index + offset)) {
+      if (backingList.size() <= (index + offset)) {
         return null;
       }
-      return backingList.get(index);
+      try {
+        return backingList.get(index);
+      } catch (IndexOutOfBoundsException e) {
+        // for debugging hooks, when things go sideways
+        throw e;
+      }
+
     }
 
 

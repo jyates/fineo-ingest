@@ -75,7 +75,7 @@ public class ResultWaiter<RESULT> {
 
   public ResultWaiter withStatusNull(ThrowingSupplier<RESULT> status) {
     this.status = () -> doOrNull(status);
-    return this.withNullStatusCheck();
+    return this.withDoneWhenNull();
   }
 
   public ResultWaiter withStatusCheck(Predicate<RESULT> statusCheck) {
@@ -83,9 +83,12 @@ public class ResultWaiter<RESULT> {
     return this;
   }
 
-  public ResultWaiter withNullStatusCheck() {
-    this.statusCheck = a -> a == null;
-    return this;
+  public ResultWaiter withDoneWhenNull() {
+    return withStatusCheck(a -> a == null);
+  }
+
+  public ResultWaiter<RESULT> withDoneWhenNotNull() {
+    return withStatusCheck(a -> a != null);
   }
 
   public boolean waitForResult() {

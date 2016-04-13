@@ -10,5 +10,5 @@ Collection of the limits of the platform, based on the architecture.
  3. All orgs + metric Ids for each processing step have to fit in memory in Spark ETL
 
 ## Functionality
- 2. No repeat alias names for a metric field. Metric names can be repeated, but not the field names
+ 2. No repeat alias names within a parent, e.g. no repeat metric aliases in an org, no repeat field names in a metric. Otherwise, there is no way to tell metrics/fields apart.
   * Delete management isn't tested yet, but this looks like an issue

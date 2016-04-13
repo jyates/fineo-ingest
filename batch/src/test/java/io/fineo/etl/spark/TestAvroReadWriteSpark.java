@@ -17,6 +17,10 @@ import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.sql.DataFrame;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.hive.HiveContext;
@@ -32,8 +36,8 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.channels.FileChannel;
 import java.sql.Date;
-import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -74,12 +78,7 @@ public class TestAvroReadWriteSpark extends SharedJavaSparkContext {
     File ingest = folder.newFolder("ingest");
     File archive = folder.newFolder("archive");
     Pair<TestEndToEndLambdaLocal.TestState, ETLOptions> ran = run(ingest, archive, null);
-    TestEndToEndLambdaLocal.TestState state = ran.getLeft();
-    ETLOptions opts = ran.getRight();
-    LambdaClientProperties props = state.getRunner().getProps();
-    Row[] rows = readAllRows(opts.archive());
-    assertRowsEqualsEvents(rows, props.createSchemaStore(),
-      state.getRunner().getProgress().getJson());
+    verifyETLOutput(ran, ran.getLeft().getRunner().getProgress().getJson());
   }
 
   @Test
@@ -89,27 +88,22 @@ public class TestAvroReadWriteSpark extends SharedJavaSparkContext {
     // run the basic test for the single record
     Map<String, Object> json = LambdaTestUtils.createRecords(1, 1)[0];
     Pair<TestEndToEndLambdaLocal.TestState, ETLOptions> ran = run(lambdaOutput, sparkOutput, json);
+    verifyETLOutput(ran, json);
+
     ETLOptions opts = ran.getRight();
-    Row[] rows = readAllRows(opts.archive());
     TestEndToEndLambdaLocal.TestState state = ran.getLeft();
-    LambdaClientProperties props = state.getRunner().getProps();
-    SchemaStore store = props.createSchemaStore();
-    assertRowsEqualsEvents(rows, store, json);
 
     // add a field to the record, run it again
     Map<String, Object> second = new HashMap<>(json);
+    second.put(AvroSchemaEncoder.TIMESTAMP_KEY, System.currentTimeMillis());
     second.put("anotherField", 1);
-
-    // prepare for next iteration
-    state.getResources().reset();
 
     // run again
     TestEndToEndLambdaLocal.run(state, second);
+    copyLamdaOutputToSparkInput(state, lambdaOutput);
+    state.getRunner().cleanup();
     runJob(opts);
-
-    // verify that we get two records
-    rows = readAllRows(opts.archive());
-    assertRowsEqualsEvents(rows, store, json, second);
+    verifyETLOutput(ran, json, second);
   }
 
   private ETLOptions getOpts(File lambdaOutput, File sparkOutput) throws IOException {
@@ -125,22 +119,34 @@ public class TestAvroReadWriteSpark extends SharedJavaSparkContext {
     opts.archive(base + archiveOut.getAbsolutePath());
     opts.root(base + lambdaOutput.getAbsolutePath());
     opts.setCompletedDir(base + completed.getAbsolutePath());
-    LOG.info("Lambda output: "+opts.root());
-    LOG.info("Spark output: "+opts.archive());
-    LOG.info("Completed files: "+opts.completed());
+    LOG.info("Lambda output: " + opts.root());
+    LOG.info("Spark output: " + opts.archive());
+    LOG.info("Completed files: " + opts.completed());
     return opts;
   }
 
-  private void assertRowsEqualsEvents(Row[] rows, SchemaStore store, Map<String, Object>... json) {
-    assertEquals("Wrong number of rows! Got: " + Arrays.toString(rows), json.length, rows.length);
+  private void verifyETLOutput(Pair<TestEndToEndLambdaLocal.TestState, ETLOptions> ran,
+    Map<String, Object>... events)
+    throws Exception {
+    TestEndToEndLambdaLocal.TestState state = ran.getLeft();
+    ETLOptions opts = ran.getRight();
+    LambdaClientProperties props = state.getRunner().getProps();
+    List<Row> rows = readAllRows(opts.archive());
+    assertRowsEqualsEvents(rows, props.createSchemaStore(), events);
+    cleanupMetastore();
+  }
+
+  private void assertRowsEqualsEvents(List<Row> rows, SchemaStore store,
+    Map<String, Object>... json) {
+    assertEquals("Wrong number of rows! Got: " + rows, json.length, rows.size());
     // check the content against the object
     int i = 0;
     for (Map<String, Object> msg : json) {
-      Row row = rows[i++];
+      Row row = rows.get(i++);
       String orgId = (String) msg.get(ORG_ID_KEY);
       Map<String, Object> fields = new HashMap<>();
       fields.put(ORG_ID_KEY, orgId);
-      Metadata metadata = store.getSchemaTypes(orgId);
+      Metadata metadata = store.getOrgMetadata(orgId);
       String metricName = metadata.getCanonicalNamesToAliases().keySet().iterator().next();
       Metric metric = store.getMetricMetadata(orgId, metricName);
       Map<String, String> aliasToCName = AvroSchemaManager.getAliasRemap(metric);
@@ -192,17 +198,25 @@ public class TestAvroReadWriteSpark extends SharedJavaSparkContext {
     cleanupMetastore();
   }
 
-  private Row[] readAllRows(String fileDir) throws Exception {
+  private List<Row> readAllRows(String fileDir) throws Exception {
     // read all the rows that we stored
     HiveContext sql = new HiveContext(jsc());
-    DataFrame records = sql.read().format("orc").load(fileDir);
-    records.registerTempTable("table");
-    return sql.sql("SELECT * FROM table").collect();
-  }
+    sql.setConf("spark.sql.orc.filterPushdown", "true");
+    // allow merging schema for parquet
+//    sql.setConf(" spark.sql.parquet.mergeSchema", "true");
+    FileSystem fs = FileSystem.get(jsc().hadoopConfiguration());
+    Path output = new Path(fileDir);
+    FileStatus[] files = fs.listStatus(output);
+    JavaRDD<Row>[] tables = new JavaRDD[files.length];
+    for (int i = 0; i < files.length; i++) {
+      FileStatus file = files[i];
+      DataFrame records = sql.read().format("orc").load(file.getPath().toUri().toString());
+      String tableName = "table" + i;
+      records.registerTempTable(tableName);
+      tables[i] = sql.sql("SELECT * FROM " + tableName).toJavaRDD();
+    }
 
-  public TestEndToEndLambdaLocal.TestState runWithRecordsAndWriteToFile(File outputDir)
-    throws Exception {
-    return runWithRecordsAndWriteToFile(outputDir, null);
+    return jsc().union(tables).collect();
   }
 
   public TestEndToEndLambdaLocal.TestState runWithRecordsAndWriteToFile(File outputDir,
@@ -211,17 +225,22 @@ public class TestAvroReadWriteSpark extends SharedJavaSparkContext {
     TestEndToEndLambdaLocal.TestState state = record == null ?
                                               TestEndToEndLambdaLocal.runTest() :
                                               TestEndToEndLambdaLocal.runTest(record);
-    ResourceManager resources = state.getResources();
+    copyLamdaOutputToSparkInput(state, outputDir);
+    state.getRunner().cleanup();
+    return state;
+  }
 
+  private void copyLamdaOutputToSparkInput(TestEndToEndLambdaLocal.TestState state,
+    File outputDir) throws IOException {
     // save the record(s) to a file
     File file = new File(outputDir, UUID.randomUUID().toString());
     File file2 = new File(outputDir, UUID.randomUUID().toString());
 
     LambdaClientProperties props = state.getRunner().getProps();
     String stream = props.getFirehoseStreamName(STAGED_PREFIX, ARCHIVE);
+    ResourceManager resources = state.getResources();
     writeStreamToFile(resources, stream, file);
     writeStreamToFile(resources, stream, file2);
-    return state;
   }
 
   private void writeStreamToFile(ResourceManager resources, String stream, File file)

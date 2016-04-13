@@ -1,17 +1,24 @@
 package io.fineo.lambda.e2e;
 
 import com.google.inject.AbstractModule;
+import com.google.inject.Provides;
+import com.google.inject.Singleton;
 import io.fineo.lambda.LambdaAvroToStorage;
 import io.fineo.lambda.configure.LambdaClientProperties;
 import io.fineo.lambda.LambdaRawRecordToAvro;
+import io.fineo.lambda.configure.PropertiesModule;
 import io.fineo.lambda.e2e.resources.IngestUtil;
 import io.fineo.lambda.e2e.resources.lambda.LambdaKinesisConnector;
 import io.fineo.lambda.e2e.resources.lambda.LocalLambdaLocalKinesisConnector;
 import io.fineo.lambda.util.LambdaTestUtils;
 import io.fineo.lambda.e2e.resources.manager.MockResourceManager;
 import io.fineo.lambda.util.ResourceManager;
+import io.fineo.schema.store.SchemaStore;
 import org.junit.Test;
+import org.schemarepo.InMemoryRepository;
+import org.schemarepo.ValidatorFactory;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -38,6 +45,17 @@ public class TestEndToEndLambdaLocal {
   @Test
   public void testHappyPath() throws Exception {
     runTest().getRunner().cleanup();
+  }
+
+  @Test
+  public void testChangingSchemaForSecondEvent() throws Exception {
+    Map<String, Object> event = LambdaTestUtils.createRecords(1, 1)[0];
+    TestState state = runTest(event);
+    state.getRunner().cleanup();
+
+    Map<String, Object> second = new HashMap<>(event);
+    second.put("anotherField", 1);
+    run(state, second);
   }
 
   public static TestState runTest() throws Exception {
@@ -68,10 +86,15 @@ public class TestEndToEndLambdaLocal {
       new LocalLambdaLocalKinesisConnector(stageMap, INGEST_CONNECTOR);
     ResourceManager manager = new MockResourceManager(connector, start, storage);
     EndToEndTestRunner runner = new EndToEndTestRunner(LambdaClientProperties.create(
-      new AbstractModule() {
+      new PropertiesModule(props), new AbstractModule() {
         @Override
         protected void configure() {
-          bind(Properties.class).toInstance(props);
+        }
+
+        @Provides
+        @Singleton
+        public SchemaStore getStore() {
+          return new SchemaStore(new InMemoryRepository(ValidatorFactory.EMPTY));
         }
       }), manager);
 
@@ -82,6 +105,7 @@ public class TestEndToEndLambdaLocal {
 
   public static void run(TestState state, Map<String, Object> json) throws Exception {
     EndToEndTestRunner runner = state.getRunner();
+    runner.setup();
     runner.run(json);
     runner.validate();
   }
