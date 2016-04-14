@@ -97,12 +97,14 @@ public class SparkETL {
     // get the schemas for each type
     LambdaClientProperties props = opts.props();
     SchemaStore store = props.createSchemaStore();
-    Schema.Parser parser = new Schema.Parser();
+
     List<Tuple3<JavaRDD<Row>, StructType, String>> schemas = new ArrayList<>();
     for (Tuple2<String, String> type : types) {
       JavaRDD<GenericRecord> grouped = getRddByKey(typeToRecord, type);
       Metric metric = store.getMetricMetadata(type._1(), type._2());
       String schemaString = metric.getMetricSchema();
+      // parser keeps state and we redefine stuff, so we need to create a new one each time
+      Schema.Parser parser = new Schema.Parser();
       Schema parsed = parser.parse(schemaString);
       Map<String, List<String>> canonicalToAliases = removeUnserializableAvroTypesFromMap(
         metric.getMetadata().getCanonicalNamesToAliases());
