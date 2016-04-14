@@ -10,8 +10,8 @@
   <packaging>pom</packaging>
 
   <modules>
-    <module>processing</module>
     <module>batch</module>
+    <module>pipeline</module>
   </modules>
 
   <properties>
@@ -191,8 +191,8 @@
   <dependencyManagement>
     <dependencies>
       <dependency>
-        <groupId>io.fineo.etl</groupId>
-        <artifactId>processing</artifactId>
+        <groupId>io.fineo.etl.pipeline</groupId>
+        <artifactId>processing-streaming</artifactId>
         <version>${project.version}</version>
         <classifier>aws</classifier>
         <scope>test</scope>
@@ -204,13 +204,13 @@
         </exclusions>
       </dependency>
       <dependency>
-        <groupId>io.fineo.etl</groupId>
-        <artifactId>processing</artifactId>
+        <groupId>io.fineo.etl.pipeline</groupId>
+        <artifactId>processing-streaming</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
-        <groupId>io.fineo.etl</groupId>
-        <artifactId>processing</artifactId>
+        <groupId>io.fineo.etl.pipeline</groupId>
+        <artifactId>processing-streaming</artifactId>
         <version>${project.version}</version>
         <classifier>tests</classifier>
         <scope>test</scope>
@@ -326,17 +326,6 @@
         <failsafe.skip.local>true</failsafe.skip.local>
         <failsafe.skip.aws>false</failsafe.skip.aws>
       </properties>
-    </profile>
-    <profile>
-      <id>add-lambda-validation</id>
-      <activation>
-        <property>
-          <name>validate</name>
-        </property>
-      </activation>
-      <modules>
-        <module>lambda-validate</module>
-      </modules>
     </profile>
   </profiles>
 </project>

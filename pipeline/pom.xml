@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <artifactId>ingest-parent</artifactId>
+    <groupId>io.fineo.etl</groupId>
+    <version>1.0-SNAPSHOT</version>
+  </parent>
+
+  <artifactId>pipeline</artifactId>
+  <groupId>io.fineo.etl.pipeline</groupId>
+  <packaging>pom</packaging>
+
+  <modules>
+    <module>processing</module>
+  </modules>
+
+  <profiles>
+    <profile>
+      <id>add-lambda-validation</id>
+      <activation>
+        <property>
+          <name>validate</name>
+        </property>
+      </activation>
+      <modules>
+        <module>lambda-validate</module>
+      </modules>
+    </profile>
+  </profiles>
+</project>

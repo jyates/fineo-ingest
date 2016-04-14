@@ -5,12 +5,12 @@
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-    <artifactId>ingest-parent</artifactId>
-    <groupId>io.fineo.etl</groupId>
+    <artifactId>pipeline</artifactId>
+    <groupId>io.fineo.etl.pipeline</groupId>
     <version>1.0-SNAPSHOT</version>
   </parent>
 
-  <artifactId>processing</artifactId>
+  <artifactId>processing-streaming</artifactId>
 
   <properties>
     <!-- Plugin Versions -->

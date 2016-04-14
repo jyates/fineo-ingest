@@ -73,8 +73,8 @@
       <artifactId>schema-mgmt</artifactId>
     </dependency>
     <dependency>
-      <groupId>io.fineo.etl</groupId>
-      <artifactId>processing</artifactId>
+      <groupId>io.fineo.etl.pipeline</groupId>
+      <artifactId>processing-streaming</artifactId>
     </dependency>
 
     <dependency>
@@ -122,8 +122,8 @@
       <classifier>tests</classifier>
     </dependency>
     <dependency>
-      <groupId>io.fineo.etl</groupId>
-      <artifactId>processing</artifactId>
+      <groupId>io.fineo.etl.pipeline</groupId>
+      <artifactId>processing-streaming</artifactId>
       <classifier>tests</classifier>
       <scope>test</scope>
     </dependency>
