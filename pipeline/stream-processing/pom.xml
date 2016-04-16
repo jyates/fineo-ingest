@@ -10,7 +10,7 @@
     <version>1.0-SNAPSHOT</version>
   </parent>
 
-  <artifactId>processing-streaming</artifactId>
+  <artifactId>stream-processing</artifactId>
 
   <properties>
     <!-- Plugin Versions -->
@@ -84,6 +84,12 @@
     </dependency>
 
     <!-- Test dependencies -->
+    <dependency>
+      <groupId>io.fineo.etl.pipeline</groupId>
+      <artifactId>pipeline-utils</artifactId>
+      <classifier>tests</classifier>
+      <scope>test</scope>
+    </dependency>
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>

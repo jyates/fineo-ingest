@@ -15,7 +15,8 @@
   <packaging>pom</packaging>
 
   <modules>
-    <module>processing</module>
+    <module>stream-processing</module>
+    <module>pipeline-utils</module>
   </modules>
 
   <profiles>

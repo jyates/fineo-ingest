@@ -47,6 +47,7 @@ import static com.google.common.collect.Lists.newArrayList;
 public class SparkETL {
 
   public static final String DATE_KEY = "date";
+  private static final String FORMAT = "parquet";
   private final ETLOptions opts;
 
   public SparkETL(ETLOptions opts) {
@@ -134,7 +135,7 @@ public class SparkETL {
     schemas.stream().forEach(rowsAndSchemaAndSchemaVersion -> {
       sql.createDataFrame(rowsAndSchemaAndSchemaVersion._1(), rowsAndSchemaAndSchemaVersion._2())
          .write()
-         .format("orc")
+         .format(FORMAT)
          .mode(SaveMode.Append)
          .partitionBy(AvroSchemaEncoder.ORG_ID_KEY, AvroSchemaEncoder.ORG_METRIC_TYPE_KEY, DATE_KEY)
          .save(opts.archive() + "/" + rowsAndSchemaAndSchemaVersion._3());

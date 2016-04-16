@@ -1,4 +1,4 @@
-package io.fineo.lambda.e2e;
+package io.fineo.test.rule;
 
 import org.junit.rules.TemporaryFolder;
 

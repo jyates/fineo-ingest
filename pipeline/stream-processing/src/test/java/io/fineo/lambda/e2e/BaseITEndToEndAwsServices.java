@@ -9,6 +9,7 @@ import io.fineo.lambda.configure.LambdaClientProperties;
 import io.fineo.lambda.configure.LambdaModule;
 import io.fineo.lambda.e2e.resources.lambda.LambdaKinesisConnector;
 import io.fineo.lambda.e2e.resources.manager.AwsResourceManager;
+import io.fineo.test.rule.TestOutput;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.junit.After;
