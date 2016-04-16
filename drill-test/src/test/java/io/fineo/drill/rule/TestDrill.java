@@ -9,15 +9,24 @@ import org.apache.drill.exec.proto.UserBitShared;
 import org.apache.drill.exec.record.RecordBatchLoader;
 import org.apache.drill.exec.rpc.user.QueryDataBatch;
 import org.apache.drill.exec.vector.BigIntVector;
+import org.apache.drill.jdbc.ConnectionFactory;
+import org.apache.drill.jdbc.ConnectionInfo;
+import org.apache.drill.jdbc.Driver;
+import org.apache.drill.jdbc.SingleConnectionCachingFactory;
+import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 
 import java.io.File;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -25,52 +34,35 @@ import static org.junit.Assert.assertTrue;
  */
 public class TestDrill {
 
-  private static final long NUM_RECORDS = 1;
   @ClassRule
   public static DrillClusterRule drill = new DrillClusterRule(1);
 
   @Rule
   public TestOutput folder = new TestOutput(false);
-  private BufferAllocator allocator;
+
+  @BeforeClass
+  public static void setup() {
+    Driver.load();
+  }
 
   @Test
   public void testReadWrite() throws Exception {
     // writer a simple json file
     Map<String, Object> json = new HashMap<>();
-    json.put("a", "b");
+    json.put("a", "c");
 
     File tmp = folder.newFolder("drill");
     File out = new File(tmp, "test.json");
     JSON j = JSON.std;
-    j.write(j, out);
+    j.write(json, out);
 
-    try (DrillClient client = drill.getClient()) {
-      String select = String.format("SELECT count(*) FROM dfs.`%s`", out.getPath());
-      List<QueryDataBatch> results = client.runQuery(UserBitShared.QueryType.SQL, select);
-      RecordBatchLoader batchLoader = new RecordBatchLoader(getAllocator(client));
-
-      for (QueryDataBatch batch : results) {
-        batchLoader.load(batch.getHeader().getDef(), batch.getData());
-
-        if (batchLoader.getRecordCount() <= 0) {
-          continue;
-        }
-
-        BigIntVector countV =
-          (BigIntVector) batchLoader.getValueAccessorById(BigIntVector.class, 0).getValueVector();
-        assertTrue("Total of " + NUM_RECORDS + " records expected in count",
-          countV.getAccessor().get(0) == NUM_RECORDS);
-
-        batchLoader.clear();
-        batch.release();
-      }
+    try (Connection conn = drill.getConnection()) {
+      conn.createStatement().execute("ALTER SESSION SET `store.format`='json'");
+      String select = String.format("SELECT * FROM dfs.`%s`", out.getPath());
+      ResultSet results = conn.createStatement().executeQuery(select);
+      assertTrue(results.next());
+      assertEquals(json.get("a"), results.getString("a"));
+      assertEquals(1, results.getMetaData().getColumnCount());
     }
-  }
-
-  private BufferAllocator getAllocator(DrillClient client) {
-    if (this.allocator == null) {
-      allocator = RootAllocatorFactory.newRoot(client.getConfig());
-    }
-    return this.allocator;
   }
 }

@@ -82,6 +82,7 @@
             <skip>true</skip>
             <argLine>-enableassertions -Djava.security.egd=file:/dev/./urandom
               -Dsqlite4java.library.path=${project.build.directory}/dependencies
+              -Djava.net.preferIPv4Stack=true
             </argLine>
             <excludes>
               <!-- users can add -D option to skip particular test classes
@@ -268,6 +269,13 @@
       </dependency>
     </dependencies>
   </dependencyManagement>
+
+  <dependencies>
+    <dependency>
+      <groupId>io.fineo.aws</groupId>
+      <artifactId>aws-common</artifactId>
+    </dependency>
+  </dependencies>
 
   <profiles>
     <!-- Setup the different test phases -->
