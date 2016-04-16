@@ -149,63 +149,6 @@
       <artifactId>mockito-all</artifactId>
       <scope>test</scope>
     </dependency>
-    <!-- Drill that can co-exist with native spark libs -->
-    <dependency>
-      <groupId>io.fineo.etl</groupId>
-      <artifactId>drill-test</artifactId>
-      <version>${project.version}</version>
-      <classifier>shaded</classifier>
-      <scope>test</scope>
-      <exclusions>
-        <exclusion>
-          <groupId>org.apache.curator</groupId>
-          <artifactId>*</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.eclipse.jetty</groupId>
-          <artifactId>*</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.glassfish.jersey</groupId>
-          <artifactId>*</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>com.fasterxml.**</groupId>
-          <artifactId>*</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.apache.drill.exec</groupId>
-          <artifactId>*</artifactId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-    <dependency>
-      <groupId>io.fineo.etl</groupId>
-      <artifactId>drill-test</artifactId>
-      <version>${project.version}</version>
-      <classifier>tests</classifier>
-      <scope>test</scope>
-      <!--<exclusions>-->
-        <!--<exclusion>-->
-          <!--<groupId>org.apache.drill.exec</groupId>-->
-          <!--<artifactId>*</artifactId>-->
-        <!--</exclusion>-->
-      <!--</exclusions>-->
-    </dependency>
-    <!-- provided in the shaded drill-tests classifier -->
-    <dependency>
-      <groupId>org.apache.drill.exec</groupId>
-      <artifactId>drill-java-exec</artifactId>
-      <version>${drill.version}</version>
-      <scope>provided</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.drill.exec</groupId>
-      <artifactId>drill-java-exec</artifactId>
-      <version>${drill.version}</version>
-      <scope>provided</scope>
-      <classifier>tests</classifier>
-    </dependency>
   </dependencies>
 
 </project>
