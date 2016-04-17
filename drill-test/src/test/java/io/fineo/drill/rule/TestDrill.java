@@ -2,17 +2,7 @@ package io.fineo.drill.rule;
 
 import com.fasterxml.jackson.jr.ob.JSON;
 import io.fineo.test.rule.TestOutput;
-import org.apache.drill.exec.client.DrillClient;
-import org.apache.drill.exec.memory.BufferAllocator;
-import org.apache.drill.exec.memory.RootAllocatorFactory;
-import org.apache.drill.exec.proto.UserBitShared;
-import org.apache.drill.exec.record.RecordBatchLoader;
-import org.apache.drill.exec.rpc.user.QueryDataBatch;
-import org.apache.drill.exec.vector.BigIntVector;
-import org.apache.drill.jdbc.ConnectionFactory;
-import org.apache.drill.jdbc.ConnectionInfo;
 import org.apache.drill.jdbc.Driver;
-import org.apache.drill.jdbc.SingleConnectionCachingFactory;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Rule;
@@ -20,10 +10,8 @@ import org.junit.Test;
 
 import java.io.File;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;

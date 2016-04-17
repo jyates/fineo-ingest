@@ -1,7 +1,7 @@
 package io.fineo.drill.rule;
 
-import org.apache.drill.exec.ZookeeperHelper;
 import org.apache.drill.common.config.DrillConfig;
+import org.apache.drill.exec.ZookeeperHelper;
 import org.junit.rules.ExternalResource;
 
 /**

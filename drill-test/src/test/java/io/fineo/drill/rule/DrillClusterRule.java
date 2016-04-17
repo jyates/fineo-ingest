@@ -1,16 +1,11 @@
 package io.fineo.drill.rule;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.drill.exec.ExecConstants;
+import org.apache.drill.exec.server.Drillbit;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.drill.exec.ExecConstants;
-import org.apache.drill.exec.client.DrillClient;
-import org.apache.drill.exec.memory.BufferAllocator;
-import org.apache.drill.exec.memory.RootAllocatorFactory;
 import org.apache.drill.exec.metrics.DrillMetrics;
-import org.apache.drill.exec.record.RecordBatchLoader;
-import org.apache.drill.exec.rpc.RpcException;
-import org.apache.drill.exec.server.Drillbit;
 import org.apache.drill.jdbc.ConnectionFactory;
 import org.apache.drill.jdbc.ConnectionInfo;
 import org.apache.drill.jdbc.SingleConnectionCachingFactory;
@@ -32,10 +27,8 @@ public class DrillClusterRule extends ExternalResource {
   private final int serverCount;
   private final ZookeeperClusterRule zk = new ZookeeperClusterRule();
   private final SingleConnectionCachingFactory factory;
-  private List<Drillbit> servers;
-
   private final Properties props = new Properties();
-  private BufferAllocator allocator;
+  private List<Drillbit> servers;
 
   {
     props.put(ExecConstants.SYS_STORE_PROVIDER_LOCAL_ENABLE_WRITE, "false");
@@ -88,22 +81,5 @@ public class DrillClusterRule extends ExternalResource {
     String zkConnection = zk.getConfig().getString("drill.exec.zk.connect");
     String url = format("jdbc:drill:zk=%s", zkConnection);
     return factory.getConnection(new ConnectionInfo(url, new Properties()));
-  }
-
-  public DrillClient getClient() throws RpcException {
-    DrillClient client = new DrillClient(zk.getConfig());
-    client.connect();
-    return client;
-  }
-
-  public RecordBatchLoader getRecordLoader(DrillClient client) {
-    return new RecordBatchLoader(getAllocator(client));
-  }
-
-  private BufferAllocator getAllocator(DrillClient client) {
-    if (this.allocator == null) {
-      allocator = RootAllocatorFactory.newRoot(client.getConfig());
-    }
-    return this.allocator;
   }
 }

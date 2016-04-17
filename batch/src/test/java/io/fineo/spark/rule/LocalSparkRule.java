@@ -11,6 +11,7 @@ import org.junit.rules.ExternalResource;
 public class LocalSparkRule extends ExternalResource {
   private static transient SparkContext _sc;
   private static transient JavaSparkContext _jsc;
+  private final ConfLoader loader;
   protected boolean initialized = false;
   private static SparkConf _conf = new SparkConf().setMaster("local[4]").setAppName("magic");
 
@@ -26,11 +27,18 @@ public class LocalSparkRule extends ExternalResource {
     return _jsc;
   }
 
+  public LocalSparkRule(ConfLoader loader) {
+    this.loader = loader;
+  }
+
   @Override
   public void before() {
     initialized = (_sc != null);
 
     if (!initialized) {
+      if (this.loader != null) {
+        loader.load(conf());
+      }
       _sc = new SparkContext(conf());
       _jsc = new JavaSparkContext(_sc);
     }

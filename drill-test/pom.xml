@@ -20,7 +20,7 @@
         <artifactId>maven-shade-plugin</artifactId>
         <version>2.4.3</version>
         <configuration>
-          <shadedArtifactAttached>true</shadedArtifactAttached>
+          <shadedArtifactAttached>false</shadedArtifactAttached>
         </configuration>
         <executions>
           <execution>
@@ -32,19 +32,16 @@
             <configuration>
               <createSourcesJar>true</createSourcesJar>
               <shadeSourcesContent>true</shadeSourcesContent>
-              <shadedClassifierName>shaded</shadedClassifierName>
+              <dependencyReducedPomLocation>${project.build.directory}/pom.xml</dependencyReducedPomLocation>
+              <keepDependenciesWithProvidedScope>true</keepDependenciesWithProvidedScope>
               <artifactSet>
                 <includes>
-                  <inlude>org.apache.drill**</inlude>
-                  <include>javax.servlet:*</include>
-                  <include>org.eclipse.jetty:*</include>
-                  <include>org.glassfish.jersey.**</include>
-                  <include>javax.ws.**</include>
-                  <include>org.apache.curator:*</include>
-                  <inlcude>com.fasterxml.**</inlcude>
-                  <inlude>org.apache.parquet:*</inlude>
-                  <inlude>io.fineo.etl:drill-test:jar:tests</inlude>
+                  <include>org.apache.drill.exec:drill-java-exec:jar:${drill.version}:tests</include>
+                  <include>org.apache.drill.exec:drill-jdbc-all:${drill.version}</include>
                 </includes>
+                <excludes>
+                  <exclude></exclude>
+                </excludes>
               </artifactSet>
               <relocations>
                 <relocation>
@@ -75,17 +72,17 @@
             </configuration>
           </execution>
           <!--<execution>-->
-            <!--<id>shaded-test</id>-->
-            <!--<goals>-->
-              <!--<goal>shade</goal>-->
-            <!--</goals>-->
-            <!--<phase>package</phase>-->
-            <!--<configuration>-->
-              <!--<createSourcesJar>true</createSourcesJar>-->
-              <!--<shadeSourcesContent>true</shadeSourcesContent>-->
-              <!--<shadedClassifierName>shaded-tests</shadedClassifierName>-->
-              <!--<shadeTestJar>true</shadeTestJar>-->
-            <!--</configuration>-->
+          <!--<id>shaded-test</id>-->
+          <!--<goals>-->
+          <!--<goal>shade</goal>-->
+          <!--</goals>-->
+          <!--<phase>package</phase>-->
+          <!--<configuration>-->
+          <!--<createSourcesJar>true</createSourcesJar>-->
+          <!--<shadeSourcesContent>true</shadeSourcesContent>-->
+          <!--<shadedClassifierName>shaded-tests</shadedClassifierName>-->
+          <!--<shadeTestJar>true</shadeTestJar>-->
+          <!--</configuration>-->
           <!--</execution>-->
         </executions>
       </plugin>
@@ -96,7 +93,7 @@
     <dependency>
       <groupId>ch.qos.logback</groupId>
       <artifactId>logback-classic</artifactId>
-      <version>1.1.3</version>
+      <version>${logback.version}</version>
     </dependency>
     <dependency>
       <groupId>io.fineo.etl.pipeline</groupId>
@@ -110,6 +107,21 @@
       <version>2.7.0</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>io.fineo.etl.pipeline</groupId>
+      <artifactId>stream-processing</artifactId>
+      <scope>test</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-log4j12</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.sun.jersey</groupId>
+          <artifactId>jersey-core</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
     <!-- Drill dependencies -->
     <dependency>
       <groupId>org.apache.drill.exec</groupId>
@@ -121,14 +133,12 @@
       <artifactId>drill-jdbc</artifactId>
       <version>${drill.version}</version>
       <classifier>tests</classifier>
-      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.drill.exec</groupId>
       <artifactId>drill-java-exec</artifactId>
       <version>${drill.version}</version>
       <classifier>tests</classifier>
-      <scope>test</scope>
     </dependency>
   </dependencies>
 

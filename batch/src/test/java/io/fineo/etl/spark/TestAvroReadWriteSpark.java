@@ -1,5 +1,6 @@
 package io.fineo.etl.spark;
 
+import com.fasterxml.jackson.jr.ob.JSON;
 import com.google.common.base.Joiner;
 import io.fineo.etl.FieldTranslatorFactory;
 import io.fineo.etl.options.ETLOptions;
@@ -27,7 +28,6 @@ import org.apache.spark.sql.DataFrame;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.hive.HiveContext;
 import org.junit.After;
-import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
@@ -39,6 +39,7 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.channels.FileChannel;
 import java.sql.Date;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -46,7 +47,6 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static com.google.common.collect.Lists.newArrayList;
-import static io.fineo.etl.spark.SparkETL.DATE_KEY;
 import static io.fineo.lambda.configure.LambdaClientProperties.STAGED_PREFIX;
 import static io.fineo.lambda.configure.LambdaClientProperties.StreamType.ARCHIVE;
 import static io.fineo.schema.avro.AvroSchemaEncoder.ORG_ID_KEY;
@@ -62,16 +62,13 @@ public class TestAvroReadWriteSpark {
   private static final Log LOG = LogFactory.getLog(TestAvroReadWriteSpark.class);
 
   @ClassRule
-  public static LocalSparkRule spark = new LocalSparkRule();
+  public static LocalSparkRule spark = new LocalSparkRule(conf -> {
+    conf.set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
+        .set("spark.kryo.registrator", "io.fineo.etl.AvroKyroRegistrator");
+  });
 
   @Rule
   public TestOutput folder = new TestOutput(false);
-
-  @Before
-  public void runBefore() {
-    spark.conf().set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
-          .set("spark.kryo.registrator", "io.fineo.etl.AvroKyroRegistrator");
-  }
 
   @After
   public void cleanupMetastore() throws IOException {
@@ -120,13 +117,33 @@ public class TestAvroReadWriteSpark {
     TestEndToEndLambdaLocal.TestState state =
       runWithRecordsAndWriteToFile(lambdaOutput, records[0]);
     runIngest(state, lambdaOutput, records[1]);
-//    runIngest(state, lambdaOutput, records[2]);
 
     LambdaClientProperties props = state.getRunner().getProps();
     ETLOptions opts = getOpts(lambdaOutput, sparkOutput, props);
     runJob(opts);
 
-    verifyETLOutput(new ImmutablePair<>(state, opts), records);
+    // verification happens in the drill testing, which we cannot do here b/c of jvm conflicts
+    // however, we do write the expected output so we can verify it later
+    logEvents(props.createSchemaStore(), records);
+    FieldTranslatorFactory translatorFactory =
+      new FieldTranslatorFactory(props.createSchemaStore());
+    List<Map<String, Object>> events = new ArrayList<>();
+    for (Map<String, Object> event : records) {
+      String orgID = (String) event.get(AvroSchemaEncoder.ORG_ID_KEY);
+      String metricAlias = (String) event.get(AvroSchemaEncoder.ORG_METRIC_TYPE_KEY);
+      FieldTranslatorFactory.FieldTranslator translator =
+        translatorFactory.translate(orgID, metricAlias);
+      Map<String, Object> translated = new HashMap<>();
+      for (String field : event.keySet()) {
+        Pair<String, Object> obj = translator.translate(field, event);
+        translated.put(obj.getKey(), obj.getValue());
+      }
+      events.add(translated);
+    }
+    JSON json = JSON.std;
+    File info = new File(sparkOutput, "info.json");
+    json.write(events, info);
+    LOG.info(" ===> Test output stored at: " + sparkOutput);
   }
 
   private void runIngest(TestEndToEndLambdaLocal.TestState state, File lambdaOutput,
@@ -228,7 +245,6 @@ public class TestAvroReadWriteSpark {
       fields.put(ORG_METRIC_TYPE_KEY, metricName);
       long ts = (long) msg.get(TIMESTAMP_KEY);
       fields.put(TIMESTAMP_KEY, ts);
-      fields.put(DATE_KEY, new Date(ts).toString());
       // add non-base fields
       for (String field : msg.keySet()) {
         if (AvroSchemaEncoder.IS_BASE_FIELD.negate().test(field)) {

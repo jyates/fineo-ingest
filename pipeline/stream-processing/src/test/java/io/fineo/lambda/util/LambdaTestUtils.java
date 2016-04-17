@@ -62,13 +62,15 @@ public class LambdaTestUtils {
 
   public static Map<String, Object>[] createRecords(int count, int fieldCount) {
     Map[] records = new Map[count];
+    boolean previous = true;
     for (int i = 0; i < count; i++) {
       String uuid = UUID.randomUUID().toString();
       LOG.debug("Using UUID - " + uuid);
       Map<String, Object> map =
         SchemaTestUtils.getBaseFields("org" + i + "_" + uuid, "mt" + i + "_" + uuid);
       for (int j = 0; j < fieldCount; j++) {
-        map.put("a" + j, true);
+        map.put("a" + j, previous);
+        previous = !previous;
       }
       records[i] = map;
     }

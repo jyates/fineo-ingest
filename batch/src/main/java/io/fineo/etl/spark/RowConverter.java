@@ -7,10 +7,8 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.spark.api.java.function.Function;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.RowFactory;
-import org.apache.spark.sql.catalyst.util.DateTimeUtils;
 
 import java.io.Serializable;
-import java.sql.Date;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -47,7 +45,6 @@ public class RowConverter implements Function<GenericRecord, Row>, Serializable 
     // populate the partitions
     fields.add(orgId);
     fields.add(metricName);
-    fields.add(new Date(base.getTimestamp()));
     fields.add(base.getTimestamp());
 
     // populate the other fields, as we have them
