@@ -51,6 +51,11 @@ public class FieldTranslatorFactory {
 
     public Pair<String, Object> translate(String alias, Map<String, Object> customerEvent) {
       String fieldName = translate(alias);
+
+      // it an unknown field
+      if(fieldName == null){
+        fieldName = alias;
+      }
       // map the metric field to its canonical name
       if (fieldName.equals(AvroSchemaEncoder.ORG_METRIC_TYPE_KEY)) {
         Map<String, String> fieldMap =

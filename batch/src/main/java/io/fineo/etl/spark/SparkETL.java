@@ -2,6 +2,9 @@ package io.fineo.etl.spark;
 
 import io.fineo.etl.options.ETLOptionBuilder;
 import io.fineo.etl.options.ETLOptions;
+import io.fineo.etl.spark.fs.FileCleaner;
+import io.fineo.etl.spark.fs.RddLoader;
+import io.fineo.etl.spark.util.AvroSparkUtils;
 import io.fineo.internal.customer.Metric;
 import io.fineo.lambda.configure.LambdaClientProperties;
 import io.fineo.schema.avro.AvroSchemaEncoder;
@@ -9,120 +12,156 @@ import io.fineo.schema.avro.RecordMetadata;
 import io.fineo.schema.store.SchemaStore;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.LocatedFileStatus;
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.fs.RemoteIterator;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.input.PortableDataStream;
 import org.apache.spark.sql.Row;
+import org.apache.spark.sql.RowFactory;
 import org.apache.spark.sql.SQLContext;
 import org.apache.spark.sql.SaveMode;
 import org.apache.spark.sql.types.DataTypes;
+import org.apache.spark.sql.types.MapType;
 import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
-import scala.Tuple2;
 import scala.Tuple3;
 
 import java.io.IOException;
-import java.net.URI;
 import java.net.URISyntaxException;
 import java.sql.Date;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Stream;
 
 import static com.google.common.collect.Lists.newArrayList;
+import static java.util.stream.Collectors.toList;
 
 public class SparkETL {
 
-  private static final String FORMAT = "parquet";
+  public static final String FORMAT = "parquet";
+  public static final String UNKNOWN_DATA_FORMAT = "json";
   private final ETLOptions opts;
+  public static String UNKNOWN_FIELDS_KEY = "unknown";
 
   public SparkETL(ETLOptions opts) {
     this.opts = opts;
   }
 
   public void run(JavaSparkContext context) throws URISyntaxException, IOException {
-    URI root = new URI(opts.root());
-    FileSystem fs = FileSystem.get(root, context.hadoopConfiguration());
-    Tuple2<JavaPairRDD<String, PortableDataStream>[], List<Path>> rddsAndSources =
-      loadRawFiles(context, fs, root);
-    JavaPairRDD<String, PortableDataStream>[] stringRdds = rddsAndSources._1();
+    RddLoader loader = new RddLoader(context, opts.root());
+    loader.load();
+    JavaPairRDD<String, PortableDataStream>[] stringRdds = loader.getRdds();
     JavaRDD<GenericRecord> records = getRecords(context, stringRdds);
 
-    // convert them into (org, metricId) -> records
-    JavaPairRDD<Tuple3<String, String, Date>, Iterable<GenericRecord>> typeToRecord =
-      records.mapToPair(record -> {
-        RecordMetadata metadata = RecordMetadata.get(record);
-        Date ts = new Date(metadata.getBaseFields().getTimestamp());
-        return new Tuple2<>(
-          new Tuple3<>(metadata.getOrgID(), metadata.getMetricCanonicalType(), ts),
-          record);
-      }).groupByKey();
+    // convert them into (org, metricId, date) -> records
+    JavaPairRDD<RecordKey, Iterable<GenericRecord>> typeToRecord =
+      records.flatMapToPair(new RecordToKeyMapper()).groupByKey();
 
     // collect all the keys on THIS MACHINE. Its not completely scalable, but works enough #startup
-    List<Tuple3<String, String, Date>> types = typeToRecord.keys().collect();
+    List<RecordKey> types = typeToRecord.keys().collect();
+
+    List<RecordKey> known = types.stream().filter(key -> !key.isUnknown()).collect(toList());
     List<Tuple3<JavaRDD<Row>, StructType, Date>> schemas =
-      mapRecordsToTypesAndDay(context, types, typeToRecord);
+      mapRecordsToTypesAndDay(known, typeToRecord);
 
     // store the files by partition
     SQLContext sql = new SQLContext(context);
+    FileCleaner cleaner = new FileCleaner(loader.getFs());
+    Set<String> dirs = new HashSet<>();
     for (Tuple3<JavaRDD<Row>, StructType, Date> tuple : schemas) {
+      String dir = opts.archive() + "/" + FORMAT + "/" + tuple._3().toString();
+      dirs.add(dir);
       sql.createDataFrame(tuple._1(), tuple._2())
          .write()
          .format(FORMAT)
         .mode(SaveMode.Append)
+          // partitioning doesn't work well with drill reads, so we manually partition by date
 //      .partitionBy(AvroSchemaEncoder.ORG_ID_KEY, AvroSchemaEncoder.ORG_METRIC_TYPE_KEY, DATE_KEY)
-        .save(opts.archive() + "/" + tuple._3().toString());
+        .save(dir);
     }
+    cleaner.clean(dirs, FileCleaner.PARQUET_MIN_SIZE);
 
-    archiveCompletedFiles(fs, rddsAndSources._2(), opts.completed());
+    List<RecordKey> unknown = types.stream().filter(key -> key.isUnknown()).collect(toList());
+    cleaner.clean(handleUnknownFields(unknown, typeToRecord, sql), FileCleaner.ZERO_LENGTH_FILES);
+
+    loader.archive(opts.completed());
   }
 
   private List<Tuple3<JavaRDD<Row>, StructType, Date>> mapRecordsToTypesAndDay(
-    JavaSparkContext context,
-    List<Tuple3<String, String, Date>> types,
-    JavaPairRDD<Tuple3<String, String, Date>, Iterable<GenericRecord>> typeToRecord) {
+    List<RecordKey> types,
+    JavaPairRDD<RecordKey, Iterable<GenericRecord>> typeToRecord) {
     // get the schemas for each type
     LambdaClientProperties props = opts.props();
     SchemaStore store = props.createSchemaStore();
 
     List<Tuple3<JavaRDD<Row>, StructType, Date>> schemas = new ArrayList<>();
-    for (Tuple3<String, String, Date> type : types) {
+    for (RecordKey type : types) {
       JavaRDD<GenericRecord> grouped = getRddByKey(typeToRecord, type);
-      Metric metric = store.getMetricMetadata(type._1(), type._2());
+      String org = type.getOrgId();
+      String metricId = type.getMetricId();
+      Metric metric = store.getMetricMetadata(org, metricId);
       String schemaString = metric.getMetricSchema();
       // parser keeps state and we redefine stuff, so we need to create a new one each time
       Schema.Parser parser = new Schema.Parser();
       Schema parsed = parser.parse(schemaString);
-      Map<String, List<String>> canonicalToAliases = removeUnserializableAvroTypesFromMap(
-        metric.getMetadata().getCanonicalNamesToAliases());
+      Map<String, List<String>> canonicalToAliases = AvroSparkUtils
+        .removeUnserializableAvroTypesFromMap(
+          metric.getMetadata().getCanonicalNamesToAliases());
       JavaRDD<Row> rows =
-        grouped.map(new RowConverter(schemaString, canonicalToAliases, type._1(), type._2()));
-      schemas.add(new Tuple3<>(rows, mapSchemaToStruct(parsed), type._3()));
+        grouped.map(new RowConverter(schemaString, canonicalToAliases, org, metricId));
+      schemas.add(new Tuple3<>(rows, mapSchemaToStruct(parsed), type.getDate()));
     }
     return schemas;
   }
 
+  private Set<String> handleUnknownFields(List<RecordKey> unknown,
+    JavaPairRDD<RecordKey, Iterable<GenericRecord>> typeToRecord, SQLContext sql) {
+    // early exit, no unknown types
+    if (unknown.isEmpty()) {
+      return Collections.emptySet();
+    }
+
+    List<StructField> fields = new ArrayList<>();
+    addBaseFields(fields);
+    fields.add(DataTypes.createStructField(UNKNOWN_FIELDS_KEY,
+      new MapType(DataTypes.StringType, DataTypes.StringType, false), false));
+    StructType type = DataTypes.createStructType(fields);
+    Set<String> dirs = new HashSet<>();
+    for (RecordKey key : unknown) {
+      JavaRDD<GenericRecord> records = getRddByKey(typeToRecord, key);
+      JavaRDD<Row> rows = records.map(record -> {
+        RecordMetadata metadata = RecordMetadata.get(record);
+        return RowFactory.create(metadata.getOrgID(), metadata.getMetricCanonicalType(),
+          metadata.getBaseFields().getTimestamp(), metadata.getBaseFields().getUnknownFields());
+      });
+      String dir = opts.archive() + "/" + UNKNOWN_DATA_FORMAT + "/" + key.getDate();
+      dirs.add(dir);
+      sql.createDataFrame(rows, type).write().format("json").mode(SaveMode.Append).save(dir);
+    }
+    return dirs;
+  }
+
   private StructType mapSchemaToStruct(Schema parsed) {
     List<StructField> fields = new ArrayList<>();
-    // base fields that we have to have in each record
+    addBaseFields(fields);
+    streamSchemaWithoutBaseFields(parsed)
+      .forEach(field -> fields
+        .add(DataTypes.createStructField(field.name(), AvroSparkUtils.getSparkType(field), true)));
+    return DataTypes.createStructType(fields);
+  }
+
+  private void addBaseFields(List<StructField> fields) {
     fields.add(
       DataTypes.createStructField(AvroSchemaEncoder.ORG_ID_KEY, DataTypes.StringType, false));
     fields.add(DataTypes
       .createStructField(AvroSchemaEncoder.ORG_METRIC_TYPE_KEY, DataTypes.StringType, false));
     fields.add(
       DataTypes.createStructField(AvroSchemaEncoder.TIMESTAMP_KEY, DataTypes.LongType, false));
-    streamSchemaWithoutBaseFields(parsed)
-      .forEach(field -> fields
-        .add(DataTypes.createStructField(field.name(), AvroSparkUtils.getSparkType(field), true)));
-    return DataTypes.createStructType(fields);
   }
 
   private JavaRDD<GenericRecord> getRecords(JavaSparkContext context,
@@ -136,60 +175,6 @@ public class SparkETL {
 
     // combine and distinct the records
     return context.union(avroRecords).distinct();
-  }
-
-  private Tuple2<JavaPairRDD<String, PortableDataStream>[], List<Path>> loadRawFiles(
-    JavaSparkContext context, FileSystem fs, URI root) throws URISyntaxException, IOException {
-    // find all the files under the given root directory
-    Path rootPath = fs.resolvePath(new Path(root.getPath()));
-    List<Path> sources = new ArrayList<>();
-    RemoteIterator<LocatedFileStatus> iter = fs.listFiles(rootPath, true);
-    while (iter.hasNext()) {
-      LocatedFileStatus status = iter.next();
-      if (!status.isDirectory()) {
-        sources.add(status.getPath());
-      }
-    }
-
-    // get each file in the staging area
-    JavaPairRDD<String, PortableDataStream>[] stringRdds = new JavaPairRDD[sources.size()];
-    for (int i = 0; i < sources.size(); i++) {
-      stringRdds[i] = context.binaryFiles(sources.get(i).toString());
-    }
-    return new Tuple2<>(stringRdds, sources);
-  }
-
-  private void archiveCompletedFiles(FileSystem fs, List<Path> sources, String archiveDir)
-    throws IOException {
-    Path archive = new Path(opts.completed(), Long.toString(System.currentTimeMillis()));
-    boolean success = fs.mkdirs(archive);
-    if (!success) {
-      if (!fs.exists(archive)) {
-        throw new IOException("Could not create completed archive directory:" + archive);
-      }
-    }
-    for (Path source : sources) {
-      Path target = new Path(archive, source.getName());
-      if (!fs.rename(source, target)) {
-        throw new IOException("Could not archive " + source + " -> " + target);
-      }
-    }
-  }
-
-  /**
-   * We cannot serialize avro classes (e.g. avro lists) with the Java serializer, which is
-   * currently the only serializer that is supported for serializing closures
-   *
-   * @param map multimap of string -> string
-   * @return the same map, with as many of the same values as possible.
-   */
-  private Map<String, List<String>> removeUnserializableAvroTypesFromMap(
-    Map<String, List<String>> map) {
-    Map<String, List<String>> ret = new HashMap<>(map.size());
-    for (Map.Entry<String, List<String>> entry : map.entrySet()) {
-      ret.put(entry.getKey(), newArrayList(entry.getValue()));
-    }
-    return ret;
   }
 
   static Stream<Schema.Field> streamSchemaWithoutBaseFields(Schema schema) {

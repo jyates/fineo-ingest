@@ -124,14 +124,21 @@ public class EndToEndTestRunner {
   }
 
   public void run(Map<String, Object> json) throws Exception {
-    progress.sending(json);
+    register(json);
+    send(json);
+  }
 
+  public void register(Map<String, Object> json) throws Exception {
     updateSchemaStore(progress.store, json);
     this.status.updated();
+  }
 
+  public void send(Map<String, Object> json) throws Exception {
+    progress.sending(json);
     this.progress.sent(this.manager.send(json));
     this.status.sent();
   }
+
 
   public void validate() throws Exception {
     validateRawRecordToAvro();
@@ -237,10 +244,18 @@ public class EndToEndTestRunner {
       // search through each of the aliases to find a matching name in the record
       String aliasName = entry.getKey();
       String cname = schema.getCanonicalName(aliasName);
-      // ensure the value matches
-      assertNotNull("Didn't find a matching canonical name for " + aliasName, cname);
-      assertEquals("JSON: " + json + "\nRecord: " + record,
-        entry.getValue(), record.get(cname));
+      // its an unknown field, so make sure its present
+      if (cname == null) {
+        RecordMetadata metadata = RecordMetadata.get(record);
+        String value = metadata.getBaseFields().getUnknownFields().get(aliasName);
+        assertNotNull("Didn't get an 'unknown field' value for " + aliasName, value);
+        assertEquals(""+json.get(aliasName), value);
+      } else {
+        // ensure the value matches
+        assertNotNull("Didn't find a matching canonical name for " + aliasName, cname);
+        assertEquals("JSON: " + json + "\nRecord: " + record,
+          entry.getValue(), record.get(cname));
+      }
     });
     LOG.info("Record matches JSON!");
   }

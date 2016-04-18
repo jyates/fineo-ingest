@@ -63,6 +63,12 @@ public class TestEndToEndLambdaLocal {
   }
 
   public static TestState runTest(Map<String, Object> json) throws Exception {
+    TestState state = prepareTest();
+    run(state, json);
+    return state;
+  }
+
+  public static TestState prepareTest() throws Exception {
     Properties props = new Properties();
     // firehose outputs
     props
@@ -98,10 +104,9 @@ public class TestEndToEndLambdaLocal {
         }
       }), manager);
 
-    TestState state = new TestState(stageMap, runner, manager);
-    run(state, json);
-    return state;
+    return new TestState(stageMap, runner, manager);
   }
+
 
   public static void run(TestState state, Map<String, Object> json) throws Exception {
     EndToEndTestRunner runner = state.getRunner();

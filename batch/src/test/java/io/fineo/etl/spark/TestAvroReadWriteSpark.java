@@ -3,9 +3,11 @@ package io.fineo.etl.spark;
 import com.fasterxml.jackson.jr.ob.JSON;
 import io.fineo.etl.FieldTranslatorFactory;
 import io.fineo.etl.options.ETLOptions;
+import io.fineo.etl.spark.read.DataFrameLoader;
 import io.fineo.internal.customer.Metadata;
 import io.fineo.internal.customer.Metric;
 import io.fineo.lambda.configure.LambdaClientProperties;
+import io.fineo.lambda.e2e.EndToEndTestRunner;
 import io.fineo.lambda.e2e.TestEndToEndLambdaLocal;
 import io.fineo.lambda.util.LambdaTestUtils;
 import io.fineo.lambda.util.ResourceManager;
@@ -18,13 +20,11 @@ import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.fs.FileStatus;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.DataFrame;
 import org.apache.spark.sql.Row;
-import org.apache.spark.sql.SQLContext;
+import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema;
+import org.apache.spark.sql.types.DataTypes;
 import org.junit.After;
 import org.junit.ClassRule;
 import org.junit.Rule;
@@ -141,6 +141,74 @@ public class TestAvroReadWriteSpark {
     LOG.info(" ===> Test output stored at: " + sparkOutput);
   }
 
+  @Test
+  public void testUnknownFields() throws Exception {
+    File lambdaOutput = folder.newFolder("lambda-output");
+    File sparkOutput = folder.newFolder("spark-output");
+    Map<String, Object> json = LambdaTestUtils.createRecords(1, 1)[0];
+    TestEndToEndLambdaLocal.TestState state = TestEndToEndLambdaLocal.prepareTest();
+    EndToEndTestRunner runner = state.getRunner();
+    runner.setup();
+    // register some know fields
+    runner.register(json);
+
+    // create an unknown field
+    Map<String, Object> sent = new HashMap<>(json);
+    String unknownFieldName = "jfield-new";
+    sent.put(unknownFieldName, 1);
+    runner.send(sent);
+
+    runner.validate();
+    copyLamdaOutputToSparkInput(state, lambdaOutput);
+    state.getRunner().cleanup();
+
+    LambdaClientProperties props = state.getRunner().getProps();
+    ETLOptions opts = getOpts(lambdaOutput, sparkOutput, props);
+    runJob(opts);
+    SchemaStore store = props.createSchemaStore();
+    Map<String, Object> translated = translate(json, store);
+    // verify that we wrote the rest of the field correctly
+    DataFrameLoader loader = new DataFrameLoader(spark.jsc());
+    DataFrame frame = loader.loadFrameForKnownSchema(opts.archive());
+    for (Map.Entry<String, Object> entry : translated.entrySet()) {
+      if (entry.getKey().equals(unknownFieldName)) {
+        continue;
+      }
+      frame = where(frame, entry);
+    }
+
+    frame = select(frame, translated.keySet());
+    List<Row> rows = frame.collectAsList();
+    verifyMappedEvents(rows, translated);
+
+    // verify that we can read the hidden field correctly
+    frame = loader.loadFrameForUnknownSchema(opts.archive());
+    String fieldKey = SparkETL.UNKNOWN_FIELDS_KEY + "." + unknownFieldName;
+    // casting the unknown field to a an integer as well as reading it
+    frame = frame.select(new Column(ORG_ID_KEY), new Column(ORG_METRIC_TYPE_KEY),
+      new Column(fieldKey).cast(DataTypes.IntegerType));
+    rows = frame.collectAsList();
+    Map<String, Object> expected = new HashMap<>();
+    expected.put(ORG_ID_KEY, translated.get(ORG_ID_KEY));
+    expected.put(ORG_METRIC_TYPE_KEY, translated.get(ORG_METRIC_TYPE_KEY));
+    expected.put(unknownFieldName, 1);
+    verifyMappedEvents(rows, expected);
+
+    // verify that we can read both the known and unknown together
+    DataFrame known = loader.loadFrameForKnownSchema(opts.archive());
+    DataFrame unknown = loader.loadFrameForUnknownSchema(opts.archive());
+    DataFrame both = known.join(unknown,
+      JavaConversions.asScalaBuffer(newArrayList(ORG_ID_KEY, ORG_METRIC_TYPE_KEY, TIMESTAMP_KEY)));
+    String canonicalField =
+      translated.keySet().stream().filter(AvroSchemaEncoder.IS_BASE_FIELD.negate()).findFirst()
+                .get();
+    rows = select(both, ORG_ID_KEY, ORG_METRIC_TYPE_KEY, TIMESTAMP_KEY, fieldKey, canonicalField)
+      .collectAsList();
+    expected.put(unknownFieldName, "1");
+    expected.put(canonicalField, translated.get(canonicalField));
+    verifyMappedEvents(rows, expected);
+  }
+
   private Pair<TestEndToEndLambdaLocal.TestState, ETLOptions> run(File ingest, File archive,
     Map<String, Object> json) throws Exception {
     // run the basic ingest job
@@ -205,7 +273,7 @@ public class TestAvroReadWriteSpark {
         frame = select(frame, mapped.keySet());
         // map the fields to get exact matches for each row
         for (Map.Entry<String, Object> entry : mapped.entrySet()) {
-          frame = frame.where(new Column(entry.getKey()).equalTo(entry.getValue()));
+          frame = where(frame, entry);
         }
         rows.addAll(frame.collectAsList());
       }
@@ -215,6 +283,10 @@ public class TestAvroReadWriteSpark {
     List<Row> rows = readAllRows(opts.archive());
     assertRowsEqualsRawEvents(rows, props.createSchemaStore(), events);
     cleanupMetastore();
+  }
+
+  private DataFrame where(DataFrame frame, Map.Entry<String, Object> entry) {
+    return frame.where(new Column(entry.getKey()).equalTo(entry.getValue()));
   }
 
   private void logEvents(SchemaStore store, Map<String, Object>... events) {
@@ -283,17 +355,8 @@ public class TestAvroReadWriteSpark {
   }
 
   private List<DataFrame> getFrames(String fileDir) throws IOException {
-    SQLContext sql = new SQLContext(spark.jsc());
-    sql.setConf("spark.sql.parquet.mergeSchema", "true");
-    FileSystem fs = FileSystem.get(spark.jsc().hadoopConfiguration());
-    Path output = new Path(fileDir);
-    FileStatus[] files = fs.listStatus(output);
-    List<DataFrame> frames = new ArrayList<>();
-    for (int i = 0; i < files.length; i++) {
-      FileStatus file = files[i];
-      frames.add(sql.read().format("parquet").load(file.getPath().toUri().toString()));
-    }
-    return frames;
+    DataFrameLoader loader = new DataFrameLoader(spark.jsc());
+    return Arrays.asList(loader.loadFrameForKnownSchema(fileDir));
   }
 
   private void assertRowsEqualsRawEvents(List<Row> rows, SchemaStore store,
@@ -308,7 +371,6 @@ public class TestAvroReadWriteSpark {
 
   private void verifyMappedEvents(List<Row> rows, Map<String, Object>... mappedEvents) {
     assertEquals("Got unexpected number of rows: " + rows, mappedEvents.length, rows.size());
-
     for (int i = 0; i < mappedEvents.length; i++) {
       Map<String, Object> fields = mappedEvents[i];
       Row row = rows.get(i);
