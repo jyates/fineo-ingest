@@ -68,6 +68,11 @@ public class LambdaTestUtils {
       LOG.debug("Using UUID - " + uuid);
       Map<String, Object> map =
         SchemaTestUtils.getBaseFields("org" + i + "_" + uuid, "mt" + i + "_" + uuid);
+      try {
+        Thread.currentThread().sleep(1);
+      } catch (InterruptedException e) {
+        throw new RuntimeException(e);
+      }
       for (int j = 0; j < fieldCount; j++) {
         map.put("a" + j, previous);
         previous = !previous;
