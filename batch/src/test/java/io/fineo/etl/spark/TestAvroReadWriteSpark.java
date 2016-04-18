@@ -59,6 +59,7 @@ import static org.junit.Assert.assertEquals;
 public class TestAvroReadWriteSpark {
 
   private static final Log LOG = LogFactory.getLog(TestAvroReadWriteSpark.class);
+  private static final String DIR_PROPERTY = "fineo.spark.dir";
 
   @ClassRule
   public static LocalSparkRule spark = new LocalSparkRule(conf -> {
@@ -111,7 +112,10 @@ public class TestAvroReadWriteSpark {
   @Test
   public void testIngestMultipleRecords() throws Exception {
     File lambdaOutput = folder.newFolder("lambda-output");
-    File sparkOutput = folder.newFolder("spark-output");
+    String sparkOutputDir = System.getProperty(DIR_PROPERTY);
+    File sparkOutput = sparkOutputDir != null ?
+                       new File(sparkOutputDir) :
+                       folder.newFolder("spark-output");
     Map<String, Object>[] records = LambdaTestUtils.createRecords(2, 1);
     TestEndToEndLambdaLocal.TestState state =
       runWithRecordsAndWriteToFile(lambdaOutput, records[0]);
@@ -121,10 +125,11 @@ public class TestAvroReadWriteSpark {
     ETLOptions opts = getOpts(lambdaOutput, sparkOutput, props);
     runJob(opts);
 
-    // verification happens in the drill testing, which we cannot do here b/c of jvm conflicts
-    // however, we do write the expected output so we can verify it later
+    verifyETLOutput(new ImmutablePair<>(state, opts), records);
+
+    // drill read verification happens in the drill-testi, which we cannot do here b/c of
+    // jvm conflicts however, we do write the expected output so we can verify it later
     SchemaStore store = props.createSchemaStore();
-    logEvents(store, records);
     List<Map<String, Object>> events = new ArrayList<>();
     for (Map<String, Object> event : records) {
       Map<String, Object> translated = translate(event, store);
@@ -134,7 +139,6 @@ public class TestAvroReadWriteSpark {
     File info = new File(sparkOutput, "info.json");
     json.write(events, info);
     LOG.info(" ===> Test output stored at: " + sparkOutput);
-    verifyETLOutput(new ImmutablePair<>(state, opts), records);
   }
 
   private Pair<TestEndToEndLambdaLocal.TestState, ETLOptions> run(File ingest, File archive,
