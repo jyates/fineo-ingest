@@ -25,9 +25,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-public class TestReadSparkOutput {
+public class ITReadSparkOutput {
 
-  private static final Log LOG = LogFactory.getLog(TestReadSparkOutput.class);
+  private static final Log LOG = LogFactory.getLog(ITReadSparkOutput.class);
   private static final String DIR_PROPERTY = "fineo.spark.dir";
   private static final String INFO_FILE = "info.json";
   private static final String DATA_DIR = "output";

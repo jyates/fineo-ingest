@@ -23,7 +23,6 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.DataFrame;
 import org.apache.spark.sql.Row;
-import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema;
 import org.apache.spark.sql.types.DataTypes;
 import org.junit.After;
 import org.junit.ClassRule;
@@ -56,9 +55,9 @@ import static org.junit.Assert.assertEquals;
 /**
  * Simple test class that ensures we can read/write avro files from spark
  */
-public class TestAvroReadWriteSpark {
+public class ITAvroReadWriteSpark {
 
-  private static final Log LOG = LogFactory.getLog(TestAvroReadWriteSpark.class);
+  private static final Log LOG = LogFactory.getLog(ITAvroReadWriteSpark.class);
   private static final String DIR_PROPERTY = "fineo.spark.dir";
 
   @ClassRule
