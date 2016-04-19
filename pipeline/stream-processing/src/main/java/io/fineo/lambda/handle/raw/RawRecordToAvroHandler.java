@@ -18,9 +18,9 @@ import org.apache.commons.logging.LogFactory;
 import java.io.IOException;
 import java.util.Map;
 
-import static io.fineo.lambda.configure.FirehoseModule.FIREHOSE_ARCHIVE_NAME;
-import static io.fineo.lambda.configure.FirehoseModule.FIREHOSE_COMMIT_ERROR_NAME;
-import static io.fineo.lambda.configure.FirehoseModule.FIREHOSE_MALFORMED_RECORD_NAME;
+import static io.fineo.lambda.configure.FirehoseModule.FIREHOSE_ARCHIVE_STREAM;
+import static io.fineo.lambda.configure.FirehoseModule.FIREHOSE_COMMIT_ERROR_STREAM;
+import static io.fineo.lambda.configure.FirehoseModule.FIREHOSE_MALFORMED_RECORDS_STREAM;
 
 
 /**
@@ -45,9 +45,9 @@ public class RawRecordToAvroHandler extends KinesisHandler {
 
   @Inject
   public RawRecordToAvroHandler(
-    @Named(FIREHOSE_ARCHIVE_NAME) Provider<FirehoseBatchWriter> archive,
-    @Named(FIREHOSE_MALFORMED_RECORD_NAME) Provider<FirehoseBatchWriter> processErrors,
-    @Named(FIREHOSE_COMMIT_ERROR_NAME) Provider<FirehoseBatchWriter> commitFailures,
+    @Named(FIREHOSE_ARCHIVE_STREAM) Provider<FirehoseBatchWriter> archive,
+    @Named(FIREHOSE_MALFORMED_RECORDS_STREAM) Provider<FirehoseBatchWriter> processErrors,
+    @Named(FIREHOSE_COMMIT_ERROR_STREAM) Provider<FirehoseBatchWriter> commitFailures,
     JsonParser parser,
     RawJsonToRecordHandler jsonHandler) {
     super(LambdaClientProperties.RAW_PREFIX, archive, processErrors, commitFailures);

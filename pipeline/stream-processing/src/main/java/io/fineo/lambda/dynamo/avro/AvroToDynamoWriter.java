@@ -55,8 +55,7 @@ public class AvroToDynamoWriter {
   private final DynamoTableManager.DynamoTableCreator tables;
   private final AwsAsyncSubmitter<UpdateItemRequest, UpdateItemResult, GenericRecord> submitter;
 
-  @VisibleForTesting
-  AvroToDynamoWriter(AmazonDynamoDBAsyncClient client, String dynamoIngestTablePrefix, long
+  public AvroToDynamoWriter(AmazonDynamoDBAsyncClient client, String dynamoIngestTablePrefix, long
     writeMax, long readMax, long maxRetries) {
     this.submitter = new AwsAsyncSubmitter<>(maxRetries, client::updateItemAsync);
     this.tables = new DynamoTableManager(client, dynamoIngestTablePrefix).creator(readMax,

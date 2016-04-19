@@ -11,7 +11,6 @@ import io.fineo.lambda.dynamo.DynamoTestConfiguratorModule;
 import io.fineo.lambda.dynamo.rule.AwsDynamoResource;
 import io.fineo.lambda.dynamo.rule.AwsDynamoSchemaTablesResource;
 import io.fineo.schema.store.SchemaStore;
-import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;

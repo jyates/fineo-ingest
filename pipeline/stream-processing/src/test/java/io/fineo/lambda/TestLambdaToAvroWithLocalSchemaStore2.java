@@ -260,11 +260,11 @@ public class TestLambdaToAvroWithLocalSchemaStore2 {
           bind(SchemaStore.class).toProvider(store);
         }
       },
-      new InstanceToNamed(FirehoseModule.FIREHOSE_ARCHIVE_NAME, firehoses.archive(),
+      new InstanceToNamed(FirehoseModule.FIREHOSE_ARCHIVE_STREAM, firehoses.archive(),
         FirehoseBatchWriter.class),
-      new InstanceToNamed<>(FirehoseModule.FIREHOSE_COMMIT_ERROR_NAME, firehoses.commit(),
+      new InstanceToNamed<>(FirehoseModule.FIREHOSE_COMMIT_ERROR_STREAM, firehoses.commit(),
         FirehoseBatchWriter.class),
-      new InstanceToNamed<>(FirehoseModule.FIREHOSE_MALFORMED_RECORD_NAME, firehoses.process(),
+      new InstanceToNamed<>(FirehoseModule.FIREHOSE_MALFORMED_RECORDS_STREAM, firehoses.process(),
         FirehoseBatchWriter.class),
       new NullableInstanceModule<>(producer, KinesisProducer.class),
       new PropertiesModule(props));

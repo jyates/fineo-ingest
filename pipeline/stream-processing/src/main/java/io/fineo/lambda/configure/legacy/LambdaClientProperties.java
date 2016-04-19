@@ -180,8 +180,4 @@ public class LambdaClientProperties {
   public String getTestPrefix() {
     return props.getProperty(TEST_PREFIX);
   }
-
-  public Properties getPropertiesForTesting() {
-    return props;
-  }
 }

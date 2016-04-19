@@ -17,9 +17,9 @@ import java.util.function.Function;
  */
 public class FirehoseModule extends AbstractModule {
 
-  public static final String FIREHOSE_ARCHIVE_NAME = "fineo.firehose.archive";
-  public static final String FIREHOSE_MALFORMED_RECORD_NAME = "fineo.firehose.error.malformed";
-  public static final String FIREHOSE_COMMIT_ERROR_NAME = "fineo.firehose.error.commit";
+  public static final String FIREHOSE_ARCHIVE_STREAM = "fineo.firehose.archive";
+  public static final String FIREHOSE_MALFORMED_RECORDS_STREAM = "fineo.firehose.error.malformed";
+  public static final String FIREHOSE_COMMIT_ERROR_STREAM = "fineo.firehose.error.commit";
   public static final String FIREHOSE_ARCHIVE_FUNCTION = "firehose.archive.function";
   public static final String FIREHOSE_MALFORMED_FUNCTION = "firehose.malformed.function";
   public static final String FIREHOSE_COMMIT_FUNCTION = "firehose.commit.function";
@@ -35,7 +35,7 @@ public class FirehoseModule extends AbstractModule {
   }
 
   @Provides
-  @Named(FIREHOSE_ARCHIVE_NAME)
+  @Named(FIREHOSE_ARCHIVE_STREAM)
   @Inject
   @Singleton
   public FirehoseBatchWriter getArchiveWriter(
@@ -46,7 +46,7 @@ public class FirehoseModule extends AbstractModule {
   }
 
   @Provides
-  @Named(FIREHOSE_MALFORMED_RECORD_NAME)
+  @Named(FIREHOSE_MALFORMED_RECORDS_STREAM)
   @Inject
   @Singleton
   public FirehoseBatchWriter getProcessingErrorWriter(
@@ -57,7 +57,7 @@ public class FirehoseModule extends AbstractModule {
   }
 
   @Provides
-  @Named(FIREHOSE_COMMIT_ERROR_NAME)
+  @Named(FIREHOSE_COMMIT_ERROR_STREAM)
   @Inject
   @Singleton
   public FirehoseBatchWriter getCommitErrorWriter(
