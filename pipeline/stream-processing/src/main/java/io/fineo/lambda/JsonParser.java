@@ -1,7 +1,8 @@
-package io.fineo.etl.processing;
+package io.fineo.lambda;
 
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.AbstractIterator;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -9,8 +10,6 @@ import org.apache.commons.logging.LogFactory;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -33,16 +32,25 @@ public class JsonParser {
 
   public Iterable<Map<String, Object>> parse(InputStream stream) throws IOException {
     com.fasterxml.jackson.core.JsonParser jp = jsonFactory.createParser(logStream(stream));
-    com.fasterxml.jackson.core.JsonToken token;
-    List<Map<String, Object>> messages = new ArrayList<>();
-    while ((token = jp.nextToken()) != null) {
-      switch (token) {
-        case START_OBJECT:
-          messages.add(jp.readValueAs(Map.class));
-          break;
+    return () -> new AbstractIterator<Map<String, Object>>() {
+      com.fasterxml.jackson.core.JsonToken token;
+
+      @Override
+      protected Map<String, Object> computeNext() {
+        try {
+          while ((token = jp.nextToken()) != null) {
+            switch (token) {
+              case START_OBJECT:
+                return jp.readValueAs(Map.class);
+            }
+          }
+        } catch (IOException e) {
+          throw new RuntimeException(e);
+        }
+        endOfData();
+        return null;
       }
-    }
-    return messages;
+    };
   }
 
   private InputStream logStream(InputStream stream) throws IOException {

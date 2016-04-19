@@ -1,7 +1,7 @@
 package io.fineo.etl;
 
 import io.fineo.internal.customer.Metric;
-import io.fineo.lambda.configure.LambdaClientProperties;
+import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import io.fineo.schema.avro.AvroSchemaEncoder;
 import io.fineo.schema.avro.AvroSchemaManager;
 import io.fineo.schema.store.SchemaStore;

@@ -17,6 +17,7 @@
   <modules>
     <module>stream-processing</module>
     <module>pipeline-utils</module>
+    <module>batch-processing</module>
   </modules>
 
   <profiles>

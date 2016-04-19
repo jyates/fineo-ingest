@@ -4,8 +4,8 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Provides;
 import com.google.inject.name.Named;
-import io.fineo.lambda.configure.AwsDynamoConfigurator;
-import io.fineo.lambda.configure.LambdaClientProperties;
+import io.fineo.lambda.configure.dynamo.AwsDynamoConfigurator;
+import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 
 public class DynamoTestConfiguratorModule extends AbstractModule {
   @Override

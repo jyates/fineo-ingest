@@ -1,4 +1,4 @@
-package io.fineo.lambda.configure;
+package io.fineo.lambda.configure.dynamo;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 

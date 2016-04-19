@@ -3,7 +3,7 @@ package io.fineo.lambda;
 import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
 import com.google.common.annotations.VisibleForTesting;
 import io.fineo.lambda.aws.MultiWriteFailures;
-import io.fineo.lambda.configure.LambdaClientProperties;
+import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import io.fineo.lambda.firehose.FirehoseBatchWriter;
 import io.fineo.lambda.test.TestableLambda;
 import org.apache.avro.generic.GenericRecord;
@@ -15,7 +15,7 @@ import java.nio.ByteBuffer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import static io.fineo.lambda.configure.LambdaClientProperties.StreamType;
+import io.fineo.lambda.configure.legacy.StreamType;
 
 /**
  * Base class for AWS Lambda functions that do ingest. Handles things like iterating events,

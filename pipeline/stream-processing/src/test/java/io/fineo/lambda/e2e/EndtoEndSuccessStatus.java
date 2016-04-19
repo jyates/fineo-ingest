@@ -1,6 +1,6 @@
 package io.fineo.lambda.e2e;
 
-import io.fineo.lambda.configure.LambdaClientProperties;
+import io.fineo.lambda.configure.legacy.StreamType;
 import io.fineo.schema.Pair;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -16,7 +16,7 @@ public class EndtoEndSuccessStatus {
 
   private boolean updated;
   private boolean messageSent;
-  private List<Pair<String, LambdaClientProperties.StreamType>> correctFirehoses = new
+  private List<Pair<String, StreamType>> correctFirehoses = new
     ArrayList<>();
   private boolean rawToAvro;
   private boolean avroToStorage;
@@ -30,7 +30,7 @@ public class EndtoEndSuccessStatus {
     this.messageSent = true;
   }
 
-  public void firehoseStreamCorrect(String stream, LambdaClientProperties.StreamType type) {
+  public void firehoseStreamCorrect(String stream, StreamType type) {
     this.correctFirehoses.add(new Pair<>(stream, type));
   }
 
@@ -61,7 +61,7 @@ public class EndtoEndSuccessStatus {
     return messageSent;
   }
 
-  public List<Pair<String, LambdaClientProperties.StreamType>> getCorrectFirehoses() {
+  public List<Pair<String, StreamType>> getCorrectFirehoses() {
     return correctFirehoses;
   }
 

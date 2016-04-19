@@ -4,7 +4,7 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import io.fineo.lambda.LambdaAvroToStorage;
-import io.fineo.lambda.configure.LambdaClientProperties;
+import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import io.fineo.lambda.LambdaRawRecordToAvro;
 import io.fineo.lambda.configure.PropertiesModule;
 import io.fineo.lambda.e2e.resources.IngestUtil;
@@ -23,10 +23,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
-import static io.fineo.lambda.configure.LambdaClientProperties.RAW_PREFIX;
-import static io.fineo.lambda.configure.LambdaClientProperties.STAGED_PREFIX;
-import static io.fineo.lambda.configure.LambdaClientProperties.StreamType.ARCHIVE;
-import static io.fineo.lambda.configure.LambdaClientProperties
+import static io.fineo.lambda.configure.legacy.LambdaClientProperties.RAW_PREFIX;
+import static io.fineo.lambda.configure.legacy.LambdaClientProperties.STAGED_PREFIX;
+import static io.fineo.lambda.configure.legacy.StreamType.ARCHIVE;
+import static io.fineo.lambda.configure.legacy.LambdaClientProperties
   .getFirehoseStreamPropertyVisibleForTesting;
 
 /**

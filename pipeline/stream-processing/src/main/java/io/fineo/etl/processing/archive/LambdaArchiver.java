@@ -1,9 +1,10 @@
-package io.fineo.lambda.archive;
+package io.fineo.etl.processing.archive;
 
 import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
 import com.amazonaws.services.lambda.runtime.events.SNSEvent;
 import com.google.common.base.Functions;
-import io.fineo.lambda.configure.LambdaClientProperties;
+import io.fineo.lambda.configure.legacy.LambdaClientProperties;
+import io.fineo.lambda.configure.legacy.StreamType;
 import io.fineo.lambda.firehose.FirehoseBatchWriter;
 
 import java.io.IOException;
@@ -29,7 +30,7 @@ public class LambdaArchiver {
             throw new RuntimeException(e);
           }
         }
-        String name = props.getFirehoseStreamName(phase, LambdaClientProperties.StreamType.ARCHIVE);
+        String name = props.getFirehoseStreamName(phase, StreamType.ARCHIVE);
         return new FirehoseBatchWriter(props,
           (Function<ByteBuffer, ByteBuffer>) Functions.identity(),
           name);

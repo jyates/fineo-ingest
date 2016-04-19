@@ -4,7 +4,8 @@ import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
 import io.fineo.aws.rule.AwsCredentialResource;
-import io.fineo.lambda.configure.LambdaClientProperties;
+import io.fineo.lambda.configure.legacy.LambdaClientProperties;
+import io.fineo.lambda.configure.legacy.StreamType;
 import io.fineo.lambda.e2e.EndToEndTestRunner;
 import io.fineo.lambda.e2e.EndtoEndSuccessStatus;
 import io.fineo.lambda.e2e.resources.AwsResource;
@@ -170,8 +171,8 @@ public class AwsResourceManager extends BaseResourceManager {
   }
 
   private void cloneS3(String stage) throws IOException {
-    List<Pair<String, LambdaClientProperties.StreamType>> toClone = new ArrayList<>(3);
-    for (LambdaClientProperties.StreamType t : LambdaClientProperties.StreamType.values()) {
+    List<Pair<String, StreamType>> toClone = new ArrayList<>(3);
+    for (StreamType t : StreamType.values()) {
       LOG.debug(format("Cloning s3 [%s => %s]", stage, t));
       toClone.add(new Pair<>(stage, t));
     }

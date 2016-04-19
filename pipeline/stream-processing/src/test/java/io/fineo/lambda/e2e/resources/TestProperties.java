@@ -1,7 +1,7 @@
 package io.fineo.lambda.e2e.resources;
 
 import com.google.common.collect.Lists;
-import io.fineo.lambda.configure.LambdaClientProperties;
+import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 
 import java.time.Duration;
 import java.util.List;

@@ -1,0 +1,27 @@
+package io.fineo.lambda.configure;
+
+import com.google.inject.AbstractModule;
+
+public class SingleInstanceModule<T> extends AbstractModule {
+
+  protected final Class<T> clazz;
+  protected final T inst;
+
+  public SingleInstanceModule(T inst) {
+    this(inst, (Class<T>) inst.getClass());
+  }
+
+  public SingleInstanceModule(T inst, Class<T> clazz) {
+    this.inst = inst;
+    this.clazz = clazz;
+  }
+
+  @Override
+  protected void configure() {
+    bind(clazz).toInstance(inst);
+  }
+
+  public static <T> SingleInstanceModule<T> instanceModule(T instance) {
+    return new SingleInstanceModule<>(instance);
+  }
+}

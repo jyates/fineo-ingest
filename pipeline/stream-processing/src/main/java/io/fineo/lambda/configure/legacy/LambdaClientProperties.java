@@ -1,20 +1,23 @@
-package io.fineo.lambda.configure;
+package io.fineo.lambda.configure.legacy;
 
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.amazonaws.services.kinesis.AmazonKinesisAsyncClient;
 import com.amazonaws.services.kinesisfirehose.AmazonKinesisFirehoseAsyncClient;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Preconditions;
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
 import com.google.inject.Provider;
+import io.fineo.lambda.configure.AwsBaseComponentModule;
+import io.fineo.lambda.configure.DefaultCredentialsModule;
+import io.fineo.lambda.configure.LambdaModule;
+import io.fineo.lambda.configure.PropertiesLoaderUtil;
+import io.fineo.lambda.configure.dynamo.DynamoRegionConfigurator;
 import io.fineo.schema.store.SchemaStore;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.Properties;
 
 /**
@@ -22,12 +25,10 @@ import java.util.Properties;
  */
 public class LambdaClientProperties {
 
-  private static final String PROP_FILE_NAME = "fineo-lambda.properties";
   public static final String TEST_PREFIX = "fineo.integration.test.prefix";
-
-  public final java.lang.String KINESIS_URL = "fineo.kinesis.url";
+  public static final String KINESIS_URL = "fineo.kinesis.url";
   public static final String KINESIS_PARSED_RAW_OUT_STREAM_NAME = "fineo.kinesis.parsed";
-  public final String KINESIS_RETRIES = "fineo.kinesis.retries";
+  public static final String KINESIS_RETRIES = "fineo.kinesis.retries";
 
   public static final String DYNAMO_REGION = "fineo.dynamo.region";
   public static final String DYNAMO_URL_FOR_TESTING = "fineo.dynamo.testing.url";
@@ -75,17 +76,18 @@ public class LambdaClientProperties {
   }
 
   public static LambdaClientProperties load() throws IOException {
-    return load(PROP_FILE_NAME);
+    return load(PropertiesLoaderUtil.load());
   }
 
   private static LambdaClientProperties load(String file) throws IOException {
-    InputStream input = LambdaClientProperties.class.getClassLoader().getResourceAsStream(file);
-    Preconditions.checkArgument(input != null, "Could not load properties file: " + file);
-    Properties props = new Properties();
-    props.load(input);
+    Properties props = PropertiesLoaderUtil.load(file);
+    return load(props);
+  }
+
+  private static LambdaClientProperties load(Properties props){
     Injector injector =
       Guice.createInjector(new LambdaModule(props), new DefaultCredentialsModule(),
-        new DynamoModule(), new DynamoRegionConfigurator());
+        new AwsBaseComponentModule(), new DynamoRegionConfigurator());
     return injector.getInstance(LambdaClientProperties.class);
   }
 
@@ -179,17 +181,7 @@ public class LambdaClientProperties {
     return props.getProperty(TEST_PREFIX);
   }
 
-  public enum StreamType {
-    ARCHIVE("archive"), PROCESSING_ERROR("error"), COMMIT_ERROR("error.commit");
-
-    private final String suffix;
-
-    StreamType(String suffix) {
-      this.suffix = suffix;
-    }
-
-    String getPropertyKey(String prefix) {
-      return prefix + "." + suffix;
-    }
+  public Properties getPropertiesForTesting() {
+    return props;
   }
 }

@@ -4,7 +4,8 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import io.fineo.internal.customer.Metadata;
 import io.fineo.internal.customer.Metric;
-import io.fineo.lambda.configure.LambdaClientProperties;
+import io.fineo.lambda.configure.legacy.LambdaClientProperties;
+import io.fineo.lambda.configure.legacy.StreamType;
 import io.fineo.lambda.util.LambdaTestUtils;
 import io.fineo.lambda.util.ResourceManager;
 import io.fineo.lambda.util.SchemaUtil;
@@ -28,11 +29,11 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static io.fineo.lambda.configure.LambdaClientProperties.RAW_PREFIX;
-import static io.fineo.lambda.configure.LambdaClientProperties.STAGED_PREFIX;
-import static io.fineo.lambda.configure.LambdaClientProperties.StreamType.ARCHIVE;
-import static io.fineo.lambda.configure.LambdaClientProperties.StreamType.COMMIT_ERROR;
-import static io.fineo.lambda.configure.LambdaClientProperties.StreamType.PROCESSING_ERROR;
+import static io.fineo.lambda.configure.legacy.LambdaClientProperties.RAW_PREFIX;
+import static io.fineo.lambda.configure.legacy.LambdaClientProperties.STAGED_PREFIX;
+import static io.fineo.lambda.configure.legacy.StreamType.ARCHIVE;
+import static io.fineo.lambda.configure.legacy.StreamType.COMMIT_ERROR;
+import static io.fineo.lambda.configure.legacy.StreamType.PROCESSING_ERROR;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -210,8 +211,8 @@ public class EndToEndTestRunner {
   }
 
   private void verifyNoFirehoseWrites(Function<List<ByteBuffer>, String> errorResult, String stage,
-    LambdaClientProperties.StreamType... streams) {
-    for (LambdaClientProperties.StreamType stream : streams) {
+    StreamType... streams) {
+    for (StreamType stream : streams) {
       LOG.debug("Checking stream: " + stage + "-" + stream + " has no writes...");
       empty(errorResult, manager.getFirehoseWrites(props.getFirehoseStreamName(stage, stream)));
       LOG.debug("Marking stream: " + stage + "-" + stream + " correct");

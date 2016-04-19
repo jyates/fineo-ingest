@@ -9,7 +9,6 @@ import com.google.inject.Provider;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import com.google.inject.name.Named;
-import com.google.inject.name.Names;
 import io.fineo.schema.aws.dynamodb.DynamoDBRepository;
 import io.fineo.schema.store.SchemaStore;
 import org.apache.commons.logging.Log;
@@ -18,8 +17,8 @@ import org.schemarepo.ValidatorFactory;
 
 import java.util.Properties;
 
-import static io.fineo.lambda.configure.LambdaClientProperties.DYNAMO_SCHEMA_STORE_TABLE;
-import static io.fineo.lambda.configure.LambdaClientProperties.DYNAMO_WRITE_LIMIT;
+import static io.fineo.lambda.configure.legacy.LambdaClientProperties.DYNAMO_SCHEMA_STORE_TABLE;
+import static io.fineo.lambda.configure.legacy.LambdaClientProperties.DYNAMO_WRITE_LIMIT;
 
 public class LambdaModule extends AbstractModule {
   private static final Log LOG = LogFactory.getLog(LambdaModule.class);
@@ -33,7 +32,6 @@ public class LambdaModule extends AbstractModule {
   protected void configure() {
     // legacy binding for reading properties directly
     bind(Properties.class).toInstance(props);
-    Names.bindProperties(this.binder(), props);
   }
 
   @Provides

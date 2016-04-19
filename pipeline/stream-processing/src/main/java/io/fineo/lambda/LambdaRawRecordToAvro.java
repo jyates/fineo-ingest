@@ -3,10 +3,10 @@ package io.fineo.lambda;
 import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
 import com.fasterxml.jackson.databind.util.ByteBufferBackedInputStream;
 import com.google.common.annotations.VisibleForTesting;
-import io.fineo.etl.processing.JsonParser;
 import io.fineo.internal.customer.Malformed;
 import io.fineo.lambda.aws.MultiWriteFailures;
-import io.fineo.lambda.configure.LambdaClientProperties;
+import io.fineo.lambda.configure.legacy.LambdaClientProperties;
+import io.fineo.lambda.configure.legacy.StreamType;
 import io.fineo.lambda.firehose.FirehoseBatchWriter;
 import io.fineo.lambda.kinesis.KinesisProducer;
 import io.fineo.schema.MapRecord;
@@ -95,7 +95,7 @@ public class LambdaRawRecordToAvro extends IngestBaseLambda implements StreamPro
   @Override
   protected Supplier<FirehoseBatchWriter> getProcessingErrorStream() {
     return this.lazyFirehoseBatchWriter(props.getFirehoseStreamName(this.phaseName,
-      LambdaClientProperties.StreamType.PROCESSING_ERROR), transform);
+      StreamType.PROCESSING_ERROR), transform);
   }
 
   private Function<ByteBuffer, ByteBuffer> transform = data -> {

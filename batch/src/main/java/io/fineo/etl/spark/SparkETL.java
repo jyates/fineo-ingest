@@ -6,7 +6,7 @@ import io.fineo.etl.spark.fs.FileCleaner;
 import io.fineo.etl.spark.fs.RddLoader;
 import io.fineo.etl.spark.util.AvroSparkUtils;
 import io.fineo.internal.customer.Metric;
-import io.fineo.lambda.configure.LambdaClientProperties;
+import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import io.fineo.schema.avro.AvroSchemaEncoder;
 import io.fineo.schema.avro.RecordMetadata;
 import io.fineo.schema.store.SchemaStore;

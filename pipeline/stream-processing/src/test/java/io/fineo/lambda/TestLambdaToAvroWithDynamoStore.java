@@ -2,9 +2,7 @@ package io.fineo.lambda;
 
 import com.amazonaws.services.dynamodbv2.util.TableUtils;
 import io.fineo.aws.AwsDependentTests;
-import io.fineo.lambda.configure.LambdaClientProperties;
-import io.fineo.lambda.configure.LambdaModule;
-import io.fineo.lambda.configure.PropertiesModule;
+import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import io.fineo.lambda.dynamo.rule.AwsDynamoSchemaTablesResource;
 import io.fineo.lambda.dynamo.rule.AwsDynamoResource;
 import org.junit.ClassRule;

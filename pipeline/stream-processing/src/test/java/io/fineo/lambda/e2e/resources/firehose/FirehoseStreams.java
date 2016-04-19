@@ -1,7 +1,7 @@
 package io.fineo.lambda.e2e.resources.firehose;
 
 import com.google.common.base.Preconditions;
-import io.fineo.lambda.configure.LambdaClientProperties;
+import io.fineo.lambda.configure.legacy.StreamType;
 import io.fineo.lambda.e2e.resources.TestProperties;
 import io.fineo.lambda.util.Join;
 import io.fineo.schema.Pair;
@@ -20,11 +20,11 @@ import java.util.stream.Collectors;
  */
 public class FirehoseStreams {
 
-  private Map<Pair<String, LambdaClientProperties.StreamType>, FirehoseInfo> streams =
+  private Map<Pair<String, StreamType>, FirehoseInfo> streams =
     new ConcurrentHashMap<>();
   private Map<String, S3LocationInfo> s3LocationReferenceCounter = new ConcurrentHashMap<>();
 
-  public void store(Pair<String, LambdaClientProperties.StreamType> stream, String streamName,
+  public void store(Pair<String, StreamType> stream, String streamName,
     String s3Path) {
     FirehoseInfo info = new FirehoseInfo(streamName, s3Path);
     assert streams.putIfAbsent(stream, info) == null :
@@ -87,7 +87,7 @@ public class FirehoseStreams {
    * @return get the S3 output path for a given stream. May not be unique with other stream
    * locations
    */
-  public String getS3Path(Pair<String, LambdaClientProperties.StreamType> stream) {
+  public String getS3Path(Pair<String, StreamType> stream) {
     FirehoseInfo info = streams.get(stream);
     return info == null ? null : info.s3Path;
   }
@@ -115,7 +115,7 @@ public class FirehoseStreams {
       S3LocationInfo s3 = s3LocationReferenceCounter.get(info.s3Path);
       return s3.referenceCounter.get() == 0;
     }).map(entry -> {
-      Pair<String, LambdaClientProperties.StreamType> streamId = entry.getKey();
+      Pair<String, StreamType> streamId = entry.getKey();
       FirehoseInfo info = entry.getValue();
       S3LocationInfo s3 = s3LocationReferenceCounter.get(info.s3Path);
       return "(" + streamId + ") -> (" + info.streamName + ", " + info.s3Path + ": Cnt: " + s3

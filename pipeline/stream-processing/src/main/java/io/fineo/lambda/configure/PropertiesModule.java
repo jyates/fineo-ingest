@@ -5,6 +5,9 @@ import com.google.inject.name.Names;
 
 import java.util.Properties;
 
+/**
+ * Simple module that loads the passed properties into the namespace
+ */
 public class PropertiesModule extends AbstractModule {
 
   private final Properties props;
@@ -15,7 +18,6 @@ public class PropertiesModule extends AbstractModule {
 
   @Override
   protected void configure() {
-    bind(Properties.class).toInstance(props);
     Names.bindProperties(this.binder(), props);
   }
 }

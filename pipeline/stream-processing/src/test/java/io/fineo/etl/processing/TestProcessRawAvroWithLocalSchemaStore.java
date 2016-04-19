@@ -3,7 +3,7 @@ package io.fineo.etl.processing;
 import com.fasterxml.jackson.jr.ob.JSON;
 import com.google.common.collect.Lists;
 import io.fineo.etl.processing.raw.ProcessJsonToAvro;
-import io.fineo.lambda.configure.LambdaClientProperties;
+import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.lambda.e2e.EndToEndTestRunner;
 import io.fineo.lambda.util.LambdaTestUtils;

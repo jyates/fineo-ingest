@@ -17,13 +17,11 @@
 package io.fineo.etl.options;
 
 import io.fineo.etl.spark.SparkETL;
-import io.fineo.lambda.configure.LambdaClientProperties;
+import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.schemarepo.Repository;
-
-import java.util.Properties;
 
 /**
  * Bean for storing the current options and helper methods for things like printing the help.

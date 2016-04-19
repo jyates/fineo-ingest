@@ -1,7 +1,7 @@
 package io.fineo.drill;
 
 import io.fineo.drill.rule.DrillClusterRule;
-import io.fineo.etl.processing.JsonParser;
+import io.fineo.lambda.JsonParser;
 import io.fineo.schema.avro.AvroSchemaEncoder;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;

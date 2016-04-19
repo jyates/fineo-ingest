@@ -1,4 +1,4 @@
-package io.fineo.lambda.archive;
+package io.fineo.etl.processing.archive;
 
 import com.amazonaws.services.lambda.runtime.events.SNSEvent;
 import io.fineo.lambda.firehose.FirehoseBatchWriter;

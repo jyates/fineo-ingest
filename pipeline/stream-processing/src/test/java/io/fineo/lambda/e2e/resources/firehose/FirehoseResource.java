@@ -19,7 +19,8 @@ import com.amazonaws.services.s3.model.S3ObjectSummary;
 import com.amazonaws.util.IOUtils;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
-import io.fineo.lambda.configure.LambdaClientProperties;
+import io.fineo.lambda.configure.legacy.LambdaClientProperties;
+import io.fineo.lambda.configure.legacy.StreamType;
 import io.fineo.lambda.e2e.resources.AwsResource;
 import io.fineo.lambda.e2e.resources.ResourceUtils;
 import io.fineo.lambda.e2e.resources.S3Resource;
@@ -69,17 +70,17 @@ public class FirehoseResource implements AwsResource {
   }
 
   public void createFirehoses(String stage, FutureWaiter future) {
-    for (LambdaClientProperties.StreamType type : LambdaClientProperties.StreamType.values()) {
+    for (StreamType type : StreamType.values()) {
       future.run(() -> createFirehose(stage, type));
     }
   }
 
-  private void createFirehose(String stage, LambdaClientProperties.StreamType type) {
+  private void createFirehose(String stage, StreamType type) {
     String stream = props.getFirehoseStreamName(stage, type);
     String s3Path = stream + "/";
 
     // track the firehose information
-    Pair<String, LambdaClientProperties.StreamType> key = new Pair<>(stage, type);
+    Pair<String, StreamType> key = new Pair<>(stage, type);
     streams.store(key, stream, s3Path);
 
     // create the stream, if it doesn't exist already
@@ -219,9 +220,9 @@ public class FirehoseResource implements AwsResource {
       objs.stream().map(S3ObjectSummary::getKey).collect(Collectors.toList())), 0, objs.size());
   }
 
-  public void clone(List<Pair<String, LambdaClientProperties.StreamType>> toClone, File dir)
+  public void clone(List<Pair<String, StreamType>> toClone, File dir)
     throws IOException {
-    for (Pair<String, LambdaClientProperties.StreamType> stream : toClone) {
+    for (Pair<String, StreamType> stream : toClone) {
       String name = props.getFirehoseStreamName(stream.getKey(), stream.getValue());
       File file = new File(dir, name);
       if (file.exists()) {

@@ -1,13 +1,11 @@
-package io.fineo.lambda.archive;
+package io.fineo.etl.processing.archive;
 
 import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
-import com.amazonaws.services.lambda.runtime.events.SNSEvent;
 import io.fineo.lambda.firehose.FirehoseBatchWriter;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.function.Function;
 
 /**

@@ -2,7 +2,7 @@ package io.fineo.etl.processing.raw;
 
 import com.google.inject.Inject;
 import io.fineo.etl.processing.BaseProcessor;
-import io.fineo.etl.processing.JsonParser;
+import io.fineo.lambda.JsonParser;
 import io.fineo.etl.processing.Message;
 import io.fineo.etl.processing.OutputWriter;
 import io.fineo.lambda.firehose.FirehoseBatchWriter;

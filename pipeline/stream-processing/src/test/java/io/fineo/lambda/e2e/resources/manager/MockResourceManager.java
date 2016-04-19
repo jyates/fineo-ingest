@@ -3,7 +3,8 @@ package io.fineo.lambda.e2e.resources.manager;
 import io.fineo.lambda.LambdaAvroToStorage;
 import io.fineo.lambda.LambdaRawRecordToAvro;
 import io.fineo.lambda.aws.MultiWriteFailures;
-import io.fineo.lambda.configure.LambdaClientProperties;
+import io.fineo.lambda.configure.legacy.LambdaClientProperties;
+import io.fineo.lambda.configure.legacy.StreamType;
 import io.fineo.lambda.dynamo.avro.AvroToDynamoWriter;
 import io.fineo.lambda.e2e.EndtoEndSuccessStatus;
 import io.fineo.lambda.e2e.resources.IngestUtil;
@@ -14,11 +15,7 @@ import io.fineo.lambda.util.run.ResultWaiter;
 import io.fineo.schema.avro.RecordMetadata;
 import io.fineo.schema.store.SchemaStore;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.mockito.Mockito;
-import org.schemarepo.InMemoryRepository;
-import org.schemarepo.ValidatorFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -29,8 +26,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
-import static io.fineo.lambda.configure.LambdaClientProperties.RAW_PREFIX;
-import static io.fineo.lambda.configure.LambdaClientProperties.STAGED_PREFIX;
+import static io.fineo.lambda.configure.legacy.LambdaClientProperties.RAW_PREFIX;
+import static io.fineo.lambda.configure.legacy.LambdaClientProperties.STAGED_PREFIX;
 import static io.fineo.lambda.e2e.EndToEndTestRunner.verifyRecordMatchesJson;
 import static org.junit.Assert.assertEquals;
 
@@ -64,23 +61,23 @@ public class MockResourceManager extends BaseResourceManager {
     start
       .setupForTesting(props, store, null,
         firehoses
-          .get(props.getFirehoseStreamName(RAW_PREFIX, LambdaClientProperties.StreamType.ARCHIVE)),
+          .get(props.getFirehoseStreamName(RAW_PREFIX, StreamType.ARCHIVE)),
         firehoses.get(
           props.getFirehoseStreamName(RAW_PREFIX,
-            LambdaClientProperties.StreamType.PROCESSING_ERROR)),
+            StreamType.PROCESSING_ERROR)),
         firehoses.get(
-          props.getFirehoseStreamName(RAW_PREFIX, LambdaClientProperties.StreamType.COMMIT_ERROR)));
+          props.getFirehoseStreamName(RAW_PREFIX, StreamType.COMMIT_ERROR)));
     storage
       .setupForTesting(props, dynamo,
         firehoses
           .get(
-            props.getFirehoseStreamName(STAGED_PREFIX, LambdaClientProperties.StreamType.ARCHIVE)),
+            props.getFirehoseStreamName(STAGED_PREFIX, StreamType.ARCHIVE)),
         firehoses.get(props
           .getFirehoseStreamName(STAGED_PREFIX,
-            LambdaClientProperties.StreamType.PROCESSING_ERROR)),
+            StreamType.PROCESSING_ERROR)),
         firehoses.get(
           props
-            .getFirehoseStreamName(STAGED_PREFIX, LambdaClientProperties.StreamType.COMMIT_ERROR)));
+            .getFirehoseStreamName(STAGED_PREFIX, StreamType.COMMIT_ERROR)));
 
     // connector manages kinesis itself in local mock
     this.connector.connect(props, null);
@@ -129,13 +126,13 @@ public class MockResourceManager extends BaseResourceManager {
     Mockito.when(dynamo.flush()).thenReturn(new MultiWriteFailures(Collections.emptyList()));
 
     Stream.of(
-      props.getFirehoseStreamName(RAW_PREFIX, LambdaClientProperties.StreamType.ARCHIVE),
-      props.getFirehoseStreamName(RAW_PREFIX, LambdaClientProperties.StreamType.COMMIT_ERROR),
-      props.getFirehoseStreamName(RAW_PREFIX, LambdaClientProperties.StreamType.PROCESSING_ERROR),
-      props.getFirehoseStreamName(STAGED_PREFIX, LambdaClientProperties.StreamType.ARCHIVE),
-      props.getFirehoseStreamName(STAGED_PREFIX, LambdaClientProperties.StreamType.COMMIT_ERROR),
+      props.getFirehoseStreamName(RAW_PREFIX, StreamType.ARCHIVE),
+      props.getFirehoseStreamName(RAW_PREFIX, StreamType.COMMIT_ERROR),
+      props.getFirehoseStreamName(RAW_PREFIX, StreamType.PROCESSING_ERROR),
+      props.getFirehoseStreamName(STAGED_PREFIX, StreamType.ARCHIVE),
+      props.getFirehoseStreamName(STAGED_PREFIX, StreamType.COMMIT_ERROR),
       props
-        .getFirehoseStreamName(STAGED_PREFIX, LambdaClientProperties.StreamType.PROCESSING_ERROR))
+        .getFirehoseStreamName(STAGED_PREFIX, StreamType.PROCESSING_ERROR))
           .forEach(name -> {
             FirehoseBatchWriter firehose = Mockito.mock(FirehoseBatchWriter.class);
             firehoses.put(name, firehose);
