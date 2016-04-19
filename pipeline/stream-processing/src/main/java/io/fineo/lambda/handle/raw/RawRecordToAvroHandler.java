@@ -18,9 +18,9 @@ import org.apache.commons.logging.LogFactory;
 import java.io.IOException;
 import java.util.Map;
 
-import static io.fineo.lambda.configure.FirehoseModule.FIREHOSE_ARCHIVE_STREAM;
-import static io.fineo.lambda.configure.FirehoseModule.FIREHOSE_COMMIT_ERROR_STREAM;
-import static io.fineo.lambda.configure.FirehoseModule.FIREHOSE_MALFORMED_RECORDS_STREAM;
+import static io.fineo.lambda.configure.firehose.FirehoseModule.FIREHOSE_ARCHIVE_STREAM;
+import static io.fineo.lambda.configure.firehose.FirehoseModule.FIREHOSE_COMMIT_ERROR_STREAM;
+import static io.fineo.lambda.configure.firehose.FirehoseModule.FIREHOSE_MALFORMED_RECORDS_STREAM;
 
 
 /**

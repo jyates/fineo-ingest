@@ -5,9 +5,10 @@ import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
 import com.google.common.collect.Lists;
 import io.fineo.lambda.aws.AwsAsyncRequest;
 import io.fineo.lambda.aws.MultiWriteFailures;
-import io.fineo.lambda.configure.FirehoseModule;
-import io.fineo.lambda.configure.InstanceToNamed;
-import io.fineo.lambda.configure.NullableInstanceModule;
+import io.fineo.lambda.configure.NullableNamedInstanceModule;
+import io.fineo.lambda.configure.firehose.FirehoseModule;
+import io.fineo.lambda.configure.util.InstanceToNamed;
+import io.fineo.lambda.configure.MockOnNullInstanceModule;
 import io.fineo.lambda.dynamo.avro.AvroToDynamoWriter;
 import io.fineo.lambda.firehose.FirehoseBatchWriter;
 import io.fineo.lambda.handle.LambdaWrapper;
@@ -63,12 +64,12 @@ public class TestLambdaAvroToStorage2 {
     AvroToDynamoWriter dynamo, FirehoseBatchWriter records, FirehoseBatchWriter malformed,
     FirehoseBatchWriter error) {
     return new LambdaWrapper<>(AvroToStorageHandler.class,
-      new NullableInstanceModule<>(dynamo, AvroToDynamoWriter.class),
-      new InstanceToNamed<>(FirehoseModule.FIREHOSE_ARCHIVE_STREAM, records,
+      new MockOnNullInstanceModule<>(dynamo, AvroToDynamoWriter.class),
+      new NullableNamedInstanceModule<>(FirehoseModule.FIREHOSE_ARCHIVE_STREAM, records,
         FirehoseBatchWriter.class),
-      new InstanceToNamed<>(FirehoseModule.FIREHOSE_MALFORMED_RECORDS_STREAM, malformed,
+      new NullableNamedInstanceModule<>(FirehoseModule.FIREHOSE_MALFORMED_RECORDS_STREAM, malformed,
         FirehoseBatchWriter.class),
-      new InstanceToNamed<>(FirehoseModule.FIREHOSE_COMMIT_ERROR_STREAM, error,
+      new NullableNamedInstanceModule<>(FirehoseModule.FIREHOSE_COMMIT_ERROR_STREAM, error,
         FirehoseBatchWriter.class));
   }
 

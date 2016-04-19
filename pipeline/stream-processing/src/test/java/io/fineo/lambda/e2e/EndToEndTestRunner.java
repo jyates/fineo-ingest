@@ -37,6 +37,7 @@ import static io.fineo.lambda.configure.legacy.StreamType.PROCESSING_ERROR;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Helper utility to implement an end-to-end test of the lambda architecture
@@ -154,7 +155,10 @@ public class EndToEndTestRunner {
   private void validateRawRecordToAvro() throws IOException {
     List<ByteBuffer> archived = manager.getFirehoseWrites(props.getFirehoseStreamName(RAW_PREFIX,
       ARCHIVE));
+    assertNotNull("Got a null set of messages from raw-archive", archived);
+    assertTrue("Didn't get any buffers for raw-archive in s3", archived.size() > 0);
     ByteBuffer data = combine(archived);
+    assertTrue("Didn't get any data for raw-archive in s3", data.remaining() > 0);
 
     // ensure the bytes match from the archived/sent
     String expected = new String(progress.sent);
@@ -250,7 +254,7 @@ public class EndToEndTestRunner {
         RecordMetadata metadata = RecordMetadata.get(record);
         String value = metadata.getBaseFields().getUnknownFields().get(aliasName);
         assertNotNull("Didn't get an 'unknown field' value for " + aliasName, value);
-        assertEquals(""+json.get(aliasName), value);
+        assertEquals("" + json.get(aliasName), value);
       } else {
         // ensure the value matches
         assertNotNull("Didn't find a matching canonical name for " + aliasName, cname);

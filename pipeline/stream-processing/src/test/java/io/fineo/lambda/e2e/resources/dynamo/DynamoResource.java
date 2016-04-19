@@ -6,6 +6,8 @@ import com.amazonaws.services.dynamodbv2.model.ListTablesResult;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
+import com.google.inject.Inject;
+import com.google.inject.Provider;
 import io.fineo.internal.customer.Metric;
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import io.fineo.lambda.dynamo.DynamoTableManager;
@@ -39,26 +41,26 @@ import java.util.stream.Stream;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-/**
- *
- */
 public class DynamoResource implements AwsResource {
   private static final Log LOG = LogFactory.getLog(DynamoResource.class);
   private final LambdaClientProperties props;
   private final AtomicReference<SchemaStore> storeRef = new AtomicReference<>();
   private final AmazonDynamoDBAsyncClient dynamo;
   private final ResultWaiter.ResultWaiterFactory waiter;
+  private final Provider<SchemaStore> store;
 
-  public DynamoResource(LambdaClientProperties props, ResultWaiter.ResultWaiterFactory waiter) {
-    this.waiter = waiter;
+  @Inject
+  public DynamoResource(AmazonDynamoDBAsyncClient dynamo, ResultWaiter.ResultWaiterFactory waiter,
+    Provider<SchemaStore> store, LambdaClientProperties props) {
     this.props = props;
-    this.dynamo = props.getDynamo();
+    this.dynamo = dynamo;
+    this.store = store;
+    this.waiter = waiter;
   }
 
   public void setup(FutureWaiter future) {
     future.run(() -> {
-      SchemaStore store = props.createSchemaStore();
-      storeRef.set(store);
+      storeRef.set(store.get());
       LOG.debug("Schema store creation complete!");
     });
   }
@@ -71,7 +73,6 @@ public class DynamoResource implements AwsResource {
     LOG.debug("Starting to delete dynamo table with non-inclusive prefix: " +
               nonInclusiveTableNamePrefix);
     getTables(nonInclusiveTableNamePrefix).parallel().forEach(name -> {
-      AmazonDynamoDBAsyncClient dynamo = props.getDynamo();
       dynamo.deleteTable(name);
       waiter.get()
             .withDescription("Deleting dynamo table: " + name)

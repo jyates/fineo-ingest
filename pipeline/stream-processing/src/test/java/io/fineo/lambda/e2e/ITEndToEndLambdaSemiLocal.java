@@ -1,12 +1,15 @@
 package io.fineo.lambda.e2e;
 
-import com.google.common.collect.Lists;
+import com.amazonaws.auth.AWSCredentialsProvider;
+import com.google.inject.Module;
 import io.fineo.aws.AwsDependentTests;
-import io.fineo.lambda.LambdaAvroToStorage;
-import io.fineo.lambda.LambdaRawRecordToAvro;
+import io.fineo.lambda.configure.DefaultCredentialsModule;
+import io.fineo.lambda.configure.SingleInstanceModule;
 import io.fineo.lambda.e2e.resources.IngestUtil;
 import io.fineo.lambda.e2e.resources.lambda.LambdaKinesisConnector;
 import io.fineo.lambda.e2e.resources.lambda.LocalLambdaRemoteKinesisConnector;
+import io.fineo.lambda.handle.raw.RawStageWrapper;
+import io.fineo.lambda.handle.staged.AvroToStorageWrapper;
 import io.fineo.lambda.util.LambdaTestUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -14,9 +17,13 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+
+import static com.google.common.collect.Lists.newArrayList;
+import static io.fineo.lambda.handle.util.HandlerUtils.getHandler;
 
 /**
  * Runs the lambda functions themselves locally, but all the other AWS services are run against
@@ -26,7 +33,7 @@ import java.util.Properties;
 public class ITEndToEndLambdaSemiLocal extends BaseITEndToEndAwsServices {
   private static final Log LOG = LogFactory.getLog(ITEndToEndLambdaSemiLocal.class);
 
-  public ITEndToEndLambdaSemiLocal(){
+  public ITEndToEndLambdaSemiLocal() {
     super(true);
   }
 
@@ -35,18 +42,41 @@ public class ITEndToEndLambdaSemiLocal extends BaseITEndToEndAwsServices {
     String uuid = "integration-test-" + System.currentTimeMillis() + "-";
     setProperties(getProperties(uuid));
 
+    // setup the stages
+    Properties props = getProps().getRawPropertiesForTesting();
+    List<Module> modules = updateCredentials(newArrayList(RawStageWrapper.getModules(props)));
+    RawStageWrapper start = new RawStageWrapper(modules.toArray(new Module[0]));
+    modules = updateCredentials(newArrayList(AvroToStorageWrapper.getModules(props)));
+    AvroToStorageWrapper storage = new AvroToStorageWrapper(modules.toArray(new Module[0]));
+
+    // create the connections between stages
     String kinesisIngest = uuid + "ingest";
     String kinesisConnector = getProps().getRawToStagedKinesisStreamName();
     Map<String, List<IngestUtil.Lambda>> mapping =
       IngestUtil.newBuilder()
-                .start(kinesisIngest,
-                  new LambdaRawRecordToAvro().setPropertiesForTesting(getProps()))
-                .then(kinesisConnector,
-                  new LambdaAvroToStorage().setPropertiesForTesting(getProps()))
+                .then(kinesisIngest, start, getHandler(start))
+                .then(kinesisConnector, storage, getHandler(storage))
                 .build();
     LambdaKinesisConnector connector = new LocalLambdaRemoteKinesisConnector();
     connector.configure(mapping, kinesisIngest);
     run(connector, LambdaTestUtils.createRecords(1, 1));
+  }
+
+  /**
+   * Remove the default credentials and use the ones provided by the test class
+   */
+  private List<Module> updateCredentials(List<Module> modules) {
+    List<Module> ret = new ArrayList<>(modules.size() - 1);
+    for (Module module : modules) {
+      if (module instanceof DefaultCredentialsModule) {
+        continue;
+      }
+      ret.add(module);
+    }
+    ret
+      .add(new SingleInstanceModule<>(awsCredentials.getProvider(), AWSCredentialsProvider.class));
+
+    return ret;
   }
 
   private Properties getProperties(String uuid) throws IOException {
@@ -74,15 +104,17 @@ public class ITEndToEndLambdaSemiLocal extends BaseITEndToEndAwsServices {
     props.setProperty("dynamo.limit.retries", "3");
 
     // replace all the properties with one that is prefixed by "fineo"
-    List<String> names = Lists.newArrayList(props.stringPropertyNames());
+    List<String> names = newArrayList(props.stringPropertyNames());
     for (String name : names) {
       String value = props.getProperty(name);
       props.remove(name);
       props.setProperty("fineo." + name, value);
     }
 
-    LOG.info("Using properties: ");
-    props.store(System.out, "");
+    if (LOG.isInfoEnabled()) {
+      LOG.info("Using properties: ");
+      props.store(System.out, "");
+    }
 
     return props;
   }

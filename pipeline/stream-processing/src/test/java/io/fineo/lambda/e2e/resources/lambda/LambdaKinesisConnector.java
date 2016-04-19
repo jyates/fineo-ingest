@@ -29,7 +29,7 @@ public abstract class LambdaKinesisConnector<T> implements AwsResource {
 
   public abstract void write(String kinesisStream, byte[] data);
 
-  public abstract void connect(LambdaClientProperties props, IKinesisStreams kinesis)
+  public abstract void connect(IKinesisStreams kinesis)
     throws IOException;
 
   public abstract List<ByteBuffer> getWrites(String streamName);

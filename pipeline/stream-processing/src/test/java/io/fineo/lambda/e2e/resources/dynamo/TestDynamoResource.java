@@ -34,7 +34,8 @@ public class TestDynamoResource {
   @ClassRule
   public static AwsDynamoResource dynamoResource = new AwsDynamoResource();
   @Rule
-  public AwsDynamoSchemaTablesResource tableResource = new AwsDynamoSchemaTablesResource(dynamoResource);
+  public AwsDynamoSchemaTablesResource tableResource =
+    new AwsDynamoSchemaTablesResource(dynamoResource);
   @ClassRule
   public static TestOutput output = new TestOutput(false);
 
@@ -46,8 +47,11 @@ public class TestDynamoResource {
     props.put(LambdaClientProperties.DYNAMO_INGEST_TABLE_PREFIX, prefix);
     props.put(LambdaClientProperties.DYNAMO_SCHEMA_STORE_TABLE, tableResource.getTestTableName());
     LambdaClientProperties clientProperties = tableResource.getClientProperties(props);
-    DynamoResource dynamo = new DynamoResource(clientProperties, new ResultWaiter
-      .ResultWaiterFactory(1000, 100));
+
+    AmazonDynamoDBAsyncClient client = clientProperties.getDynamo();
+    DynamoResource dynamo = new DynamoResource(client, new ResultWaiter
+      .ResultWaiterFactory(1000, 100), () -> clientProperties.createSchemaStore(),
+      clientProperties);
     ListeningExecutorService exec =
       MoreExecutors.listeningDecorator(Executors.newSingleThreadExecutor());
 
@@ -56,7 +60,6 @@ public class TestDynamoResource {
     dynamo.setup(waiter);
     waiter.await();
 
-    AmazonDynamoDBAsyncClient client = clientProperties.getDynamo();
     DynamoTableManager tables =
       new DynamoTableManager(client, clientProperties.getDynamoIngestTablePrefix());
     DynamoTableManager.DynamoTableCreator creator = tables.creator(1, 1);
@@ -70,6 +73,6 @@ public class TestDynamoResource {
     // now write the data to a file
     File out = output.newFolder("dynamo");
     dynamo.copyStoreTables(out);
-    LOG.info("data is at: "+out);
+    LOG.info("data is at: " + out);
   }
 }

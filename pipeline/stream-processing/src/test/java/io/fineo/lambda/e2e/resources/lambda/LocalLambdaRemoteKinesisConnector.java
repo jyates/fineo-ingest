@@ -1,7 +1,5 @@
 package io.fineo.lambda.e2e.resources.lambda;
 
-import io.fineo.lambda.configure.legacy.LambdaClientProperties;
-import io.fineo.lambda.StreamProducer;
 import io.fineo.lambda.e2e.resources.IngestUtil;
 import io.fineo.lambda.e2e.resources.kinesis.IKinesisStreams;
 import io.fineo.lambda.util.run.FutureWaiter;
@@ -36,7 +34,7 @@ public class LocalLambdaRemoteKinesisConnector extends LambdaKinesisConnector<In
   }
 
   @Override
-  public void connect(LambdaClientProperties props, IKinesisStreams kinesisConnection)
+  public void connect(IKinesisStreams kinesisConnection)
     throws IOException {
     this.kinesis = kinesisConnection;
     connectStreams();
@@ -51,16 +49,6 @@ public class LocalLambdaRemoteKinesisConnector extends LambdaKinesisConnector<In
     // create each stream
     for (String stream : this.mapping.keySet()) {
       kinesis.setup(stream);
-    }
-
-    // ensure that the outputs can actually write back to kinesis
-    for (List<IngestUtil.Lambda> lambdas : this.mapping.values()) {
-      for (IngestUtil.Lambda lambda : lambdas) {
-        Object func = lambda.getFunction();
-        if (func instanceof StreamProducer) {
-          ((StreamProducer) func).setDownstreamForTesting(this.kinesis.getProducer());
-        }
-      }
     }
 
     executor.execute(() -> {

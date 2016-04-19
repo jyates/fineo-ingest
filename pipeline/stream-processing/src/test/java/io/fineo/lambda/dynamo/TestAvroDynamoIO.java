@@ -6,7 +6,6 @@ import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import io.fineo.aws.AwsDependentTests;
 import io.fineo.internal.customer.BaseFields;
 import io.fineo.lambda.aws.MultiWriteFailures;
-import io.fineo.lambda.configure.AwsBaseComponentModule;
 import io.fineo.lambda.configure.PropertiesModule;
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import io.fineo.lambda.dynamo.avro.AvroDynamoReader;
@@ -152,7 +151,7 @@ public class TestAvroDynamoIO {
       // setup the writer/reader
       LambdaClientProperties props =
         LambdaClientProperties.create(new PropertiesModule(prop), dynamo.getCredentialsModule(),
-          new AwsBaseComponentModule(), new DynamoTestConfiguratorModule());
+          new DynamoTestConfiguratorModule());
       this.writer = AvroToDynamoWriter.create(props);
       AmazonDynamoDBAsyncClient client = tables.getAsyncClient();
       this.reader =

@@ -1,14 +1,13 @@
-package io.fineo.lambda.configure;
+package io.fineo.lambda.configure.util;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.name.Names;
-import com.google.inject.util.Providers;
 
 public class InstanceToNamed<T> extends AbstractModule {
 
-  private final String named;
-  private final T instance;
-  private final Class<T> clazz;
+  protected final String named;
+  protected final T instance;
+  protected final Class<T> clazz;
 
   public InstanceToNamed(String named, T instance, Class<T> clazz) {
     this.named = named;
@@ -18,12 +17,7 @@ public class InstanceToNamed<T> extends AbstractModule {
 
   @Override
   protected void configure() {
-    if (instance == null) {
-      bind(clazz).annotatedWith(Names.named(named)).toProvider(Providers.of(null));
-    } else {
-      bind(clazz).annotatedWith(Names.named(named)).toInstance(instance);
-    }
-
+    bind(clazz).annotatedWith(Names.named(named)).toInstance(instance);
   }
 
   public static <T> InstanceToNamed<T> namedInstance(String name, T instance) {

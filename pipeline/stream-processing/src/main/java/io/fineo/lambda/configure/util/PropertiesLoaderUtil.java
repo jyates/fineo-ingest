@@ -1,4 +1,4 @@
-package io.fineo.lambda.configure;
+package io.fineo.lambda.configure.util;
 
 import com.google.common.base.Preconditions;
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;

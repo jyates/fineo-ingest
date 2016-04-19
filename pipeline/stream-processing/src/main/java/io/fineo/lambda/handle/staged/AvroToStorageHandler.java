@@ -15,9 +15,9 @@ import org.apache.avro.generic.GenericRecord;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import static io.fineo.lambda.configure.FirehoseModule.FIREHOSE_ARCHIVE_STREAM;
-import static io.fineo.lambda.configure.FirehoseModule.FIREHOSE_COMMIT_ERROR_STREAM;
-import static io.fineo.lambda.configure.FirehoseModule.FIREHOSE_MALFORMED_RECORDS_STREAM;
+import static io.fineo.lambda.configure.firehose.FirehoseModule.FIREHOSE_ARCHIVE_STREAM;
+import static io.fineo.lambda.configure.firehose.FirehoseModule.FIREHOSE_COMMIT_ERROR_STREAM;
+import static io.fineo.lambda.configure.firehose.FirehoseModule.FIREHOSE_MALFORMED_RECORDS_STREAM;
 
 /**
  * Writes avro encoded files into the correct storage locations.

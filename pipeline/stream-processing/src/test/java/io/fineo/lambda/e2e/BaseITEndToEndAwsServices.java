@@ -3,10 +3,10 @@ package io.fineo.lambda.e2e;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import io.fineo.aws.rule.AwsCredentialResource;
-import io.fineo.lambda.configure.AwsBaseComponentModule;
-import io.fineo.lambda.configure.dynamo.DynamoRegionConfigurator;
+import io.fineo.lambda.configure.SingleInstanceModule;
+import io.fineo.lambda.configure.legacy.LambdaModule;
+import io.fineo.lambda.configure.PropertiesModule;
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
-import io.fineo.lambda.configure.LambdaModule;
 import io.fineo.lambda.e2e.resources.lambda.LambdaKinesisConnector;
 import io.fineo.lambda.e2e.resources.manager.AwsResourceManager;
 import io.fineo.test.rule.TestOutput;
@@ -68,15 +68,9 @@ public class BaseITEndToEndAwsServices {
 
   protected void setProperties(Properties properties) {
     properties.setProperty(LambdaClientProperties.DYNAMO_REGION, region);
-    Injector injector =
-      Guice.createInjector(new LambdaModule(properties),
-        new AwsBaseComponentModule(), new DynamoRegionConfigurator());
+    Injector injector = Guice
+      .createInjector(new SingleInstanceModule<>(properties), new PropertiesModule(properties));
     this.props = injector.getInstance(LambdaClientProperties.class);
-  }
-
-  protected void setProperties(LambdaClientProperties properties) {
-    properties.setCredentials(() -> awsCredentials.getProvider());
-    this.props = properties;
   }
 
   protected LambdaClientProperties getProps() {

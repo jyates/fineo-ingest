@@ -1,13 +1,15 @@
 package io.fineo.lambda.handle.raw;
 
 import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.Module;
-import com.google.inject.util.Modules;
 import io.fineo.lambda.JsonParser;
-import io.fineo.lambda.configure.AwsBaseComponentModule;
 import io.fineo.lambda.configure.DefaultCredentialsModule;
-import io.fineo.lambda.configure.FirehoseModule;
-import io.fineo.lambda.configure.PropertiesLoaderUtil;
+import io.fineo.lambda.configure.KinesisModule;
+import io.fineo.lambda.configure.dynamo.DynamoModule;
+import io.fineo.lambda.configure.dynamo.DynamoRegionConfigurator;
+import io.fineo.lambda.configure.firehose.FirehoseModule;
+import io.fineo.lambda.configure.util.PropertiesLoaderUtil;
 import io.fineo.lambda.configure.PropertiesModule;
 import io.fineo.lambda.configure.SchemaStoreModule;
 import io.fineo.lambda.handle.LambdaWrapper;
@@ -24,24 +26,27 @@ import static io.fineo.lambda.configure.SingleInstanceModule.instanceModule;
  */
 public class RawStageWrapper extends LambdaWrapper<KinesisEvent, RawRecordToAvroHandler> {
   public RawStageWrapper() throws IOException {
-    this(PropertiesLoaderUtil.load());
+    this(getModules(PropertiesLoaderUtil.load()));
   }
 
-  public RawStageWrapper(Properties props) {
-    super(RawRecordToAvroHandler.class, getModules(props));
+  @VisibleForTesting
+  public RawStageWrapper(Module... modules) {
+    super(RawRecordToAvroHandler.class, modules);
   }
 
-  private static Module[] getModules(Properties props) {
+  @VisibleForTesting
+  public static Module[] getModules(Properties props) {
     List<Module> modules = new ArrayList<>();
-    modules.add(new PropertiesModule(props));
+    addBasicProperties(modules, props);
+    // schema store needs dynamo
     modules.add(new SchemaStoreModule());
-    modules.add(new DefaultCredentialsModule());
-    modules.add(new AwsBaseComponentModule());
-    modules.add(new FirehoseModule());
+    addDynamo(modules);
+    // writing to kinesis
+    modules.add(new KinesisModule());
+    // writing to firehoses
     modules.add(new FirehosePropertyBridge());
-    modules.add(
-      Modules.override(new FirehoseModule()).with(new FirehoseToMalformedInstanceFunctionModule()));
-    modules.add(instanceModule(new JsonParser()));
+    modules.add(new FirehoseModule());
+    modules.add(new FirehoseToMalformedInstanceFunctionModule());
     return modules.toArray(new Module[0]);
   }
 }

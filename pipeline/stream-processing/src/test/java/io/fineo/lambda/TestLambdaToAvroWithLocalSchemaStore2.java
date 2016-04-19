@@ -7,10 +7,10 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Provider;
 import com.google.inject.util.Providers;
 import io.fineo.lambda.aws.MultiWriteFailures;
-import io.fineo.lambda.configure.FirehoseModule;
-import io.fineo.lambda.configure.InstanceToNamed;
-import io.fineo.lambda.configure.NullableInstanceModule;
+import io.fineo.lambda.configure.MockOnNullInstanceModule;
+import io.fineo.lambda.configure.NullableNamedInstanceModule;
 import io.fineo.lambda.configure.PropertiesModule;
+import io.fineo.lambda.configure.firehose.FirehoseModule;
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import io.fineo.lambda.e2e.EndToEndTestRunner;
 import io.fineo.lambda.firehose.FirehoseBatchWriter;
@@ -152,7 +152,7 @@ public class TestLambdaToAvroWithLocalSchemaStore2 {
 
     KinesisEvent event = createStoreAndSingleEvent(records);
     Provider<SchemaStore> store =
-      Providers.of(NullableInstanceModule.throwingMock(SchemaStore.class));
+      Providers.of(MockOnNullInstanceModule.throwingMock(SchemaStore.class));
 
     OutputFirehoseManager out = new OutputFirehoseManager().withProcessingErrors();
     List<ByteBuffer> malformed = out.listenForProcesssingErrors();
@@ -260,13 +260,13 @@ public class TestLambdaToAvroWithLocalSchemaStore2 {
           bind(SchemaStore.class).toProvider(store);
         }
       },
-      new InstanceToNamed(FirehoseModule.FIREHOSE_ARCHIVE_STREAM, firehoses.archive(),
+      new NullableNamedInstanceModule<>(FirehoseModule.FIREHOSE_ARCHIVE_STREAM, firehoses.archive(),
         FirehoseBatchWriter.class),
-      new InstanceToNamed<>(FirehoseModule.FIREHOSE_COMMIT_ERROR_STREAM, firehoses.commit(),
-        FirehoseBatchWriter.class),
-      new InstanceToNamed<>(FirehoseModule.FIREHOSE_MALFORMED_RECORDS_STREAM, firehoses.process(),
-        FirehoseBatchWriter.class),
-      new NullableInstanceModule<>(producer, KinesisProducer.class),
+      new NullableNamedInstanceModule<>(FirehoseModule.FIREHOSE_COMMIT_ERROR_STREAM,
+        firehoses.commit(), FirehoseBatchWriter.class),
+      new NullableNamedInstanceModule<>(FirehoseModule.FIREHOSE_MALFORMED_RECORDS_STREAM,
+        firehoses.process(), FirehoseBatchWriter.class),
+      new MockOnNullInstanceModule<>(producer, KinesisProducer.class),
       new PropertiesModule(props));
   }
 

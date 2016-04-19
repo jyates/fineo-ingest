@@ -1,4 +1,4 @@
-package io.fineo.lambda.configure;
+package io.fineo.lambda.configure.legacy;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;

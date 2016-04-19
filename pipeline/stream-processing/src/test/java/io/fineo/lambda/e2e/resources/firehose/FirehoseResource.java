@@ -19,6 +19,7 @@ import com.amazonaws.services.s3.model.S3ObjectSummary;
 import com.amazonaws.util.IOUtils;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
+import com.google.inject.Inject;
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import io.fineo.lambda.configure.legacy.StreamType;
 import io.fineo.lambda.e2e.resources.AwsResource;
@@ -60,6 +61,7 @@ public class FirehoseResource implements AwsResource {
   private final ResultWaiter.ResultWaiterFactory waiter;
   private FirehoseStreams streams = new FirehoseStreams();
 
+  @Inject
   public FirehoseResource(LambdaClientProperties props, AWSCredentialsProvider provider,
     ResultWaiter.ResultWaiterFactory waiter) {
     this.provider = provider;

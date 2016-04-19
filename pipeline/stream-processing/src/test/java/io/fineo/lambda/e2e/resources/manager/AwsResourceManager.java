@@ -1,11 +1,20 @@
 package io.fineo.lambda.e2e.resources.manager;
 
+import com.amazonaws.auth.AWSCredentialsProvider;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
+import com.google.inject.Guice;
+import com.google.inject.Injector;
 import io.fineo.aws.rule.AwsCredentialResource;
+import io.fineo.lambda.configure.PropertiesModule;
+import io.fineo.lambda.configure.SchemaStoreModule;
+import io.fineo.lambda.configure.SingleInstanceModule;
+import io.fineo.lambda.configure.dynamo.DynamoModule;
+import io.fineo.lambda.configure.dynamo.DynamoRegionConfigurator;
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import io.fineo.lambda.configure.legacy.StreamType;
+import io.fineo.lambda.configure.util.InstanceToNamed;
 import io.fineo.lambda.e2e.EndToEndTestRunner;
 import io.fineo.lambda.e2e.EndtoEndSuccessStatus;
 import io.fineo.lambda.e2e.resources.AwsResource;
@@ -34,6 +43,7 @@ import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
+import static io.fineo.lambda.configure.SingleInstanceModule.instanceModule;
 import static java.lang.String.format;
 import static org.junit.Assert.assertEquals;
 
@@ -50,7 +60,6 @@ public class AwsResourceManager extends BaseResourceManager {
   private final AwsCredentialResource awsCredentials;
   private final TestOutput output;
 
-  private LambdaClientProperties props;
   private FirehoseResource firehose;
   private KinesisStreamManager kinesis;
   private DynamoResource dynamo;
@@ -74,28 +83,43 @@ public class AwsResourceManager extends BaseResourceManager {
 
   @Override
   public void setup(LambdaClientProperties props) throws Exception {
-    this.props = props;
     FutureWaiter future = new FutureWaiter(executor);
     ResultWaiter.ResultWaiterFactory waiter = new ResultWaiter.ResultWaiterFactory(TestProperties
       .FIVE_MINUTES, TestProperties.ONE_SECOND);
 
-    this.dynamo = new DynamoResource(props, waiter);
+    Injector injector = Guice.createInjector(
+      instanceModule(props),
+      instanceModule(props.getRawPropertiesForTesting()),
+      new PropertiesModule(props.getRawPropertiesForTesting()),
+      instanceModule(waiter),
+      new SingleInstanceModule<>(awsCredentials.getProvider(), AWSCredentialsProvider.class),
+      new SchemaStoreModule(),
+      new DynamoModule(),
+      new DynamoRegionConfigurator(),
+      new InstanceToNamed<>(LambdaClientProperties.DYNAMO_REGION, region, String.class),
+      new InstanceToNamed<>("aws.region", region, String.class),
+      new InstanceToNamed<>("aws.kinesis.shard.count", TestProperties.Kinesis.SHARD_COUNT,
+        Integer.class)
+    );
+
+    // load all the things we will need
+    this.dynamo = injector.getInstance(DynamoResource.class);
+    this.firehose = injector.getInstance(FirehoseResource.class);
+    this.kinesis = injector.getInstance(KinesisStreamManager.class);
+
     dynamo.setup(future);
     resources.add(dynamo);
 
     // setup the firehose connections
-    this.firehose = new FirehoseResource(props, awsCredentials.getProvider(), waiter);
     for (String stage : TestProperties.Lambda.STAGES) {
       firehose.createFirehoses(stage, future);
     }
     resources.add(firehose);
 
     // setup the kinesis streams + interconnection
-    this.kinesis = new KinesisStreamManager(awsCredentials.getProvider(), waiter, region,
-      TestProperties.Kinesis.SHARD_COUNT);
     future.run(() -> {
       try {
-        connector.connect(props, this.kinesis);
+        connector.connect(this.kinesis);
       } catch (IOException e) {
         throw new RuntimeException(e);
       }

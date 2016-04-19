@@ -13,8 +13,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static java.util.Arrays.asList;
-
 /**
  * Similar to the local TestEndToEndLambda, but leverages actual AWS services to support
  * access

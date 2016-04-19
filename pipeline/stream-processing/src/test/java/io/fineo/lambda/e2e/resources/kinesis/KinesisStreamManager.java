@@ -13,6 +13,8 @@ import com.amazonaws.services.kinesis.model.PutRecordResult;
 import com.amazonaws.services.kinesis.model.Record;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.AbstractIterator;
+import com.google.inject.Inject;
+import com.google.inject.name.Named;
 import io.fineo.lambda.e2e.resources.AwsResource;
 import io.fineo.lambda.kinesis.KinesisProducer;
 import io.fineo.lambda.util.run.FutureWaiter;
@@ -46,8 +48,10 @@ public class KinesisStreamManager implements AwsResource, IKinesisStreams {
   private AmazonKinesisAsyncClient kinesis;
   private ShardIteratorManager shards;
 
+  @Inject
   public KinesisStreamManager(AWSCredentialsProvider provider,
-    ResultWaiter.ResultWaiterFactory waiter, String region, int shardCount) {
+    ResultWaiter.ResultWaiterFactory waiter, @Named("aws.region") String region,
+    @Named("aws.kinesis.shard.count") int shardCount) {
     this.credentials = provider;
     this.waiter = waiter;
     this.region = region;

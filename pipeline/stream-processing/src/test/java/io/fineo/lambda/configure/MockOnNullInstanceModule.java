@@ -7,8 +7,8 @@ import org.mockito.stubbing.Answer;
  * Allow a single instance module to provide a mock (instead of a null value) that throws an
  * exception if there is any interaction with the provided mock object
  */
-public class NullableInstanceModule<T> extends SingleInstanceModule<T> {
-  public NullableInstanceModule(T inst, Class<T> clazz) {
+public class MockOnNullInstanceModule<T> extends SingleInstanceModule<T> {
+  public MockOnNullInstanceModule(T inst, Class<T> clazz) {
     super(inst, clazz);
   }
 

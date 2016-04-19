@@ -10,15 +10,15 @@ import com.google.inject.Guice;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
 import com.google.inject.Provider;
-import io.fineo.lambda.configure.AwsBaseComponentModule;
 import io.fineo.lambda.configure.DefaultCredentialsModule;
-import io.fineo.lambda.configure.LambdaModule;
-import io.fineo.lambda.configure.PropertiesLoaderUtil;
-import io.fineo.lambda.configure.dynamo.DynamoRegionConfigurator;
+import io.fineo.lambda.configure.PropertiesModule;
+import io.fineo.lambda.configure.util.PropertiesLoaderUtil;
 import io.fineo.schema.store.SchemaStore;
 
 import java.io.IOException;
 import java.util.Properties;
+
+import static io.fineo.lambda.configure.SingleInstanceModule.instanceModule;
 
 /**
  * Simple wrapper around java properties
@@ -79,10 +79,10 @@ public class LambdaClientProperties {
     return load(PropertiesLoaderUtil.load());
   }
 
-  private static LambdaClientProperties load(Properties props){
+  private static LambdaClientProperties load(Properties props) {
     Injector injector =
-      Guice.createInjector(new LambdaModule(props), new DefaultCredentialsModule(),
-        new AwsBaseComponentModule(), new DynamoRegionConfigurator());
+      Guice.createInjector(new PropertiesModule(props), instanceModule(props),
+        new DefaultCredentialsModule());
     return injector.getInstance(LambdaClientProperties.class);
   }
 
@@ -174,5 +174,10 @@ public class LambdaClientProperties {
   @VisibleForTesting
   public String getTestPrefix() {
     return props.getProperty(TEST_PREFIX);
+  }
+
+  @VisibleForTesting
+  public Properties getRawPropertiesForTesting() {
+    return this.props;
   }
 }

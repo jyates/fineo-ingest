@@ -7,6 +7,7 @@ import io.fineo.lambda.dynamo.avro.AvroToDynamoWriter;
 import io.fineo.lambda.e2e.EndtoEndSuccessStatus;
 import io.fineo.lambda.e2e.resources.IngestUtil;
 import io.fineo.lambda.e2e.resources.TestProperties;
+import io.fineo.lambda.e2e.resources.kinesis.IKinesisStreams;
 import io.fineo.lambda.e2e.resources.lambda.LambdaKinesisConnector;
 import io.fineo.lambda.firehose.FirehoseBatchWriter;
 import io.fineo.lambda.util.run.ResultWaiter;
@@ -37,14 +38,16 @@ public class MockResourceManager extends BaseResourceManager {
   private final Map<String, List<ByteBuffer>> firehoseWrites = new HashMap<>();
   private final List<GenericRecord> dynamoWrites = new ArrayList<>();
   private final Map<String, FirehoseBatchWriter> firehoses = new HashMap<>();
+  private final IKinesisStreams streams;
 
   private AvroToDynamoWriter dynamo;
   private SchemaStore store;
   private LambdaClientProperties props;
 
-  public MockResourceManager(LambdaKinesisConnector connector, SchemaStore store) {
+  public MockResourceManager(LambdaKinesisConnector connector, SchemaStore store, IKinesisStreams streams) {
     super(connector);
     this.store = store;
+    this.streams = streams;
   }
 
   @Override
@@ -53,7 +56,7 @@ public class MockResourceManager extends BaseResourceManager {
     setupMocks(props);
 
     // connector manages kinesis itself in local mock
-    this.connector.connect(props, null);
+    this.connector.connect(streams);
   }
 
   public FirehoseBatchWriter getWriter(String prefix, StreamType type) {
@@ -132,5 +135,9 @@ public class MockResourceManager extends BaseResourceManager {
 
   public AvroToDynamoWriter getDynamo() {
     return this.dynamo;
+  }
+
+  public IKinesisStreams getStreams() {
+    return streams;
   }
 }

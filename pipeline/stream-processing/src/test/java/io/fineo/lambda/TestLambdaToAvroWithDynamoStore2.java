@@ -1,12 +1,13 @@
 package io.fineo.lambda;
 
 import com.amazonaws.services.dynamodbv2.util.TableUtils;
+import com.google.inject.Binder;
 import com.google.inject.Guice;
 import com.google.inject.Provider;
 import io.fineo.aws.AwsDependentTests;
-import io.fineo.lambda.configure.AwsBaseComponentModule;
 import io.fineo.lambda.configure.PropertiesModule;
 import io.fineo.lambda.configure.SchemaStoreModule;
+import io.fineo.lambda.configure.dynamo.DynamoModule;
 import io.fineo.lambda.dynamo.DynamoTestConfiguratorModule;
 import io.fineo.lambda.dynamo.rule.AwsDynamoResource;
 import io.fineo.lambda.dynamo.rule.AwsDynamoSchemaTablesResource;
@@ -44,10 +45,11 @@ public class TestLambdaToAvroWithDynamoStore2 extends TestLambdaToAvroWithLocalS
   protected Provider<SchemaStore> getStoreProvider() throws Exception {
     Properties props = getClientProperties();
     dynamoResource.setConnectionProperties(props);
-    return
-      Guice.createInjector(new PropertiesModule(props), new AwsBaseComponentModule(),
-        dynamoResource.getCredentialsModule(), new DynamoTestConfiguratorModule(),
-        new SchemaStoreModule())
-           .getProvider(SchemaStore.class);
+    return Guice.createInjector(
+      new PropertiesModule(props),
+      dynamoResource.getCredentialsModule(),
+      new DynamoModule(),
+      new DynamoTestConfiguratorModule(),
+      new SchemaStoreModule()).getProvider(SchemaStore.class);
   }
 }
