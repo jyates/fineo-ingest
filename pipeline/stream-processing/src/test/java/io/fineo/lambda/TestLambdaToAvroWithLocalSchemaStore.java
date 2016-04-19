@@ -3,12 +3,21 @@ package io.fineo.lambda;
 import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.Futures;
+import com.google.inject.AbstractModule;
+import com.google.inject.Provider;
+import com.google.inject.util.Providers;
 import io.fineo.lambda.aws.MultiWriteFailures;
+import io.fineo.lambda.configure.MockOnNullInstanceModule;
+import io.fineo.lambda.configure.NullableNamedInstanceModule;
+import io.fineo.lambda.configure.PropertiesModule;
+import io.fineo.lambda.configure.firehose.FirehoseModule;
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
-import io.fineo.lambda.kinesis.KinesisProducer;
 import io.fineo.lambda.e2e.EndToEndTestRunner;
+import io.fineo.lambda.firehose.FirehoseBatchWriter;
+import io.fineo.lambda.handle.LambdaWrapper;
+import io.fineo.lambda.handle.raw.RawRecordToAvroHandler;
+import io.fineo.lambda.kinesis.KinesisProducer;
 import io.fineo.lambda.util.LambdaTestUtils;
-import io.fineo.schema.Pair;
 import io.fineo.schema.avro.AvroSchemaEncoder;
 import io.fineo.schema.avro.TestRecordMetadata;
 import io.fineo.schema.store.SchemaStore;
@@ -42,11 +51,15 @@ import static org.junit.Assert.assertTrue;
  */
 public class TestLambdaToAvroWithLocalSchemaStore {
   private static final Log LOG = LogFactory.getLog(TestLambdaToAvroWithLocalSchemaStore.class);
-  private SchemaStore store;
+  protected Provider<SchemaStore> store;
 
   @Before
   public void setupStore() throws Exception {
-    store = new SchemaStore(new InMemoryRepository(ValidatorFactory.EMPTY));
+    store = getStoreProvider();
+  }
+
+  protected Provider<SchemaStore> getStoreProvider() throws Exception {
+    return Providers.of(new SchemaStore(new InMemoryRepository(ValidatorFactory.EMPTY)));
   }
 
   /**
@@ -69,12 +82,11 @@ public class TestLambdaToAvroWithLocalSchemaStore {
     throws Exception {
     // setup the mocks/fakes
     List<KinesisEvent> events = new ArrayList<>();
-    SchemaStore store = null;
     for (Map<String, Object> fields : records) {
       events.add(LambdaTestUtils.getKinesisEvent(fields));
-      store = createSchemaStore(store, fields);
+      createSchemaStore(fields);
     }
-    verifyReadWriterEventsWithoutMalformed(store, events, records);
+    verifyReadWriterEventsWithoutMalformed(events, records);
   }
 
   @Test
@@ -82,16 +94,14 @@ public class TestLambdaToAvroWithLocalSchemaStore {
     Map<String, Object>[] records = LambdaTestUtils.createRecords(2);
 
     // setup the mocks/fakes
-    Pair<KinesisEvent, SchemaStore> created = createStoreAndSingleEvent(records);
-    KinesisEvent event = created.getKey();
-    SchemaStore store = created.getValue();
-
-    verifyReadWriterEventsWithoutMalformed(store, Lists.newArrayList(event), records);
+    KinesisEvent event = createStoreAndSingleEvent(records);
+    verifyReadWriterEventsWithoutMalformed(Lists.newArrayList(event), records);
   }
 
-  private void verifyReadWriterEventsWithoutMalformed(SchemaStore store, List<KinesisEvent> events,
+  private void verifyReadWriterEventsWithoutMalformed(
+    List<KinesisEvent> events,
     Map<String, Object>[] records) throws Exception {
-    LambdaClientProperties props = getClientProperties();
+    Properties props = getClientProperties();
     KinesisProducer producer = Mockito.mock(KinesisProducer.class);
     Mockito.when(producer.flush()).thenReturn(new MultiWriteFailures<>(new ArrayList<>()));
 
@@ -110,20 +120,19 @@ public class TestLambdaToAvroWithLocalSchemaStore {
     Mockito.verify(producer, Mockito.times(events.size())).flush();
   }
 
-  private Pair<KinesisEvent, SchemaStore> createStoreAndSingleEvent(Map<String, Object>[] records)
+  private KinesisEvent createStoreAndSingleEvent(Map<String, Object>[] records)
     throws Exception {
     // add multiple records to the same event
     KinesisEvent event = null;
-    SchemaStore store = null;
     for (Map<String, Object> fields : records) {
       if (event == null) {
         event = LambdaTestUtils.getKinesisEvent(fields);
       } else {
         event.getRecords().addAll(LambdaTestUtils.getKinesisEvent(fields).getRecords());
       }
-      store = createSchemaStore(store, fields);
+      createSchemaStore(fields);
     }
-    return new Pair<>(event, store);
+    return event;
   }
 
   /**
@@ -136,19 +145,18 @@ public class TestLambdaToAvroWithLocalSchemaStore {
     Map<String, Object>[] records = createMalformedRecords(recordCount);
 
     // setup the mocks/fakes
-    LambdaClientProperties props = getClientProperties();
+    Properties props = getClientProperties();
     KinesisProducer producer = Mockito.mock(KinesisProducer.class);
     // no failures when we write to firehose/kinesis
     Mockito.when(producer.flush()).thenReturn(new MultiWriteFailures<>(new ArrayList<>()));
 
-    Pair<KinesisEvent, SchemaStore> created = createStoreAndSingleEvent(records);
-    KinesisEvent event = created.getKey();
-    SchemaStore store = created.getValue();
+    KinesisEvent event = createStoreAndSingleEvent(records);
+    Provider<SchemaStore> store =
+      Providers.of(MockOnNullInstanceModule.throwingMock(SchemaStore.class));
 
     OutputFirehoseManager out = new OutputFirehoseManager().withProcessingErrors();
     List<ByteBuffer> malformed = out.listenForProcesssingErrors();
-    List<KinesisRequest> requests =
-      doSetupAndWrite(props, out, producer, store, event);
+    List<KinesisRequest> requests = doSetupAndWrite(props, out, producer, store, event);
     assertEquals(0, requests.size());
 
     assertEquals(recordCount, malformed.size());
@@ -222,12 +230,10 @@ public class TestLambdaToAvroWithLocalSchemaStore {
   }
 
   private List<KinesisRequest> doSetupAndWrite(
-    LambdaClientProperties props, OutputFirehoseManager firehose, KinesisProducer producer,
-    SchemaStore store, KinesisEvent... events) throws IOException {
-    LambdaRawRecordToAvro writer = new LambdaRawRecordToAvro();
-    // update the writer with the test properties
-    writer.setupForTesting(props, store, producer, firehose.archive(), firehose.process(),
-      firehose.commit());
+    Properties props, OutputFirehoseManager firehose, KinesisProducer producer,
+    Provider<SchemaStore> store, KinesisEvent... events) throws IOException {
+    LambdaWrapper<KinesisEvent, RawRecordToAvroHandler> writer =
+      getLambda(props, firehose, producer, store);
 
     List<KinesisRequest> parsedRequests = new ArrayList<>();
     Mockito.doAnswer(invoke -> {
@@ -238,10 +244,30 @@ public class TestLambdaToAvroWithLocalSchemaStore {
 
     // actually run the test
     for (KinesisEvent event : events) {
-      writer.handleEventInternal(event);
+      writer.handle(event);
     }
 
     return parsedRequests;
+  }
+
+  private LambdaWrapper<KinesisEvent, RawRecordToAvroHandler> getLambda(Properties props,
+    OutputFirehoseManager firehoses,
+    KinesisProducer producer, Provider<SchemaStore> store) {
+    return new LambdaWrapper<>(RawRecordToAvroHandler.class,
+      new AbstractModule() {
+        @Override
+        protected void configure() {
+          bind(SchemaStore.class).toProvider(store);
+        }
+      },
+      new NullableNamedInstanceModule<>(FirehoseModule.FIREHOSE_ARCHIVE_STREAM, firehoses.archive(),
+        FirehoseBatchWriter.class),
+      new NullableNamedInstanceModule<>(FirehoseModule.FIREHOSE_COMMIT_ERROR_STREAM,
+        firehoses.commit(), FirehoseBatchWriter.class),
+      new NullableNamedInstanceModule<>(FirehoseModule.FIREHOSE_MALFORMED_RECORDS_STREAM,
+        firehoses.process(), FirehoseBatchWriter.class),
+      new MockOnNullInstanceModule<>(producer, KinesisProducer.class),
+      new PropertiesModule(props));
   }
 
   private class KinesisRequest {
@@ -265,27 +291,19 @@ public class TestLambdaToAvroWithLocalSchemaStore {
    *
    * @return new store with that event
    */
-  private SchemaStore createSchemaStore(SchemaStore store, Map<String, Object> event)
+  private void createSchemaStore(Map<String, Object> event)
     throws Exception {
-    LambdaClientProperties props = getClientProperties();
-    if (store == null) {
-      store = props.createSchemaStore();
-    }
     try {
-      EndToEndTestRunner.updateSchemaStore(store, event);
+      EndToEndTestRunner.updateSchemaStore(store.get(), event);
     } catch (IllegalArgumentException e) {
-      return null;
+      LOG.warn("Error updating store!", e);
+      return;
     }
-    return store;
   }
 
-  protected LambdaClientProperties getClientProperties() throws Exception {
-    Properties props = getMockProps();
-    return LambdaClientProperties.createForTesting(props, store);
-  }
-
-  protected Properties getMockProps() {
+  protected Properties getClientProperties() throws Exception {
     Properties props = new Properties();
+    props.put(LambdaClientProperties.KINESIS_URL, "kurl");
     props.put(LambdaClientProperties.FIREHOSE_URL, "url");
     props.put(LambdaClientProperties.KINESIS_PARSED_RAW_OUT_STREAM_NAME, "stream");
     return props;

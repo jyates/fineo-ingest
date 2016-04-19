@@ -18,7 +18,7 @@ import io.fineo.schema.store.SchemaStore;
 import java.io.IOException;
 import java.util.Properties;
 
-import static io.fineo.lambda.configure.SingleInstanceModule.instanceModule;
+import static io.fineo.lambda.configure.util.SingleInstanceModule.instanceModule;
 
 /**
  * Simple wrapper around java properties

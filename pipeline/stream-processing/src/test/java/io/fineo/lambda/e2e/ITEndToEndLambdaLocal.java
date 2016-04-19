@@ -9,7 +9,7 @@ import com.google.inject.Provides;
 import com.google.inject.name.Names;
 import io.fineo.lambda.configure.firehose.FirehoseModule;
 import io.fineo.lambda.configure.PropertiesModule;
-import io.fineo.lambda.configure.SingleInstanceModule;
+import io.fineo.lambda.configure.util.SingleInstanceModule;
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import io.fineo.lambda.configure.legacy.StreamType;
 import io.fineo.lambda.dynamo.avro.AvroToDynamoWriter;
@@ -41,7 +41,7 @@ import java.util.Map;
 import java.util.Properties;
 
 import static com.google.common.collect.Lists.newArrayList;
-import static io.fineo.lambda.configure.SingleInstanceModule.instanceModule;
+import static io.fineo.lambda.configure.util.SingleInstanceModule.instanceModule;
 import static io.fineo.lambda.configure.legacy.LambdaClientProperties.RAW_PREFIX;
 import static io.fineo.lambda.configure.legacy.LambdaClientProperties.STAGED_PREFIX;
 import static io.fineo.lambda.configure.legacy.LambdaClientProperties
@@ -51,7 +51,7 @@ import static io.fineo.lambda.configure.legacy.StreamType.ARCHIVE;
 /**
  * Test the end-to-end workflow of the lambda architecture.
  */
-public class TestEndToEndLambdaLocal {
+public class ITEndToEndLambdaLocal {
 
   private static final String INGEST_CONNECTOR = "kinesis-ingest-records";
   private static final String STAGE_CONNECTOR = "kinesis-parsed-records";

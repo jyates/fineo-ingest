@@ -67,7 +67,11 @@ public class AwsDynamoSchemaTablesResource extends ExternalResource {
   }
 
   public LambdaClientProperties getClientProperties() throws Exception {
-    return getClientProperties(new Properties());
+    Properties props = new Properties();
+    props.put(LambdaClientProperties.DYNAMO_READ_LIMIT, "1");
+    props.put(LambdaClientProperties.DYNAMO_WRITE_LIMIT, "1");
+    props.put(LambdaClientProperties.DYNAMO_SCHEMA_STORE_TABLE, "store");
+    return getClientProperties(props);
   }
 
   public LambdaClientProperties getClientProperties(Properties props) throws Exception {

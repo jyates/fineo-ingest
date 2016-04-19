@@ -9,6 +9,7 @@ import com.google.inject.Provider;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import com.google.inject.name.Named;
+import com.google.inject.name.Names;
 import io.fineo.schema.aws.dynamodb.DynamoDBRepository;
 import io.fineo.schema.store.SchemaStore;
 import org.apache.commons.logging.Log;
@@ -31,6 +32,7 @@ public class LambdaModule extends AbstractModule {
   @Override
   protected void configure() {
     // legacy binding for reading properties directly
+    Names.bindProperties(binder(), props);
     bind(Properties.class).toInstance(props);
   }
 

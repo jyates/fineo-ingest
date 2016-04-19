@@ -3,12 +3,17 @@ package io.fineo.lambda;
 import com.amazonaws.AmazonWebServiceRequest;
 import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
 import com.google.common.collect.Lists;
-import io.fineo.lambda.configure.legacy.LambdaClientProperties;
-import io.fineo.lambda.util.LambdaTestUtils;
-import io.fineo.lambda.dynamo.avro.AvroToDynamoWriter;
-import io.fineo.lambda.firehose.FirehoseBatchWriter;
 import io.fineo.lambda.aws.AwsAsyncRequest;
 import io.fineo.lambda.aws.MultiWriteFailures;
+import io.fineo.lambda.configure.NullableNamedInstanceModule;
+import io.fineo.lambda.configure.firehose.FirehoseModule;
+import io.fineo.lambda.configure.util.InstanceToNamed;
+import io.fineo.lambda.configure.MockOnNullInstanceModule;
+import io.fineo.lambda.dynamo.avro.AvroToDynamoWriter;
+import io.fineo.lambda.firehose.FirehoseBatchWriter;
+import io.fineo.lambda.handle.LambdaWrapper;
+import io.fineo.lambda.handle.staged.AvroToStorageHandler;
+import io.fineo.lambda.util.LambdaTestUtils;
 import io.fineo.schema.avro.SchemaTestUtils;
 import org.apache.avro.file.ByteBufferUtils;
 import org.apache.avro.file.FirehoseRecordReader;
@@ -21,7 +26,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Properties;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
@@ -42,14 +46,31 @@ public class TestLambdaAvroToStorage {
     Mockito.when(dynamo.flush()).thenReturn(failures);
 
     // actually do the write
-    LambdaAvroToStorage storage = new LambdaAvroToStorage();
-    storage.setupForTesting(props(), dynamo, records, null, null);
-    storage.handleEventInternal(event);
+    LambdaWrapper<KinesisEvent, AvroToStorageHandler> storage = getLambda(records, dynamo);
+    storage.handle(event);
 
     // verify that we wrote the record the proper places
     verifyBufferAddedAndFlushed(records, buff);
     Mockito.verify(dynamo).write(Mockito.any());
     Mockito.verify(dynamo).flush();
+  }
+
+  private LambdaWrapper<KinesisEvent, AvroToStorageHandler> getLambda(FirehoseBatchWriter records,
+    AvroToDynamoWriter dynamo) {
+    return getLambda(dynamo, records, null, null);
+  }
+
+  private LambdaWrapper<KinesisEvent, AvroToStorageHandler> getLambda(
+    AvroToDynamoWriter dynamo, FirehoseBatchWriter records, FirehoseBatchWriter malformed,
+    FirehoseBatchWriter error) {
+    return new LambdaWrapper<>(AvroToStorageHandler.class,
+      new MockOnNullInstanceModule<>(dynamo, AvroToDynamoWriter.class),
+      new NullableNamedInstanceModule<>(FirehoseModule.FIREHOSE_ARCHIVE_STREAM, records,
+        FirehoseBatchWriter.class),
+      new NullableNamedInstanceModule<>(FirehoseModule.FIREHOSE_MALFORMED_RECORDS_STREAM, malformed,
+        FirehoseBatchWriter.class),
+      new NullableNamedInstanceModule<>(FirehoseModule.FIREHOSE_COMMIT_ERROR_STREAM, error,
+        FirehoseBatchWriter.class));
   }
 
   @Test
@@ -69,10 +90,9 @@ public class TestLambdaAvroToStorage {
     List<ByteBuffer> errors = manager.listenForProcesssingErrors();
 
     // actually do the write
-    LambdaAvroToStorage storage = new LambdaAvroToStorage();
-    storage
-      .setupForTesting(props(), dynamo, manager.archive(), manager.process(), manager.commit());
-    storage.handleEventInternal(event);
+    LambdaWrapper<KinesisEvent, AvroToStorageHandler> storage =
+      getLambda(dynamo, manager.archive(), manager.process(), manager.commit());
+    storage.handle(event);
 
     // verify that we wrote the record the proper places
     verifyBufferAddedAndFlushed(manager.archive(), malformed);
@@ -105,10 +125,9 @@ public class TestLambdaAvroToStorage {
     List<ByteBuffer> errors = manager.listenForCommitErrors();
 
     // actually do the write
-    LambdaAvroToStorage storage = new LambdaAvroToStorage();
-    storage
-      .setupForTesting(props(), dynamo, manager.archive(), manager.process(), manager.commit());
-    storage.handleEventInternal(event);
+    LambdaWrapper<KinesisEvent, AvroToStorageHandler> storage =
+      getLambda(dynamo, manager.archive(), manager.process(), manager.commit());
+    storage.handle(event);
 
     // verify that we wrote the record the proper places
     verifyBufferAddedAndFlushed(manager.archive(), buff);
@@ -127,9 +146,5 @@ public class TestLambdaAvroToStorage {
     throws IOException {
     Mockito.verify(writer).addToBatch(buff);
     Mockito.verify(writer).flush();
-  }
-
-  private LambdaClientProperties props() {
-    return LambdaClientProperties.createForTesting(new Properties(), null);
   }
 }

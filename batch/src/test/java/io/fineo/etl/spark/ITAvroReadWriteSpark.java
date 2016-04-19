@@ -8,7 +8,7 @@ import io.fineo.internal.customer.Metadata;
 import io.fineo.internal.customer.Metric;
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import io.fineo.lambda.e2e.EndToEndTestRunner;
-import io.fineo.lambda.e2e.TestEndToEndLambdaLocal;
+import io.fineo.lambda.e2e.ITEndToEndLambdaLocal;
 import io.fineo.lambda.util.LambdaTestUtils;
 import io.fineo.lambda.util.ResourceManager;
 import io.fineo.schema.avro.AvroSchemaEncoder;
@@ -79,7 +79,7 @@ public class ITAvroReadWriteSpark {
   public void testSingleRecord() throws Exception {
     File ingest = folder.newFolder("ingest");
     File archive = folder.newFolder("archive");
-    Pair<TestEndToEndLambdaLocal.TestState, ETLOptions> ran = run(ingest, archive, null);
+    Pair<ITEndToEndLambdaLocal.TestState, ETLOptions> ran = run(ingest, archive, null);
     verifyETLOutput(ran, ran.getLeft().getRunner().getProgress().getJson());
   }
 
@@ -89,11 +89,11 @@ public class ITAvroReadWriteSpark {
     File sparkOutput = folder.newFolder("spark-output");
     // run the basic test for the single record
     Map<String, Object> json = LambdaTestUtils.createRecords(1, 1)[0];
-    Pair<TestEndToEndLambdaLocal.TestState, ETLOptions> ran = run(lambdaOutput, sparkOutput, json);
+    Pair<ITEndToEndLambdaLocal.TestState, ETLOptions> ran = run(lambdaOutput, sparkOutput, json);
     verifyETLOutput(ran, json);
 
     ETLOptions opts = ran.getRight();
-    TestEndToEndLambdaLocal.TestState state = ran.getLeft();
+    ITEndToEndLambdaLocal.TestState state = ran.getLeft();
 
     // add a field to the record, run it again
     Map<String, Object> second = new HashMap<>(json);
@@ -116,7 +116,7 @@ public class ITAvroReadWriteSpark {
                        new File(sparkOutputDir) :
                        folder.newFolder("spark-output");
     Map<String, Object>[] records = LambdaTestUtils.createRecords(2, 1);
-    TestEndToEndLambdaLocal.TestState state =
+    ITEndToEndLambdaLocal.TestState state =
       runWithRecordsAndWriteToFile(lambdaOutput, records[0]);
     runIngest(state, lambdaOutput, records[1]);
 
@@ -145,7 +145,7 @@ public class ITAvroReadWriteSpark {
     File lambdaOutput = folder.newFolder("lambda-output");
     File sparkOutput = folder.newFolder("spark-output");
     Map<String, Object> json = LambdaTestUtils.createRecords(1, 1)[0];
-    TestEndToEndLambdaLocal.TestState state = TestEndToEndLambdaLocal.prepareTest();
+    ITEndToEndLambdaLocal.TestState state = ITEndToEndLambdaLocal.prepareTest();
     EndToEndTestRunner runner = state.getRunner();
     runner.setup();
     // register some know fields
@@ -208,10 +208,10 @@ public class ITAvroReadWriteSpark {
     verifyMappedEvents(rows, expected);
   }
 
-  private Pair<TestEndToEndLambdaLocal.TestState, ETLOptions> run(File ingest, File archive,
+  private Pair<ITEndToEndLambdaLocal.TestState, ETLOptions> run(File ingest, File archive,
     Map<String, Object> json) throws Exception {
     // run the basic ingest job
-    TestEndToEndLambdaLocal.TestState state = runWithRecordsAndWriteToFile(ingest, json);
+    ITEndToEndLambdaLocal.TestState state = runWithRecordsAndWriteToFile(ingest, json);
     ETLOptions opts = getOpts(ingest, archive, state.getRunner().getProps());
     runJob(opts);
     return new ImmutablePair<>(state, opts);
@@ -226,9 +226,9 @@ public class ITAvroReadWriteSpark {
     cleanupMetastore();
   }
 
-  private void runIngest(TestEndToEndLambdaLocal.TestState state, File lambdaOutput,
+  private void runIngest(ITEndToEndLambdaLocal.TestState state, File lambdaOutput,
     Map<String, Object> record) throws Exception {
-    TestEndToEndLambdaLocal.run(state, record);
+    ITEndToEndLambdaLocal.run(state, record);
     copyLamdaOutputToSparkInput(state, lambdaOutput);
     state.getRunner().cleanup();
   }
@@ -255,10 +255,10 @@ public class ITAvroReadWriteSpark {
     return opts;
   }
 
-  private void verifyETLOutput(Pair<TestEndToEndLambdaLocal.TestState, ETLOptions> ran,
+  private void verifyETLOutput(Pair<ITEndToEndLambdaLocal.TestState, ETLOptions> ran,
     Map<String, Object>... events)
     throws Exception {
-    TestEndToEndLambdaLocal.TestState state = ran.getLeft();
+    ITEndToEndLambdaLocal.TestState state = ran.getLeft();
     ETLOptions opts = ran.getRight();
     LambdaClientProperties props = state.getRunner().getProps();
     SchemaStore store = props.createSchemaStore();
@@ -384,12 +384,12 @@ public class ITAvroReadWriteSpark {
     }
   }
 
-  public TestEndToEndLambdaLocal.TestState runWithRecordsAndWriteToFile(File outputDir,
+  public ITEndToEndLambdaLocal.TestState runWithRecordsAndWriteToFile(File outputDir,
     Map<String, Object> record)
     throws Exception {
-    TestEndToEndLambdaLocal.TestState state = record == null ?
-                                              TestEndToEndLambdaLocal.runTest() :
-                                              TestEndToEndLambdaLocal.runTest(record);
+    ITEndToEndLambdaLocal.TestState state = record == null ?
+                                              ITEndToEndLambdaLocal.runTest() :
+                                              ITEndToEndLambdaLocal.runTest(record);
     copyLamdaOutputToSparkInput(state, outputDir);
     state.getRunner().cleanup();
 
@@ -399,7 +399,7 @@ public class ITAvroReadWriteSpark {
     return state;
   }
 
-  private void copyLamdaOutputToSparkInput(TestEndToEndLambdaLocal.TestState state,
+  private void copyLamdaOutputToSparkInput(ITEndToEndLambdaLocal.TestState state,
     File outputDir) throws IOException {
     // save the record(s) to a file
     File file = new File(outputDir, UUID.randomUUID().toString());

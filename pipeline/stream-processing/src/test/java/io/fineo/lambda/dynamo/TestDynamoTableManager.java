@@ -17,7 +17,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 
 @Category(AwsDependentTests.class)
-public class TestDyanmoTableManager {
+public class TestDynamoTableManager {
 
   @ClassRule
   public static AwsDynamoResource dynamo = new AwsDynamoResource();

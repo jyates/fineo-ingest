@@ -4,7 +4,7 @@ import com.amazonaws.auth.AWSCredentialsProvider;
 import com.google.inject.Module;
 import io.fineo.aws.AwsDependentTests;
 import io.fineo.lambda.configure.DefaultCredentialsModule;
-import io.fineo.lambda.configure.SingleInstanceModule;
+import io.fineo.lambda.configure.util.SingleInstanceModule;
 import io.fineo.lambda.e2e.resources.IngestUtil;
 import io.fineo.lambda.e2e.resources.lambda.LambdaKinesisConnector;
 import io.fineo.lambda.e2e.resources.lambda.LocalLambdaRemoteKinesisConnector;

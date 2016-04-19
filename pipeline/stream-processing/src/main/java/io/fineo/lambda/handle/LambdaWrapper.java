@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.Properties;
 
 import static com.google.common.collect.Lists.newArrayList;
-import static io.fineo.lambda.configure.SingleInstanceModule.instanceModule;
+import static io.fineo.lambda.configure.util.SingleInstanceModule.instanceModule;
 
 /**
  * Wrapper class that calls the actual lambda function, instantiating the caller class, as

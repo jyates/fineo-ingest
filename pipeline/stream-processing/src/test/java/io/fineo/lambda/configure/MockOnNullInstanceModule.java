@@ -1,5 +1,6 @@
 package io.fineo.lambda.configure;
 
+import io.fineo.lambda.configure.util.SingleInstanceModule;
 import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
 

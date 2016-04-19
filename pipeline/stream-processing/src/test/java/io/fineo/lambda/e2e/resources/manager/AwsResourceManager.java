@@ -9,7 +9,7 @@ import com.google.inject.Injector;
 import io.fineo.aws.rule.AwsCredentialResource;
 import io.fineo.lambda.configure.PropertiesModule;
 import io.fineo.lambda.configure.SchemaStoreModule;
-import io.fineo.lambda.configure.SingleInstanceModule;
+import io.fineo.lambda.configure.util.SingleInstanceModule;
 import io.fineo.lambda.configure.dynamo.DynamoModule;
 import io.fineo.lambda.configure.dynamo.DynamoRegionConfigurator;
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
@@ -43,7 +43,7 @@ import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
-import static io.fineo.lambda.configure.SingleInstanceModule.instanceModule;
+import static io.fineo.lambda.configure.util.SingleInstanceModule.instanceModule;
 import static java.lang.String.format;
 import static org.junit.Assert.assertEquals;
 
