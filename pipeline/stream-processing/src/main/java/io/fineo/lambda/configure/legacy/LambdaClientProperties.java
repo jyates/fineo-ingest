@@ -79,11 +79,6 @@ public class LambdaClientProperties {
     return load(PropertiesLoaderUtil.load());
   }
 
-  private static LambdaClientProperties load(String file) throws IOException {
-    Properties props = PropertiesLoaderUtil.load(file);
-    return load(props);
-  }
-
   private static LambdaClientProperties load(Properties props){
     Injector injector =
       Guice.createInjector(new LambdaModule(props), new DefaultCredentialsModule(),

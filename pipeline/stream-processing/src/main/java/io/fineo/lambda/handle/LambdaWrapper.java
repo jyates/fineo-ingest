@@ -3,7 +3,6 @@ package io.fineo.lambda.handle;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.Module;
-import io.fineo.lambda.handle.LambdaHandler;
 
 import java.io.IOException;
 

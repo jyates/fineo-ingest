@@ -32,10 +32,14 @@ public class IngestUtil {
       return then(stream, lambda);
     }
 
-    public IngestUtilBuilder then(String stream, Object lambda) throws NoSuchMethodException {
-      get(stages, stream).add(new Lambda(lambda, local ? getMockTestingMethod(lambda) :
-                                                 new LambdaCaller<>((IngestBaseLambda) lambda)));
+    public IngestUtilBuilder then(String stream, Object lambda, Function<KinesisEvent, ?> caller) {
+      get(stages, stream).add(new Lambda(lambda, caller));
       return this;
+    }
+
+    public IngestUtilBuilder then(String stream, Object lambda) throws NoSuchMethodException {
+      return then(stream, lambda, local ? getMockTestingMethod(lambda) :
+                                  new LambdaCaller<>((IngestBaseLambda) lambda));
     }
 
     public Map<String, List<Lambda>> build() {

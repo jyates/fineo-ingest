@@ -13,10 +13,6 @@ import java.util.Map;
  */
 public class LocalLambdaLocalKinesisConnector extends LocalLambdaRemoteKinesisConnector {
 
-  public LocalLambdaLocalKinesisConnector(Map streamToLambdaMapping, String pipelineSource) {
-    super(streamToLambdaMapping, pipelineSource);
-  }
-
   @Override
   public void connect(LambdaClientProperties props, IKinesisStreams ignored) throws IOException {
     this.kinesis = new MockKinesisStreams();

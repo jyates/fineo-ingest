@@ -30,12 +30,6 @@ public class LocalLambdaRemoteKinesisConnector extends LambdaKinesisConnector<In
   private ExecutorService executor;
   private boolean done;
 
-  public LocalLambdaRemoteKinesisConnector(
-    Map<String, List<IngestUtil.Lambda>> streamToLambdaMapping,
-    String pipelineSource) {
-    super(streamToLambdaMapping, pipelineSource);
-  }
-
   @Override
   public void write(String kinesisStream, byte[] data) {
     this.kinesis.submit(kinesisStream, ByteBuffer.wrap(data));

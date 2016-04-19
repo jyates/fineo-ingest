@@ -2,6 +2,7 @@ package io.fineo.lambda.e2e.resources.lambda;
 
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import io.fineo.lambda.e2e.resources.AwsResource;
+import io.fineo.lambda.e2e.resources.IngestUtil;
 import io.fineo.lambda.e2e.resources.kinesis.IKinesisStreams;
 
 import java.io.IOException;
@@ -14,10 +15,10 @@ import java.util.Map;
  */
 public abstract class LambdaKinesisConnector<T> implements AwsResource {
 
-  protected final Map<String, List<T>> mapping;
-  protected final String source;
+  protected Map<String, List<T>> mapping;
+  protected String source;
 
-  public LambdaKinesisConnector(Map<String, List<T>> streamToLambdaMapping, String pipelineSource) {
+  public void configure(Map<String, List<T>> streamToLambdaMapping, String pipelineSource) {
     this.mapping = streamToLambdaMapping;
     this.source = pipelineSource;
   }
@@ -33,5 +34,6 @@ public abstract class LambdaKinesisConnector<T> implements AwsResource {
 
   public abstract List<ByteBuffer> getWrites(String streamName);
 
-  public void reset(){}
+  public void reset() {
+  }
 }

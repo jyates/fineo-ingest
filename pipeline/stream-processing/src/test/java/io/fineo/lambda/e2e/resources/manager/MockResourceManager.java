@@ -1,7 +1,5 @@
 package io.fineo.lambda.e2e.resources.manager;
 
-import io.fineo.lambda.LambdaAvroToStorage;
-import io.fineo.lambda.LambdaRawRecordToAvro;
 import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import io.fineo.lambda.configure.legacy.StreamType;
@@ -40,47 +38,26 @@ public class MockResourceManager extends BaseResourceManager {
   private final List<GenericRecord> dynamoWrites = new ArrayList<>();
   private final Map<String, FirehoseBatchWriter> firehoses = new HashMap<>();
 
-  private final LambdaRawRecordToAvro start;
-  private final LambdaAvroToStorage storage;
-
   private AvroToDynamoWriter dynamo;
   private SchemaStore store;
+  private LambdaClientProperties props;
 
-  public MockResourceManager(LambdaKinesisConnector connector, LambdaRawRecordToAvro start,
-    LambdaAvroToStorage storage) {
+  public MockResourceManager(LambdaKinesisConnector connector, SchemaStore store) {
     super(connector);
-    this.start = start;
-    this.storage = storage;
+    this.store = store;
   }
 
   @Override
   public void setup(LambdaClientProperties props) throws NoSuchMethodException, IOException {
+    this.props = props;
     setupMocks(props);
-    // setup each stage
-    this.store = props.createSchemaStore();
-    start
-      .setupForTesting(props, store, null,
-        firehoses
-          .get(props.getFirehoseStreamName(RAW_PREFIX, StreamType.ARCHIVE)),
-        firehoses.get(
-          props.getFirehoseStreamName(RAW_PREFIX,
-            StreamType.PROCESSING_ERROR)),
-        firehoses.get(
-          props.getFirehoseStreamName(RAW_PREFIX, StreamType.COMMIT_ERROR)));
-    storage
-      .setupForTesting(props, dynamo,
-        firehoses
-          .get(
-            props.getFirehoseStreamName(STAGED_PREFIX, StreamType.ARCHIVE)),
-        firehoses.get(props
-          .getFirehoseStreamName(STAGED_PREFIX,
-            StreamType.PROCESSING_ERROR)),
-        firehoses.get(
-          props
-            .getFirehoseStreamName(STAGED_PREFIX, StreamType.COMMIT_ERROR)));
 
     // connector manages kinesis itself in local mock
     this.connector.connect(props, null);
+  }
+
+  public FirehoseBatchWriter getWriter(String prefix, StreamType type) {
+    return firehoses.get(props.getFirehoseStreamName(prefix, type));
   }
 
   @Override
@@ -151,5 +128,9 @@ public class MockResourceManager extends BaseResourceManager {
 
     this.dynamoWrites.clear();
     this.connector.reset();
+  }
+
+  public AvroToDynamoWriter getDynamo() {
+    return this.dynamo;
   }
 }

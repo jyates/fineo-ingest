@@ -9,7 +9,7 @@ public enum StreamType {
     this.suffix = suffix;
   }
 
-  String getPropertyKey(String prefix) {
+ public String getPropertyKey(String prefix) {
     return prefix + "." + suffix;
   }
 }

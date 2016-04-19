@@ -44,8 +44,8 @@ public class ITEndToEndLambdaSemiLocal extends BaseITEndToEndAwsServices {
                 .then(kinesisConnector,
                   new LambdaAvroToStorage().setPropertiesForTesting(getProps()))
                 .build();
-    LambdaKinesisConnector connector =
-      new LocalLambdaRemoteKinesisConnector(mapping, kinesisIngest);
+    LambdaKinesisConnector connector = new LocalLambdaRemoteKinesisConnector();
+    connector.configure(mapping, kinesisIngest);
     run(connector, LambdaTestUtils.createRecords(1, 1));
   }
 
