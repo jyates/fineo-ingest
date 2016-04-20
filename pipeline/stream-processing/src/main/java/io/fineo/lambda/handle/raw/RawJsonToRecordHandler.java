@@ -36,7 +36,6 @@ public class RawJsonToRecordHandler {
   }
 
   public void handle(Map<String, Object> values) throws IOException {
-    LOG.info("HAndling json event: "+values);
     // parse out the necessary values
     MapRecord record = new MapRecord(values);
     LOG.trace("got record");
