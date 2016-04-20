@@ -1,21 +1,16 @@
 package io.fineo.lambda.configure.legacy;
 
-import com.amazonaws.auth.AWSCredentialsProvider;
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
-import com.amazonaws.services.kinesis.AmazonKinesisAsyncClient;
-import com.amazonaws.services.kinesisfirehose.AmazonKinesisFirehoseAsyncClient;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
-import com.google.inject.Provider;
 import io.fineo.lambda.configure.DefaultCredentialsModule;
 import io.fineo.lambda.configure.PropertiesModule;
 import io.fineo.lambda.configure.util.PropertiesLoaderUtil;
-import io.fineo.schema.store.SchemaStore;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.Properties;
 
 import static io.fineo.lambda.configure.util.SingleInstanceModule.instanceModule;
@@ -23,7 +18,7 @@ import static io.fineo.lambda.configure.util.SingleInstanceModule.instanceModule
 /**
  * Simple wrapper around java properties
  */
-public class LambdaClientProperties {
+public class LambdaClientProperties implements Serializable{
 
   public static final String TEST_PREFIX = "fineo.integration.test.prefix";
   public static final String KINESIS_URL = "fineo.kinesis.url";
@@ -43,9 +38,6 @@ public class LambdaClientProperties {
   public static final String RAW_PREFIX = "fineo.firehose.raw";
   public static final String STAGED_PREFIX = "fineo.firehose.staged";
 
-  private Provider<AWSCredentialsProvider> credentials;
-  private Provider<AmazonDynamoDBAsyncClient> dynamo;
-  private Provider<SchemaStore> storeProvider;
   private Properties props;
 
   /**
@@ -53,21 +45,6 @@ public class LambdaClientProperties {
    */
   @VisibleForTesting
   public LambdaClientProperties() {
-  }
-
-  @Inject(optional = true)
-  public void setCredentials(Provider<AWSCredentialsProvider> credentials) {
-    this.credentials = credentials;
-  }
-
-  @Inject(optional = true)
-  public void setDynamo(Provider<AmazonDynamoDBAsyncClient> dynamo) {
-    this.dynamo = dynamo;
-  }
-
-  @Inject(optional = true)
-  public void setStoreProvider(Provider<SchemaStore> storeProvider) {
-    this.storeProvider = storeProvider;
   }
 
   @Inject(optional = true)
@@ -91,23 +68,10 @@ public class LambdaClientProperties {
     return injector.getInstance(LambdaClientProperties.class);
   }
 
-  public AmazonDynamoDBAsyncClient getDynamo() {
-    return dynamo.get();
-  }
-
-  public SchemaStore createSchemaStore() {
-    return storeProvider.get();
-  }
 
   @VisibleForTesting
   public String getSchemaStoreTable() {
     return props.getProperty(DYNAMO_SCHEMA_STORE_TABLE);
-  }
-
-  public AmazonKinesisAsyncClient getKinesisClient() {
-    AmazonKinesisAsyncClient client = new AmazonKinesisAsyncClient(credentials.get());
-    client.setEndpoint(this.getKinesisEndpoint());
-    return client;
   }
 
   public String getKinesisEndpoint() {
@@ -116,13 +80,6 @@ public class LambdaClientProperties {
 
   public String getRawToStagedKinesisStreamName() {
     return props.getProperty(KINESIS_PARSED_RAW_OUT_STREAM_NAME);
-  }
-
-  public AmazonKinesisFirehoseAsyncClient createFireHose() {
-    AmazonKinesisFirehoseAsyncClient firehoseClient =
-      new AmazonKinesisFirehoseAsyncClient(this.credentials.get());
-    firehoseClient.setEndpoint(this.getFirehoseUrl());
-    return firehoseClient;
   }
 
   private String getFirehoseUrl() {
@@ -140,35 +97,6 @@ public class LambdaClientProperties {
 
   public String getDynamoIngestTablePrefix() {
     return props.getProperty(DYNAMO_INGEST_TABLE_PREFIX);
-  }
-
-  public Long getDynamoWriteMax() {
-    return Long.valueOf(props.getProperty(DYNAMO_WRITE_LIMIT));
-  }
-
-  public Long getDynamoReadMax() {
-    return Long.valueOf(props.getProperty(DYNAMO_READ_LIMIT));
-  }
-
-  public long getDynamoMaxRetries() {
-    return Long.valueOf(props.getProperty(DYNAMO_RETRIES));
-  }
-
-  public long getKinesisRetries() {
-    return Long.valueOf(props.getProperty(KINESIS_RETRIES));
-  }
-
-
-  public AWSCredentialsProvider getProvider() {
-    return credentials.get();
-  }
-
-  public static LambdaClientProperties createForTesting(Properties props,
-    SchemaStore schemaStore) {
-    LambdaClientProperties lProps = new LambdaClientProperties();
-    lProps.setProps(props);
-    lProps.setStoreProvider(() -> schemaStore);
-    return lProps;
   }
 
   @VisibleForTesting

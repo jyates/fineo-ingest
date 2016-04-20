@@ -6,9 +6,9 @@ import com.google.inject.Module;
 import io.fineo.aws.ValidateDeployment;
 import io.fineo.lambda.configure.PropertiesModule;
 import io.fineo.lambda.configure.util.PropertiesLoaderUtil;
-import io.fineo.lambda.e2e.BaseITEndToEndAwsServices;
+import io.fineo.lambda.e2e.aws.BaseITEndToEndAwsServices;
 import io.fineo.lambda.e2e.resources.TestProperties;
-import io.fineo.lambda.e2e.resources.firehose.FirehoseStreams;
+import io.fineo.lambda.e2e.resources.aws.firehose.FirehoseStreams;
 import io.fineo.lambda.resources.RemoteLambdaConnector;
 import io.fineo.lambda.util.LambdaTestUtils;
 import org.junit.Test;
@@ -60,6 +60,8 @@ public class ITEndToEndLambdaAws extends BaseITEndToEndAwsServices {
 
   @Override
   protected List<Module> getAdditionalModules() {
-    return asList(instanceModule(new FirehoseStreams(3 * TestProperties.ONE_MINUTE)));
+    return asList(instanceModule(
+      new FirehoseStreams(3 * TestProperties.ONE_MINUTE, "s3",
+        TestProperties.Firehose.S3_BUCKET_NAME)));
   }
 }

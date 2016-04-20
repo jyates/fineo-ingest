@@ -1,10 +1,8 @@
 package io.fineo.lambda.firehose;
 
-import com.amazonaws.services.kinesisfirehose.AmazonKinesisFirehoseAsyncClient;
 import com.amazonaws.services.kinesisfirehose.AmazonKinesisFirehoseClient;
 import com.amazonaws.services.kinesisfirehose.model.DescribeDeliveryStreamRequest;
 import com.amazonaws.services.kinesisfirehose.model.DescribeDeliveryStreamResult;
-import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -15,16 +13,6 @@ public class FirehoseUtils {
 
   private FirehoseUtils() {
     // private ctor for utils
-  }
-
-  public static AmazonKinesisFirehoseAsyncClient createFirehoseAndCheck(
-    LambdaClientProperties props, String... names) {
-    AmazonKinesisFirehoseAsyncClient firehoseClient = props.createFireHose();
-    for (String name : names) {
-      checkHoseStatus(firehoseClient, name);
-    }
-
-    return firehoseClient;
   }
 
   public static void checkHoseStatus(AmazonKinesisFirehoseClient firehoseClient, String

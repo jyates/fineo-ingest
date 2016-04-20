@@ -1,4 +1,4 @@
-package io.fineo.lambda.e2e.resources.firehose;
+package io.fineo.lambda.e2e.resources.aws.firehose;
 
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.services.kinesisfirehose.AmazonKinesisFirehoseClient;
@@ -22,10 +22,10 @@ import com.google.common.collect.Lists;
 import com.google.inject.Inject;
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import io.fineo.lambda.configure.legacy.StreamType;
-import io.fineo.lambda.e2e.resources.AwsResource;
 import io.fineo.lambda.e2e.resources.ResourceUtils;
-import io.fineo.lambda.e2e.resources.S3Resource;
 import io.fineo.lambda.e2e.resources.TestProperties;
+import io.fineo.lambda.e2e.resources.aws.AwsResource;
+import io.fineo.lambda.e2e.resources.aws.S3Resource;
 import io.fineo.lambda.util.run.FutureWaiter;
 import io.fineo.lambda.util.run.ResultWaiter;
 import io.fineo.schema.Pair;
@@ -34,6 +34,7 @@ import org.apache.commons.logging.LogFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.LocalDateTime;
@@ -58,7 +59,8 @@ public class FirehoseResource implements AwsResource {
   private final AWSCredentialsProvider provider;
   private final AmazonS3Client s3;
   private final AmazonKinesisFirehoseClient firehoseClient;
-  private final ResultWaiter.ResultWaiterFactory waiter;;
+  private final ResultWaiter.ResultWaiterFactory waiter;
+  ;
   private final FirehoseStreams streams;
 
   @Inject
@@ -139,19 +141,67 @@ public class FirehoseResource implements AwsResource {
 
 
   public List<ByteBuffer> read(String streamName) {
-    String prefix = streams.getS3Path(streamName);
+    String authority = streams.getAuthority(streamName);
+    if (authority.startsWith("s3")) {
+      return readS3(streamName);
+    } else {
+      try {
+        return readLocalFs(streamName);
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
+  }
+
+  private List<ByteBuffer> readLocalFs(String streamName) throws IOException {
+    File output = new File(streams.getBucket());
+    String prefix = streams.getPath(streamName);
+    File testFiles = new File(output, prefix);
     long timeout = streams.getTimeout(prefix);
 
+
+    ResultWaiter<File[]> wait =
+      waiter.get()
+            .withInterval(READ_S3_INTERVAL)
+            .withTimeout(Math.max(timeout, READ_S3_INTERVAL))
+            .withDescription(
+              "Firehose -> file://" + testFiles.getAbsolutePath() + "] "
+              + "flush; max expected: ~60sec")
+            .withStatus(() -> {
+              if (testFiles::exists) {
+                return testFiles.listFiles();
+              }
+              return null;
+            }).withDoneWhenNotNull();
+    if (!wait.waitForResult()) {
+      return new ArrayList<>(0);
+    }
+
+    File[] files = wait.getLastStatus();
+    List<ByteBuffer> buffers = new ArrayList<>(files.length);
+    for (File file : files) {
+      try (FileInputStream in = new FileInputStream(file)) {
+        buffers.add(ByteBuffer.wrap(IOUtils.toByteArray(in)));
+      }
+    }
+    return buffers;
+  }
+
+  private List<ByteBuffer> readS3(String streamName) {
+    String bucket = streams.getBucket();
+    String prefix = streams.getPath(streamName);
+    long timeout = streams.getTimeout(prefix);
     // read the data from S3 to ensure it matches the raw data sent
     ResultWaiter<ObjectListing> wait =
       waiter.get()
             .withInterval(READ_S3_INTERVAL)
             .withTimeout(Math.max(timeout, READ_S3_INTERVAL))
             .withDescription(
-              "Firehose -> s3 [" + TestProperties.Firehose.S3_BUCKET_NAME + "/" + prefix + "] "
+              "Firehose -> s3 [" + bucket + "/" + prefix + "] "
               + "flush; max expected: ~60sec")
-            .withStatus(() -> s3.listObjects(TestProperties.Firehose.S3_BUCKET_NAME, prefix))
-            .withStatusCheck(listing -> ((ObjectListing) listing).getObjectSummaries().size() > 0);
+            .withStatus(() -> s3.listObjects(bucket, prefix))
+            .withStatusCheck(
+              listing -> ((ObjectListing) listing).getObjectSummaries().size() > 0);
     if (!wait.waitForResult()) {
       return new ArrayList<>(0);
     }
@@ -174,7 +224,8 @@ public class FirehoseResource implements AwsResource {
     // read the object
     S3ObjectSummary summary = optionalSummary.get();
     S3Object object =
-      s3.getObject(new GetObjectRequest(TestProperties.Firehose.S3_BUCKET_NAME, summary.getKey()));
+      s3.getObject(
+        new GetObjectRequest(TestProperties.Firehose.S3_BUCKET_NAME, summary.getKey()));
     ByteArrayOutputStream out = new ByteArrayOutputStream();
     try {
       IOUtils.copy(object.getObjectContent(), out);

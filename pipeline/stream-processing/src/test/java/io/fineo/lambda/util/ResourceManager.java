@@ -17,7 +17,7 @@ public interface ResourceManager {
 
   byte[] send(Map<String, Object> json) throws Exception;
 
-  default void cleanup(EndtoEndSuccessStatus status) throws Exception{};
+  void cleanup(EndtoEndSuccessStatus status) throws Exception;
 
   List<ByteBuffer> getFirehoseWrites(String streamName);
 

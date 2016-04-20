@@ -1,4 +1,4 @@
-package io.fineo.lambda.e2e.resources.firehose;
+package io.fineo.lambda.e2e.resources.aws.firehose;
 
 import com.google.common.base.Preconditions;
 import io.fineo.lambda.configure.legacy.StreamType;
@@ -20,17 +20,17 @@ import java.util.stream.Collectors;
  */
 public class FirehoseStreams {
 
+  private final String bucket;
   private Map<Pair<String, StreamType>, FirehoseInfo> streams =
     new ConcurrentHashMap<>();
   private Map<String, S3LocationInfo> s3LocationReferenceCounter = new ConcurrentHashMap<>();
   private long waitTime;
+  private String authority;
 
-  public FirehoseStreams() {
-    this(2 * TestProperties.ONE_MINUTE);
-  }
-
-  public FirehoseStreams(long waitTime) {
+  public FirehoseStreams(long waitTime, String authority, String bucket) {
     this.waitTime = waitTime;
+    this.authority = authority;
+    this.bucket = bucket;
   }
 
   public void store(Pair<String, StreamType> stream, String streamName,
@@ -53,7 +53,7 @@ public class FirehoseStreams {
     ref.claim();
   }
 
-  public String getS3Path(String streamName) {
+  public String getPath(String streamName) {
     FirehoseInfo fh = null;
     for (FirehoseInfo entry : this.streams.values()) {
       if (entry.streamName.equals(streamName)) {
@@ -96,7 +96,7 @@ public class FirehoseStreams {
    * @return get the S3 output path for a given stream. May not be unique with other stream
    * locations
    */
-  public String getS3Path(Pair<String, StreamType> stream) {
+  public String getPath(Pair<String, StreamType> stream) {
     FirehoseInfo info = streams.get(stream);
     return info == null ? null : info.s3Path;
   }
@@ -131,6 +131,14 @@ public class FirehoseStreams {
         .referenceCounter + ")";
     }).reduce(
       null, Join.on(",\n"));
+  }
+
+  public String getBucket(String stream) {
+    return this.bucket;
+  }
+
+  public String getAuthority(String streamName) {
+    return this.authority;
   }
 
   private class FirehoseInfo {

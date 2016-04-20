@@ -1,7 +1,7 @@
 package io.fineo.lambda.kinesis;
 
 import com.google.common.util.concurrent.MoreExecutors;
-import io.fineo.lambda.e2e.resources.kinesis.KinesisStreamManager;
+import io.fineo.lambda.e2e.resources.aws.kinesis.KinesisStreamManager;
 import com.google.common.collect.Lists;
 import io.fineo.aws.AwsDependentTests;
 import io.fineo.aws.rule.AwsCredentialResource;

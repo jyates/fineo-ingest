@@ -1,4 +1,4 @@
-package io.fineo.lambda.e2e.resources.lambda;
+package io.fineo.lambda.e2e.resources.aws.lambda;
 
 import io.fineo.lambda.e2e.resources.IngestUtil;
 import io.fineo.lambda.e2e.resources.kinesis.IKinesisStreams;
@@ -29,14 +29,8 @@ public class LocalLambdaRemoteKinesisConnector extends LambdaKinesisConnector<In
   private boolean done;
 
   @Override
-  public void write(String kinesisStream, byte[] data) {
-    this.kinesis.submit(kinesisStream, ByteBuffer.wrap(data));
-  }
-
-  @Override
-  public void connect(IKinesisStreams kinesisConnection)
-    throws IOException {
-    this.kinesis = kinesisConnection;
+  public void connect(IKinesisStreams kinesisConnection) throws IOException {
+    super.connect(kinesisConnection);
     connectStreams();
   }
 
@@ -78,15 +72,6 @@ public class LocalLambdaRemoteKinesisConnector extends LambdaKinesisConnector<In
       }
       LOG.info("Done connecting to local streams!");
     });
-  }
-
-  @Override
-  public List<ByteBuffer> getWrites(String streamName) {
-    List<ByteBuffer> data = new ArrayList<>();
-    for (List<ByteBuffer> buffs : this.kinesis.getEventQueue(streamName)) {
-      data.addAll(buffs);
-    }
-    return data;
   }
 
   @Override

@@ -7,7 +7,6 @@ import com.amazonaws.services.kinesisfirehose.model.PutRecordBatchResult;
 import com.amazonaws.services.kinesisfirehose.model.Record;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
-import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -39,11 +38,6 @@ public class FirehoseBatchWriter {
     this.converter = converter;
     this.client = client;
     this.streamName = name;
-  }
-
-  public FirehoseBatchWriter(LambdaClientProperties props,
-    Function<ByteBuffer, ByteBuffer> recordToOutputConverter, String streamName) {
-    this(streamName, props.createFireHose(), recordToOutputConverter);
     FirehoseUtils.checkHoseStatus(client, streamName);
   }
 

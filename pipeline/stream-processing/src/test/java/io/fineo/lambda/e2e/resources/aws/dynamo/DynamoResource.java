@@ -1,4 +1,4 @@
-package io.fineo.lambda.e2e.resources.dynamo;
+package io.fineo.lambda.e2e.resources.aws.dynamo;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
@@ -18,7 +18,7 @@ import io.fineo.lambda.dynamo.avro.Schema;
 import io.fineo.lambda.dynamo.iter.PageManager;
 import io.fineo.lambda.dynamo.iter.PagingIterator;
 import io.fineo.lambda.dynamo.iter.ScanPager;
-import io.fineo.lambda.e2e.resources.AwsResource;
+import io.fineo.lambda.e2e.resources.aws.AwsResource;
 import io.fineo.lambda.util.run.FutureWaiter;
 import io.fineo.lambda.util.run.ResultWaiter;
 import io.fineo.schema.avro.RecordMetadata;

@@ -10,13 +10,14 @@ import com.google.inject.name.Named;
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import io.fineo.lambda.firehose.FirehoseBatchWriter;
 
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.function.Function;
 
 /**
  * Load various firehoses and default bindings for function transformations
  */
-public class FirehoseModule extends AbstractModule {
+public class FirehoseModule extends AbstractModule implements Serializable {
 
   public static final String FIREHOSE_ARCHIVE_STREAM = "fineo.firehose.archive";
   public static final String FIREHOSE_MALFORMED_RECORDS_STREAM = "fineo.firehose.error.malformed";

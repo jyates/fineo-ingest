@@ -7,7 +7,6 @@ import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
 import com.google.common.collect.Lists;
-import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import io.fineo.lambda.FailureHandler;
 import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.lambda.dynamo.avro.AvroToDynamoWriter;
@@ -22,8 +21,6 @@ import java.util.UUID;
 
 import static junit.framework.TestCase.assertTrue;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
 
 
 /**
@@ -35,12 +32,7 @@ public class TestAvroToDynamoWriter {
   @Test
   public void testFailedWriteDynamoUnreachable() throws Exception {
     AmazonDynamoDBAsyncClient client = Mockito.mock(AmazonDynamoDBAsyncClient.class);
-    LambdaClientProperties props = Mockito.mock(LambdaClientProperties.class);
     String prefix = UUID.randomUUID().toString();
-    Mockito.when(props.getDynamoIngestTablePrefix()).thenReturn(prefix);
-    Mockito.when(props.getDynamoMaxRetries()).thenReturn(1L);
-    Mockito.when(props.getDynamoReadMax()).thenReturn(10L);
-    Mockito.when(props.getDynamoWriteMax()).thenReturn(10L);
 
     Mockito.when(client.updateItemAsync(Mockito.any(), Mockito.any())).then
       (invocationOnMock -> {
@@ -59,9 +51,7 @@ public class TestAvroToDynamoWriter {
     tables.setTableNames(Lists.newArrayList(name));
     Mockito.when(client.listTables(Mockito.any(), Mockito.any())).thenReturn(tables);
 
-    Mockito.when(props.getDynamo()).thenReturn(client);
-
-    AvroToDynamoWriter writer = AvroToDynamoWriter.create(props);
+    AvroToDynamoWriter writer = new AvroToDynamoWriter(client, prefix, 10L, 10L, 1L);
 
     GenericRecord record = SchemaTestUtils.createRandomRecord("orgId", "metricType",
       time, 1).get(0);

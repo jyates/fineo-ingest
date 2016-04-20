@@ -1,4 +1,4 @@
-package io.fineo.lambda.e2e.resources.manager;
+package io.fineo.lambda.e2e.resources.aws.manager;
 
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
@@ -14,13 +14,14 @@ import io.fineo.lambda.configure.legacy.StreamType;
 import io.fineo.lambda.configure.util.InstanceToNamed;
 import io.fineo.lambda.e2e.EndToEndTestRunner;
 import io.fineo.lambda.e2e.EndtoEndSuccessStatus;
-import io.fineo.lambda.e2e.resources.AwsResource;
+import io.fineo.lambda.e2e.resources.aws.AwsResource;
 import io.fineo.lambda.e2e.resources.ResourceUtils;
 import io.fineo.lambda.e2e.resources.TestProperties;
-import io.fineo.lambda.e2e.resources.dynamo.DynamoResource;
-import io.fineo.lambda.e2e.resources.firehose.FirehoseResource;
-import io.fineo.lambda.e2e.resources.kinesis.KinesisStreamManager;
-import io.fineo.lambda.e2e.resources.lambda.LambdaKinesisConnector;
+import io.fineo.lambda.e2e.resources.aws.dynamo.DynamoResource;
+import io.fineo.lambda.e2e.resources.aws.firehose.FirehoseResource;
+import io.fineo.lambda.e2e.resources.aws.kinesis.KinesisStreamManager;
+import io.fineo.lambda.e2e.resources.aws.lambda.LambdaKinesisConnector;
+import io.fineo.lambda.e2e.resources.manager.BaseResourceManager;
 import io.fineo.lambda.util.run.FutureWaiter;
 import io.fineo.lambda.util.run.ResultWaiter;
 import io.fineo.schema.Pair;

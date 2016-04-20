@@ -1,29 +1,23 @@
 package io.fineo.batch.processing.spark.write;
 
-import com.google.inject.Guice;
-import io.fineo.lambda.configure.DefaultCredentialsModule;
-import io.fineo.lambda.configure.PropertiesModule;
-import io.fineo.lambda.configure.firehose.FirehoseFunctions;
-import io.fineo.lambda.configure.firehose.FirehoseModule;
+import io.fineo.batch.processing.spark.ModuleLoader;
 import io.fineo.lambda.firehose.FirehoseBatchWriter;
-import io.fineo.lambda.handle.staged.FirehosePropertyBridge;
 import org.apache.avro.file.FirehoseRecordWriter;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.spark.api.java.function.VoidFunction;
 
 import java.io.Serializable;
 import java.util.Iterator;
-import java.util.Properties;
 
 /**
  * Write the records to the 'staged records' Firehose
  */
 public class StagedFirehoseWriter implements
-                            VoidFunction<Iterator<GenericRecord>>, Serializable {
-  private final Properties props;
+                                  VoidFunction<Iterator<GenericRecord>>, Serializable {
+  private final ModuleLoader modules;
 
-  public StagedFirehoseWriter(Properties props) {
-    this.props = props;
+  public StagedFirehoseWriter(ModuleLoader modules) {
+    this.modules = modules;
   }
 
   @Override
@@ -37,12 +31,6 @@ public class StagedFirehoseWriter implements
   }
 
   public FirehoseBatchWriter getWriter() {
-    return Guice.createInjector(
-      new PropertiesModule(props),
-      new DefaultCredentialsModule(),
-      new FirehoseModule(),
-      new FirehoseFunctions(),
-      new FirehosePropertyBridge()
-    ).getInstance(FirehoseBatchWriter.class);
+    return modules.load(FirehoseBatchWriter.class);
   }
 }

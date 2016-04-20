@@ -8,16 +8,21 @@ import java.util.Properties;
 public class BatchOptions {
 
   private String ingestPath;
-  private String processingErrors;
-  private String commitErrors;
-  private String rawToAvroArchivePath;
-  private String outputPath;
+  private Properties props;
 
   public String ingest() {
     return this.ingestPath;
   }
 
   public Properties props() {
-    return null;
+    return props;
+  }
+
+  public void setInput(String fileAbsolutePath) {
+    this.ingestPath = fileAbsolutePath;
+  }
+
+  public void setProps(Properties props) {
+    this.props = props;
   }
 }

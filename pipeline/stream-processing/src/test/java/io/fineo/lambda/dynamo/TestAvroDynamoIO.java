@@ -3,12 +3,13 @@ package io.fineo.lambda.dynamo;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.amazonaws.services.dynamodbv2.model.ListTablesResult;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
+import com.google.inject.Guice;
+import com.google.inject.Injector;
 import io.fineo.aws.AwsDependentTests;
 import io.fineo.internal.customer.BaseFields;
 import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.lambda.configure.PropertiesModule;
-import io.fineo.lambda.configure.dynamo.DynamoModule;
-import io.fineo.lambda.configure.legacy.LambdaClientProperties;
+import io.fineo.lambda.configure.dynamo.AvroToDynamoModule;
 import io.fineo.lambda.dynamo.avro.AvroDynamoReader;
 import io.fineo.lambda.dynamo.avro.AvroToDynamoWriter;
 import io.fineo.lambda.dynamo.rule.AwsDynamoResource;
@@ -151,14 +152,14 @@ public class TestAvroDynamoIO {
       dynamo.setConnectionProperties(prop);
 
       // setup the writer/reader
-      LambdaClientProperties props =
-        LambdaClientProperties
-          .create(new PropertiesModule(prop), instanceModule(prop), dynamo.getCredentialsModule(),
-            new DynamoModule(), new DynamoTestConfiguratorModule());
-      this.writer = AvroToDynamoWriter.create(props);
       AmazonDynamoDBAsyncClient client = tables.getAsyncClient();
-      this.reader =
-        new AvroDynamoReader(store, client, props.getDynamoIngestTablePrefix());
+      Injector injector = Guice.createInjector(
+        new PropertiesModule(prop),
+        new AvroToDynamoModule(),
+        instanceModule(client),
+        instanceModule(store));
+      this.writer = injector.getInstance(AvroToDynamoWriter.class);
+      this.reader = injector.getInstance(AvroDynamoReader.class);
     }
 
     public void writeRecords() throws Exception {

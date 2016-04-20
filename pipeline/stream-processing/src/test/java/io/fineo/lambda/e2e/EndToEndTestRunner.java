@@ -4,6 +4,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import io.fineo.internal.customer.Metadata;
 import io.fineo.internal.customer.Metric;
+import io.fineo.lambda.configure.PropertiesModule;
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import io.fineo.lambda.configure.legacy.StreamType;
 import io.fineo.lambda.util.LambdaTestUtils;
@@ -24,6 +25,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -34,6 +36,7 @@ import static io.fineo.lambda.configure.legacy.LambdaClientProperties.STAGED_PRE
 import static io.fineo.lambda.configure.legacy.StreamType.ARCHIVE;
 import static io.fineo.lambda.configure.legacy.StreamType.COMMIT_ERROR;
 import static io.fineo.lambda.configure.legacy.StreamType.PROCESSING_ERROR;
+import static io.fineo.lambda.configure.util.SingleInstanceModule.instanceModule;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -50,6 +53,11 @@ public class EndToEndTestRunner {
   private final ResourceManager manager;
   private ProgressTracker progress;
   private final EndtoEndSuccessStatus status;
+
+  public EndToEndTestRunner(Properties props, ResourceManager manager) throws Exception {
+    this(LambdaClientProperties.create(new PropertiesModule(props), instanceModule(props)),
+      manager);
+  }
 
   public EndToEndTestRunner(LambdaClientProperties props, ResourceManager manager)
     throws Exception {

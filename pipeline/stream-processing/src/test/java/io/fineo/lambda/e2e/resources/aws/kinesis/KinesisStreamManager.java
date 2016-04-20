@@ -1,4 +1,4 @@
-package io.fineo.lambda.e2e.resources.kinesis;
+package io.fineo.lambda.e2e.resources.aws.kinesis;
 
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.regions.RegionUtils;
@@ -15,7 +15,9 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.AbstractIterator;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
-import io.fineo.lambda.e2e.resources.AwsResource;
+import io.fineo.lambda.e2e.resources.aws.AwsResource;
+import io.fineo.lambda.e2e.resources.kinesis.ClosableSupplier;
+import io.fineo.lambda.e2e.resources.kinesis.IKinesisStreams;
 import io.fineo.lambda.kinesis.IKinesisProducer;
 import io.fineo.lambda.kinesis.KinesisProducer;
 import io.fineo.lambda.util.run.FutureWaiter;

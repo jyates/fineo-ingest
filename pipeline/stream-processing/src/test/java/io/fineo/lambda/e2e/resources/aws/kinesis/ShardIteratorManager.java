@@ -1,10 +1,11 @@
-package io.fineo.lambda.e2e.resources.kinesis;
+package io.fineo.lambda.e2e.resources.aws.kinesis;
 
 import com.amazonaws.services.kinesis.AmazonKinesisAsyncClient;
 import com.amazonaws.services.kinesis.model.ExpiredIteratorException;
 import com.amazonaws.services.kinesis.model.GetRecordsRequest;
 import com.amazonaws.services.kinesis.model.GetRecordsResult;
 import com.amazonaws.services.kinesis.model.ShardIteratorType;
+import io.fineo.lambda.e2e.resources.kinesis.ClosableSupplier;
 
 import java.io.IOException;
 import java.time.Duration;

@@ -4,10 +4,8 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Joiner;
 import io.fineo.internal.customer.BaseFields;
-import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import io.fineo.lambda.aws.AwsAsyncRequest;
 import io.fineo.lambda.aws.AwsAsyncSubmitter;
 import io.fineo.lambda.aws.MultiWriteFailures;
@@ -60,12 +58,6 @@ public class AvroToDynamoWriter {
     this.submitter = new AwsAsyncSubmitter<>(maxRetries, client::updateItemAsync);
     this.tables = new DynamoTableManager(client, dynamoIngestTablePrefix).creator(readMax,
       writeMax);
-  }
-
-  public static AvroToDynamoWriter create(LambdaClientProperties props) {
-    AmazonDynamoDBAsyncClient client = props.getDynamo();
-    return new AvroToDynamoWriter(client, props.getDynamoIngestTablePrefix(),
-      props.getDynamoWriteMax(), props.getDynamoReadMax(), props.getDynamoMaxRetries());
   }
 
   /**

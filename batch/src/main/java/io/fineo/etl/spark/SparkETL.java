@@ -1,12 +1,16 @@
 package io.fineo.etl.spark;
 
-import io.fineo.etl.spark.util.AvroSparkUtils;
-import io.fineo.etl.spark.options.ETLOptionBuilder;
-import io.fineo.etl.spark.options.ETLOptions;
+import com.google.inject.Guice;
 import io.fineo.etl.spark.fs.FileCleaner;
 import io.fineo.etl.spark.fs.RddLoader;
+import io.fineo.etl.spark.options.ETLOptionBuilder;
+import io.fineo.etl.spark.options.ETLOptions;
+import io.fineo.etl.spark.util.AvroSparkUtils;
 import io.fineo.internal.customer.Metric;
-import io.fineo.lambda.configure.legacy.LambdaClientProperties;
+import io.fineo.lambda.configure.PropertiesModule;
+import io.fineo.lambda.configure.SchemaStoreModule;
+import io.fineo.lambda.configure.dynamo.DynamoModule;
+import io.fineo.lambda.configure.dynamo.DynamoRegionConfigurator;
 import io.fineo.schema.avro.AvroSchemaEncoder;
 import io.fineo.schema.avro.RecordMetadata;
 import io.fineo.schema.store.SchemaStore;
@@ -38,7 +42,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
 
-import static com.google.common.collect.Lists.newArrayList;
 import static java.util.stream.Collectors.toList;
 
 public class SparkETL {
@@ -47,12 +50,14 @@ public class SparkETL {
   public static final String UNKNOWN_DATA_FORMAT = "json";
   private final ETLOptions opts;
   public static String UNKNOWN_FIELDS_KEY = "unknown";
+  private SchemaStore store;
 
   public SparkETL(ETLOptions opts) {
     this.opts = opts;
   }
 
-  public void run(JavaSparkContext context) throws URISyntaxException, IOException {
+  public void run(JavaSparkContext context, SchemaStore store) throws URISyntaxException, IOException {
+    this.store = store;
     RddLoader loader = new RddLoader(context, opts.root());
     loader.load();
     JavaPairRDD<String, PortableDataStream>[] stringRdds = loader.getRdds();
@@ -96,9 +101,6 @@ public class SparkETL {
     List<RecordKey> types,
     JavaPairRDD<RecordKey, Iterable<GenericRecord>> typeToRecord) {
     // get the schemas for each type
-    LambdaClientProperties props = opts.props();
-    SchemaStore store = props.createSchemaStore();
-
     List<Tuple3<JavaRDD<Row>, StructType, Date>> schemas = new ArrayList<>();
     for (RecordKey type : types) {
       JavaRDD<GenericRecord> grouped = getRddByKey(typeToRecord, type);
@@ -195,9 +197,16 @@ public class SparkETL {
       System.exit(opts.error() ? 1 : 0);
     }
 
+    SchemaStore store = Guice.createInjector(
+      new PropertiesModule(),
+      new DynamoModule(),
+      new DynamoRegionConfigurator(),
+      new SchemaStoreModule()
+    ).getInstance(SchemaStore.class);
+
     SparkETL etl = new SparkETL(opts);
     SparkConf conf = new SparkConf().setAppName(SparkETL.class.getName());
     final JavaSparkContext context = new JavaSparkContext(conf);
-    etl.run(context);
+    etl.run(context, store);
   }
 }

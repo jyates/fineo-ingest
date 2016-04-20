@@ -62,10 +62,7 @@ public class ITAvroReadWriteSpark {
   private static final String DIR_PROPERTY = "fineo.spark.dir";
 
   @ClassRule
-  public static LocalSparkRule spark = new LocalSparkRule(conf -> {
-    conf.set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
-        .set("spark.kryo.registrator", "io.fineo.etl.AvroKyroRegistrator");
-  });
+  public static LocalSparkRule spark = new LocalSparkRule();
 
   @Rule
   public TestOutput folder = new TestOutput(false);
@@ -105,7 +102,8 @@ public class ITAvroReadWriteSpark {
     runIngest(state, lambdaOutput, second);
 
     // run ETL job
-    runJob(opts);
+    SchemaStore store = state.getResources().getStore();
+    runJob(opts, store);
     verifyETLOutput(ran, json, second);
   }
 
@@ -123,13 +121,13 @@ public class ITAvroReadWriteSpark {
 
     LambdaClientProperties props = state.getRunner().getProps();
     ETLOptions opts = getOpts(lambdaOutput, sparkOutput, props);
-    runJob(opts);
+    SchemaStore store = state.getResources().getStore();
+    runJob(opts, store);
 
     verifyETLOutput(new ImmutablePair<>(state, opts), records);
 
     // drill read verification happens in the drill-testi, which we cannot do here b/c of
     // jvm conflicts however, we do write the expected output so we can verify it later
-    SchemaStore store = props.createSchemaStore();
     List<Map<String, Object>> events = new ArrayList<>();
     for (Map<String, Object> event : records) {
       Map<String, Object> translated = translate(event, store);
@@ -163,9 +161,9 @@ public class ITAvroReadWriteSpark {
     state.getRunner().cleanup();
 
     LambdaClientProperties props = state.getRunner().getProps();
+    SchemaStore store = state.getResources().getStore();
     ETLOptions opts = getOpts(lambdaOutput, sparkOutput, props);
-    runJob(opts);
-    SchemaStore store = props.createSchemaStore();
+    runJob(opts, store);
     Map<String, Object> translated = translate(json, store);
     // verify that we wrote the rest of the field correctly
     DataFrameLoader loader = new DataFrameLoader(spark.jsc());
@@ -214,14 +212,15 @@ public class ITAvroReadWriteSpark {
     // run the basic ingest job
     ITEndToEndLambdaLocal.TestState state = runWithRecordsAndWriteToFile(ingest, json);
     ETLOptions opts = getOpts(ingest, archive, state.getRunner().getProps());
-    runJob(opts);
+    SchemaStore store = state.getResources().getStore();
+    runJob(opts, store);
     return new ImmutablePair<>(state, opts);
   }
 
-  private void runJob(ETLOptions opts) throws IOException, URISyntaxException {
+  private void runJob(ETLOptions opts, SchemaStore store) throws IOException, URISyntaxException {
     // run the spark job against the output from the ingest
     SparkETL etl = new SparkETL(opts);
-    etl.run(spark.jsc());
+    etl.run(spark.jsc(), store);
 
     // remove any previous history, so we don't try and read the old metastore
     cleanupMetastore();
@@ -262,7 +261,7 @@ public class ITAvroReadWriteSpark {
     ITEndToEndLambdaLocal.TestState state = ran.getLeft();
     ETLOptions opts = ran.getRight();
     LambdaClientProperties props = state.getRunner().getProps();
-    SchemaStore store = props.createSchemaStore();
+    SchemaStore store = state.getResources().getStore();
     logEvents(store, events);
 
     for (Map<String, Object> event : events) {
@@ -281,7 +280,7 @@ public class ITAvroReadWriteSpark {
     }
 
     List<Row> rows = readAllRows(opts.archive());
-    assertRowsEqualsRawEvents(rows, props.createSchemaStore(), events);
+    assertRowsEqualsRawEvents(rows, store, events);
     cleanupMetastore();
   }
 
@@ -393,10 +392,6 @@ public class ITAvroReadWriteSpark {
                                               ITEndToEndLambdaLocal.runTest(record);
     copyLamdaOutputToSparkInput(state, outputDir);
     state.getRunner().cleanup();
-
-    // reuse the same store from the test runner anytime we run again
-    LambdaClientProperties props = state.getRunner().getProps();
-    props.setStoreProvider(() -> state.getResources().getStore());
     return state;
   }
 

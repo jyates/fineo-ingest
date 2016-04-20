@@ -3,7 +3,9 @@ package io.fineo.lambda.configure.util;
 import com.google.inject.AbstractModule;
 import com.google.inject.name.Names;
 
-public class InstanceToNamed<T> extends AbstractModule {
+import java.io.Serializable;
+
+public class InstanceToNamed<T> extends AbstractModule implements Serializable {
 
   protected final String named;
   protected final T instance;

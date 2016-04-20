@@ -1,10 +1,14 @@
-package io.fineo.lambda.e2e.resources.dynamo;
+package io.fineo.lambda.e2e.resources.aws.dynamo;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
+import com.google.inject.Guice;
+import com.google.inject.Provider;
 import io.fineo.aws.AwsDependentTests;
+import io.fineo.lambda.configure.PropertiesModule;
+import io.fineo.lambda.configure.SchemaStoreModule;
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import io.fineo.lambda.dynamo.DynamoTableManager;
 import io.fineo.lambda.dynamo.avro.Schema;
@@ -12,6 +16,7 @@ import io.fineo.lambda.dynamo.rule.AwsDynamoResource;
 import io.fineo.lambda.dynamo.rule.AwsDynamoSchemaTablesResource;
 import io.fineo.lambda.util.run.FutureWaiter;
 import io.fineo.lambda.util.run.ResultWaiter;
+import io.fineo.schema.store.SchemaStore;
 import io.fineo.test.rule.TestOutput;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -25,6 +30,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executors;
+
+import static io.fineo.lambda.configure.util.SingleInstanceModule.instanceModule;
 
 @Category(AwsDependentTests.class)
 public class TestDynamoResource {
@@ -48,9 +55,13 @@ public class TestDynamoResource {
     props.put(LambdaClientProperties.DYNAMO_SCHEMA_STORE_TABLE, tableResource.getTestTableName());
     LambdaClientProperties clientProperties = tableResource.getClientProperties(props);
 
-    AmazonDynamoDBAsyncClient client = clientProperties.getDynamo();
+    AmazonDynamoDBAsyncClient client = tableResource.getAsyncClient();
+    Provider<SchemaStore> store = Guice.createInjector(
+      new SchemaStoreModule(),
+      new PropertiesModule(clientProperties.getRawPropertiesForTesting()),
+      instanceModule(client)).getProvider(SchemaStore.class);
     DynamoResource dynamo = new DynamoResource(client, new ResultWaiter
-      .ResultWaiterFactory(1000, 100), () -> clientProperties.createSchemaStore(),
+      .ResultWaiterFactory(1000, 100), store,
       clientProperties);
     ListeningExecutorService exec =
       MoreExecutors.listeningDecorator(Executors.newSingleThreadExecutor());

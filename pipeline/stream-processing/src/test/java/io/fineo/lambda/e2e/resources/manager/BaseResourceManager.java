@@ -1,6 +1,6 @@
 package io.fineo.lambda.e2e.resources.manager;
 
-import io.fineo.lambda.e2e.resources.lambda.LambdaKinesisConnector;
+import io.fineo.lambda.e2e.resources.aws.lambda.LambdaKinesisConnector;
 import io.fineo.lambda.util.LambdaTestUtils;
 import io.fineo.lambda.util.ResourceManager;
 

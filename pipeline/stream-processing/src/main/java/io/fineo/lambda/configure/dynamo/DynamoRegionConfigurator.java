@@ -7,10 +7,12 @@ import com.google.inject.Provides;
 import com.google.inject.name.Named;
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 
+import java.io.Serializable;
+
 /**
  * A module that loads a {@link AwsDynamoConfigurator} to configure with a given region
  */
-public class DynamoRegionConfigurator extends AbstractModule {
+public class DynamoRegionConfigurator extends AbstractModule implements Serializable {
 
   @Override
   protected void configure() {

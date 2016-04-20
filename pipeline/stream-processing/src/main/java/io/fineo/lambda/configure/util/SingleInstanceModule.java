@@ -2,7 +2,9 @@ package io.fineo.lambda.configure.util;
 
 import com.google.inject.AbstractModule;
 
-public class SingleInstanceModule<T> extends AbstractModule {
+import java.io.Serializable;
+
+public class SingleInstanceModule<T> extends AbstractModule implements Serializable {
 
   protected final Class<T> clazz;
   protected final T inst;

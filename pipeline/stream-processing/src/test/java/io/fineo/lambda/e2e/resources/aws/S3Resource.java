@@ -1,4 +1,4 @@
-package io.fineo.lambda.e2e.resources;
+package io.fineo.lambda.e2e.resources.aws;
 
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.services.s3.AmazonS3Client;

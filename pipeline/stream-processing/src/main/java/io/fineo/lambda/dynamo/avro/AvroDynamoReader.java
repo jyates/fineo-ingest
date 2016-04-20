@@ -3,7 +3,10 @@ package io.fineo.lambda.dynamo.avro;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
+import com.google.inject.Inject;
+import com.google.inject.name.Named;
 import io.fineo.internal.customer.Metric;
+import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import io.fineo.lambda.dynamo.DynamoTableManager;
 import io.fineo.lambda.dynamo.Range;
 import io.fineo.lambda.dynamo.ResultOrException;
@@ -35,13 +38,15 @@ public class AvroDynamoReader {
   private final DynamoTableManager tableManager;
   private int prefetchSize;
 
-  public AvroDynamoReader(SchemaStore store, AmazonDynamoDBAsyncClient client, String prefix) {
+  @Inject
+  public AvroDynamoReader(SchemaStore store, AmazonDynamoDBAsyncClient client,
+    @Named(LambdaClientProperties.DYNAMO_INGEST_TABLE_PREFIX) String prefix) {
     this.store = store;
     this.client = client;
     this.tableManager = new DynamoTableManager(client, prefix);
   }
 
-  public void setPrefetchSize(int prefetchSize){
+  public void setPrefetchSize(int prefetchSize) {
     this.prefetchSize = prefetchSize;
   }
 
@@ -57,7 +62,7 @@ public class AvroDynamoReader {
   }
 
   public Stream<GenericRecord> scan(String orgId, Metric metric, Range<Instant> range,
-    ScanRequest baseRequest){
+    ScanRequest baseRequest) {
     String canonicalName = metric.getMetadata().getCanonicalName();
     AttributeValue partitionKey = Schema.getPartitionKey(orgId, canonicalName);
     DynamoAvroRecordDecoder decoder = new DynamoAvroRecordDecoder(store);

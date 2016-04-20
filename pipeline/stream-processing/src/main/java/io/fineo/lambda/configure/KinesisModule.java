@@ -11,10 +11,12 @@ import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import io.fineo.lambda.kinesis.IKinesisProducer;
 import io.fineo.lambda.kinesis.KinesisProducer;
 
+import java.io.Serializable;
+
 /**
  * Loads kinesis wrappers
  */
-public class KinesisModule extends AbstractModule {
+public class KinesisModule extends AbstractModule implements Serializable {
   @Override
   protected void configure() {
   }

@@ -16,7 +16,7 @@ import io.fineo.lambda.dynamo.avro.AvroToDynamoWriter;
 import io.fineo.lambda.e2e.resources.IngestUtil;
 import io.fineo.lambda.e2e.resources.kinesis.IKinesisStreams;
 import io.fineo.lambda.e2e.resources.kinesis.MockKinesisStreams;
-import io.fineo.lambda.e2e.resources.lambda.LambdaKinesisConnector;
+import io.fineo.lambda.e2e.resources.aws.lambda.LambdaKinesisConnector;
 import io.fineo.lambda.e2e.resources.lambda.LocalLambdaLocalKinesisConnector;
 import io.fineo.lambda.e2e.resources.manager.MockResourceManager;
 import io.fineo.lambda.firehose.FirehoseBatchWriter;
@@ -115,9 +115,7 @@ public class ITEndToEndLambdaLocal {
                 .build();
     connector.configure(stageMap, INGEST_CONNECTOR);
 
-    EndToEndTestRunner runner = new EndToEndTestRunner(
-      LambdaClientProperties.create(new PropertiesModule(props), instanceModule(props)), manager);
-
+    EndToEndTestRunner runner = new EndToEndTestRunner(props, manager);
     return new TestState(stageMap, runner, manager);
   }
 

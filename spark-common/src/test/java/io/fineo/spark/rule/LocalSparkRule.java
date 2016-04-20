@@ -27,6 +27,10 @@ public class LocalSparkRule extends ExternalResource {
     return _jsc;
   }
 
+  public LocalSparkRule() {
+    this(new DefaultConfLoader());
+  }
+
   public LocalSparkRule(ConfLoader loader) {
     this.loader = loader;
   }

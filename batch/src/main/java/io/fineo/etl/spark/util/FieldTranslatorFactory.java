@@ -1,7 +1,6 @@
 package io.fineo.etl.spark.util;
 
 import io.fineo.internal.customer.Metric;
-import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import io.fineo.schema.avro.AvroSchemaEncoder;
 import io.fineo.schema.avro.AvroSchemaManager;
 import io.fineo.schema.store.SchemaStore;
@@ -16,10 +15,6 @@ import java.util.Map;
 public class FieldTranslatorFactory {
 
   private final SchemaStore store;
-
-  public FieldTranslatorFactory(LambdaClientProperties props) {
-    this(props.createSchemaStore());
-  }
 
   public FieldTranslatorFactory(SchemaStore store) {
     this.store = store;

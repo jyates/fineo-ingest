@@ -4,6 +4,7 @@ import com.google.inject.AbstractModule;
 import com.google.inject.TypeLiteral;
 import com.google.inject.name.Names;
 
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.function.Function;
 
@@ -11,7 +12,7 @@ import java.util.function.Function;
  * Functions used by the {@link io.fineo.lambda.firehose.FirehoseBatchWriter} when copying bytes
  * to the output streams
  */
-public class FirehoseFunctions extends AbstractModule {
+public class FirehoseFunctions extends AbstractModule implements Serializable {
 
   private static final Function<ByteBuffer, ByteBuffer> COPY = ByteBuffer::duplicate;
 

@@ -15,9 +15,9 @@ import java.util.function.Supplier;
  */
 public class ResourceUtils {
 
-  public static void writeStream(String stream, File directory,
+  public static void writeStream(String fileName, File directory,
     Supplier<List<ByteBuffer>> dataSupplier) throws IOException {
-    File file = new File(directory, stream);
+    File file = new File(directory, fileName);
     List<ByteBuffer> writes = dataSupplier.get();
     WritableByteChannel out = Channels.newChannel(new BufferedOutputStream(new FileOutputStream
       (file)));
