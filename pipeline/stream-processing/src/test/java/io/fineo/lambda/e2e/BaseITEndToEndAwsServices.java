@@ -16,6 +16,8 @@ import org.apache.commons.logging.LogFactory;
 import org.junit.After;
 import org.junit.ClassRule;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
@@ -55,7 +57,8 @@ public class BaseITEndToEndAwsServices {
 
   protected void run(LambdaKinesisConnector connector, Map<String, Object>... msgs)
     throws Exception {
-    this.manager = new AwsResourceManager(getCredentialsModule(), output, connector, region);
+    this.manager = new AwsResourceManager(getCredentialsModule(), output, connector, region,
+      getAdditionalModules());
     this.manager.cleanupResourcesOnFailure(cleanup);
     this.runner = new EndToEndTestRunner(props, manager);
     runner.setup();
@@ -65,6 +68,10 @@ public class BaseITEndToEndAwsServices {
     }
     Thread.currentThread().sleep(3000);
     runner.validate();
+  }
+
+  protected List<Module> getAdditionalModules() {
+    return Collections.emptyList();
   }
 
   protected void setProperties(Properties properties) {

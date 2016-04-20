@@ -58,17 +58,18 @@ public class FirehoseResource implements AwsResource {
   private final AWSCredentialsProvider provider;
   private final AmazonS3Client s3;
   private final AmazonKinesisFirehoseClient firehoseClient;
-  private final ResultWaiter.ResultWaiterFactory waiter;
-  private FirehoseStreams streams = new FirehoseStreams();
+  private final ResultWaiter.ResultWaiterFactory waiter;;
+  private final FirehoseStreams streams;
 
   @Inject
   public FirehoseResource(LambdaClientProperties props, AWSCredentialsProvider provider,
-    ResultWaiter.ResultWaiterFactory waiter) {
+    ResultWaiter.ResultWaiterFactory waiter, FirehoseStreams streams) {
     this.provider = provider;
     this.props = props;
     this.waiter = waiter;
     this.s3 = new AmazonS3Client(provider);
     firehoseClient = new AmazonKinesisFirehoseClient(provider);
+    this.streams = streams;
   }
 
   public void createFirehoses(String stage, FutureWaiter future) {

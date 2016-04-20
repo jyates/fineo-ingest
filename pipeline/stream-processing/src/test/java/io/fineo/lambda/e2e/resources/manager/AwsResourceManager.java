@@ -1,6 +1,5 @@
 package io.fineo.lambda.e2e.resources.manager;
 
-import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.inject.Guice;
@@ -41,6 +40,7 @@ import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
+import static com.google.common.collect.Lists.newArrayList;
 import static io.fineo.lambda.configure.util.SingleInstanceModule.instanceModule;
 import static java.lang.String.format;
 import static org.junit.Assert.assertEquals;
@@ -57,6 +57,7 @@ public class AwsResourceManager extends BaseResourceManager {
 
   private final Module awsCredentials;
   private final TestOutput output;
+  private final List<Module> modules;
 
   private FirehoseResource firehose;
   private KinesisStreamManager kinesis;
@@ -65,11 +66,12 @@ public class AwsResourceManager extends BaseResourceManager {
   private boolean cleanup;
 
   public AwsResourceManager(Module awsCredentials, TestOutput output,
-    LambdaKinesisConnector connector, String region) {
+    LambdaKinesisConnector connector, String region, List<Module> additionalModules) {
     super(connector);
     this.awsCredentials = awsCredentials;
     this.output = output;
     this.region = region;
+    this.modules = newArrayList(additionalModules);
   }
 
   /**
@@ -85,7 +87,7 @@ public class AwsResourceManager extends BaseResourceManager {
     ResultWaiter.ResultWaiterFactory waiter = new ResultWaiter.ResultWaiterFactory(TestProperties
       .FIVE_MINUTES, TestProperties.ONE_SECOND);
 
-    Injector injector = Guice.createInjector(
+    modules.addAll(newArrayList(
       awsCredentials,
       instanceModule(props),
       instanceModule(props.getRawPropertiesForTesting()),
@@ -98,7 +100,8 @@ public class AwsResourceManager extends BaseResourceManager {
       new InstanceToNamed<>("aws.region", region, String.class),
       new InstanceToNamed<>("aws.kinesis.shard.count", TestProperties.Kinesis.SHARD_COUNT,
         Integer.class)
-    );
+    ));
+    Injector injector = Guice.createInjector(modules);
 
     // load all the things we will need
     this.dynamo = injector.getInstance(DynamoResource.class);
@@ -147,7 +150,7 @@ public class AwsResourceManager extends BaseResourceManager {
   @Override
   public void verifyDynamoWrites(RecordMetadata metadata, Map<String, Object> json) {
     List<GenericRecord> records = dynamo.read(metadata);
-    assertEquals(Lists.newArrayList(records.get(0)), records);
+    assertEquals(newArrayList(records.get(0)), records);
     EndToEndTestRunner.verifyRecordMatchesJson(getStore(), json, records.get(0));
   }
 

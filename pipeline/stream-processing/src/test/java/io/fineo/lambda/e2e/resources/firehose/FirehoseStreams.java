@@ -23,6 +23,15 @@ public class FirehoseStreams {
   private Map<Pair<String, StreamType>, FirehoseInfo> streams =
     new ConcurrentHashMap<>();
   private Map<String, S3LocationInfo> s3LocationReferenceCounter = new ConcurrentHashMap<>();
+  private long waitTime;
+
+  public FirehoseStreams() {
+    this(2 * TestProperties.ONE_MINUTE);
+  }
+
+  public FirehoseStreams(long waitTime) {
+    this.waitTime = waitTime;
+  }
 
   public void store(Pair<String, StreamType> stream, String streamName,
     String s3Path) {
@@ -70,7 +79,7 @@ public class FirehoseStreams {
   public long getTimeout(String s3Path) {
     S3LocationInfo location = s3LocationReferenceCounter.get(s3Path);
     Preconditions.checkNotNull(location, "Don't have a location reference for s3: " + s3Path);
-    long timeout = location.read ? TestProperties.ONE_SECOND : 2 * TestProperties.ONE_MINUTE;
+    long timeout = location.read ? TestProperties.ONE_SECOND : waitTime;
     location.read = true;
     return timeout;
   }
