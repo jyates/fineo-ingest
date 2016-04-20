@@ -16,6 +16,7 @@ import io.fineo.lambda.e2e.EndToEndTestRunner;
 import io.fineo.lambda.firehose.FirehoseBatchWriter;
 import io.fineo.lambda.handle.LambdaWrapper;
 import io.fineo.lambda.handle.raw.RawRecordToAvroHandler;
+import io.fineo.lambda.handle.raw.RawStageWrapper;
 import io.fineo.lambda.kinesis.KinesisProducer;
 import io.fineo.lambda.util.LambdaTestUtils;
 import io.fineo.schema.avro.AvroSchemaEncoder;
@@ -49,8 +50,8 @@ import static org.junit.Assert.assertTrue;
 /**
  * Test kinesis parsing with a generic, in-memory schema store that is refreshed after each test.
  */
-public class TestLambdaToAvroWithLocalSchemaStore {
-  private static final Log LOG = LogFactory.getLog(TestLambdaToAvroWithLocalSchemaStore.class);
+public class TestLambdaRawToAvroWithLocalSchemaStore {
+  private static final Log LOG = LogFactory.getLog(TestLambdaRawToAvroWithLocalSchemaStore.class);
   protected Provider<SchemaStore> store;
 
   @Before
@@ -253,7 +254,7 @@ public class TestLambdaToAvroWithLocalSchemaStore {
   private LambdaWrapper<KinesisEvent, RawRecordToAvroHandler> getLambda(Properties props,
     OutputFirehoseManager firehoses,
     KinesisProducer producer, Provider<SchemaStore> store) {
-    return new LambdaWrapper<>(RawRecordToAvroHandler.class,
+    return new RawStageWrapper(
       new AbstractModule() {
         @Override
         protected void configure() {

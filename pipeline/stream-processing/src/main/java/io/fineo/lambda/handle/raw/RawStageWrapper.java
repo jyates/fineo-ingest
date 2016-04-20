@@ -4,9 +4,9 @@ import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.Module;
 import io.fineo.lambda.configure.KinesisModule;
+import io.fineo.lambda.configure.SchemaStoreModule;
 import io.fineo.lambda.configure.firehose.FirehoseModule;
 import io.fineo.lambda.configure.util.PropertiesLoaderUtil;
-import io.fineo.lambda.configure.SchemaStoreModule;
 import io.fineo.lambda.handle.LambdaWrapper;
 
 import java.io.IOException;
@@ -18,13 +18,18 @@ import java.util.Properties;
  * Wrapper to instantiate the raw stage
  */
 public class RawStageWrapper extends LambdaWrapper<KinesisEvent, RawRecordToAvroHandler> {
+
   public RawStageWrapper() throws IOException {
     this(getModules(PropertiesLoaderUtil.load()));
   }
 
-  @VisibleForTesting
   public RawStageWrapper(Module... modules) {
     super(RawRecordToAvroHandler.class, modules);
+  }
+
+  @Override
+  public void handle(KinesisEvent event) throws IOException {
+    getInstance().handle(event);
   }
 
   @VisibleForTesting

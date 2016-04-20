@@ -22,7 +22,7 @@ import java.util.Properties;
  * Run the kinesis record parsing using a dynamo instance to back the schema store
  */
 @Category(AwsDependentTests.class)
-public class TestLambdaToAvroWithDynamoStore extends TestLambdaToAvroWithLocalSchemaStore {
+public class TestLambdaRawToAvroWithDynamoStore extends TestLambdaRawToAvroWithLocalSchemaStore {
 
   @ClassRule
   public static AwsDynamoResource dynamoResource = new AwsDynamoResource();

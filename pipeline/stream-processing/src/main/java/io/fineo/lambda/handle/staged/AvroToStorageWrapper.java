@@ -38,4 +38,9 @@ public class AvroToStorageWrapper extends LambdaWrapper<KinesisEvent, AvroToStor
     modules.add(new FirehoseFunctions());
     return modules.toArray(new Module[0]);
   }
+
+  @Override
+  public void handle(KinesisEvent event) throws IOException {
+    getInstance().handle(event);
+  }
 }

@@ -22,7 +22,9 @@ import io.fineo.lambda.e2e.resources.manager.MockResourceManager;
 import io.fineo.lambda.firehose.FirehoseBatchWriter;
 import io.fineo.lambda.handle.LambdaWrapper;
 import io.fineo.lambda.handle.raw.RawRecordToAvroHandler;
+import io.fineo.lambda.handle.raw.RawStageWrapper;
 import io.fineo.lambda.handle.staged.AvroToStorageHandler;
+import io.fineo.lambda.handle.staged.AvroToStorageWrapper;
 import io.fineo.lambda.handle.util.HandlerUtils;
 import io.fineo.lambda.kinesis.KinesisProducer;
 import io.fineo.lambda.util.LambdaTestUtils;
@@ -132,7 +134,7 @@ public class ITEndToEndLambdaLocal {
       () -> manager.getWriter(LambdaClientProperties.RAW_PREFIX, StreamType.PROCESSING_ERROR));
     List<Module> modules = getBaseModules(props, store, manager);
     modules.add(module);
-    return new LambdaWrapper<>(RawRecordToAvroHandler.class, modules.toArray(new Module[0]));
+    return new RawStageWrapper(modules.toArray(new Module[0]));
   }
 
   private static LambdaWrapper<KinesisEvent, AvroToStorageHandler> storageStage(Properties
@@ -146,7 +148,7 @@ public class ITEndToEndLambdaLocal {
       () -> manager.getWriter(LambdaClientProperties.STAGED_PREFIX, StreamType.PROCESSING_ERROR));
     List<Module> modules = getBaseModules(props, store, manager);
     modules.add(module);
-    return new LambdaWrapper<>(AvroToStorageHandler.class, modules.toArray(new Module[0]));
+    return new AvroToStorageWrapper(modules.toArray(new Module[0]));
   }
 
   private static List<Module> getBaseModules(Properties

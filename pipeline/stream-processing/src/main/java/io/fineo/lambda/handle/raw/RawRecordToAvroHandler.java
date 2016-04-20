@@ -8,7 +8,6 @@ import com.google.inject.Provider;
 import com.google.inject.name.Named;
 import io.fineo.lambda.JsonParser;
 import io.fineo.lambda.aws.MultiWriteFailures;
-import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import io.fineo.lambda.firehose.FirehoseBatchWriter;
 import io.fineo.lambda.handle.KinesisHandler;
 import org.apache.avro.generic.GenericRecord;
@@ -48,9 +47,9 @@ public class RawRecordToAvroHandler extends KinesisHandler {
     @Named(FIREHOSE_ARCHIVE_STREAM) Provider<FirehoseBatchWriter> archive,
     @Named(FIREHOSE_MALFORMED_RECORDS_STREAM) Provider<FirehoseBatchWriter> processErrors,
     @Named(FIREHOSE_COMMIT_ERROR_STREAM) Provider<FirehoseBatchWriter> commitFailures,
-    JsonParser parser,
-    RawJsonToRecordHandler jsonHandler) {
-    super(LambdaClientProperties.RAW_PREFIX, archive, processErrors, commitFailures);
+    RawJsonToRecordHandler jsonHandler,
+    JsonParser parser) {
+    super(archive, processErrors, commitFailures);
     this.parser = parser;
     this.jsonHandler = jsonHandler;
   }
@@ -61,8 +60,7 @@ public class RawRecordToAvroHandler extends KinesisHandler {
   public void handleEvent(KinesisEvent.KinesisEventRecord rec) throws IOException {
     for (Map<String, Object> values : parser
       .parse(new ByteBufferBackedInputStream(rec.getKinesis().getData()))) {
-      LOG.trace("Parsed json: " + values);
-     this.jsonHandler.handle(values);
+      this.jsonHandler.handle(values);
     }
   }
 

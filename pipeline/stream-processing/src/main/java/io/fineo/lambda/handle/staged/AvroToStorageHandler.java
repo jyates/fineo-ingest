@@ -5,7 +5,6 @@ import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.name.Named;
 import io.fineo.lambda.aws.MultiWriteFailures;
-import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import io.fineo.lambda.dynamo.avro.AvroToDynamoWriter;
 import io.fineo.lambda.firehose.FirehoseBatchWriter;
 import io.fineo.lambda.handle.KinesisHandler;
@@ -47,7 +46,7 @@ public class AvroToStorageHandler extends KinesisHandler {
     @Named(FIREHOSE_MALFORMED_RECORDS_STREAM) Provider<FirehoseBatchWriter> processErrors,
     @Named(FIREHOSE_COMMIT_ERROR_STREAM) Provider<FirehoseBatchWriter> commitFailures,
     AvroToDynamoWriter dynamo) {
-    super(LambdaClientProperties.STAGED_PREFIX, archive, processErrors, commitFailures);
+    super(archive, processErrors, commitFailures);
     this.dynamo = dynamo;
   }
 

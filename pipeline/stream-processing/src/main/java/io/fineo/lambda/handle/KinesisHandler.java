@@ -19,17 +19,14 @@ public abstract class KinesisHandler implements LambdaHandler<KinesisEvent> {
 
   private static final Log LOG = LogFactory.getLog(KinesisHandler.class);
 
-  private final String phase;
   private final Provider<FirehoseBatchWriter> archive;
   private final Provider<FirehoseBatchWriter> processErrors;
   private final Provider<FirehoseBatchWriter> commitFailures;
   private boolean hasProcessingError;
 
-  public KinesisHandler(String phase,
-    Provider<FirehoseBatchWriter> archive,
+  public KinesisHandler(Provider<FirehoseBatchWriter> archive,
     Provider<FirehoseBatchWriter> processErrors,
     Provider<FirehoseBatchWriter> commitFailures) {
-    this.phase = phase;
     this.archive = archive;
     this.processErrors = processErrors;
     this.commitFailures = commitFailures;

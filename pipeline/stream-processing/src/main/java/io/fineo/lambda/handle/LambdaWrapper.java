@@ -22,7 +22,7 @@ import static io.fineo.lambda.configure.util.SingleInstanceModule.instanceModule
  * Wrapper class that calls the actual lambda function, instantiating the caller class, as
  * necessary.
  */
-public class LambdaWrapper<T, C extends LambdaHandler<T>> {
+public abstract class LambdaWrapper<T, C extends LambdaHandler<?>> {
 
   private static final Log LOG = LogFactory.getLog(LambdaWrapper.class);
   private final Class<C> clazz;
@@ -34,15 +34,23 @@ public class LambdaWrapper<T, C extends LambdaHandler<T>> {
     this.modules = newArrayList(modules);
   }
 
-  public void handle(T event) throws IOException {
-    LOG.info("Got event: "+event);
+  protected C getInstance(){
     if (inst == null) {
       Injector guice = Guice.createInjector(modules);
       this.inst = guice.getInstance(clazz);
     }
-    LOG.info("Got instance: "+this.inst);
-    this.inst.handle(event);
+    return this.inst;
   }
+
+  /**
+   * Subclasses have to implement this method themselves. Otherwise, AWS Lambda for some reason
+   * thinks we are casting the event to a LinkedHashMap. I don't know. Its weird. You shouldn't
+   * have to do much in the method beyond {@link #getInstance()} and then
+   * {@link LambdaHandler#handle(Object)}
+   * @param event AWS Lambda event
+   * @throws IOException on failure
+   */
+  public abstract void handle(T event) throws IOException;
 
   protected static void addBasicProperties(List<Module> modules, Properties props) {
     modules.add(new PropertiesModule(props));
