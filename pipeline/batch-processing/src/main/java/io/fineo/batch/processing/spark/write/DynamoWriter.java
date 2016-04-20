@@ -1,14 +1,19 @@
 package io.fineo.batch.processing.spark.write;
 
 import com.google.inject.Guice;
-import com.google.inject.Injector;
-import io.fineo.batch.processing.spark.ModuleLoader;
+import io.fineo.lambda.configure.DefaultCredentialsModule;
+import io.fineo.lambda.configure.PropertiesModule;
+import io.fineo.lambda.configure.dynamo.DynamoModule;
+import io.fineo.lambda.configure.dynamo.DynamoRegionConfigurator;
 import io.fineo.lambda.handle.staged.RecordToDynamoHandler;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.spark.api.java.function.VoidFunction;
 
 import java.io.Serializable;
 import java.util.Iterator;
+import java.util.Properties;
+
+import static com.google.common.collect.Lists.newArrayList;
 
 /**
  * Write the records to dynamo
@@ -16,10 +21,10 @@ import java.util.Iterator;
 public class DynamoWriter implements
                           VoidFunction<Iterator<GenericRecord>>, Serializable {
 
-  private final ModuleLoader modules;
+  private final Properties props;
 
-  public DynamoWriter(ModuleLoader modules) {
-    this.modules = modules;
+  public DynamoWriter(Properties props) {
+    this.props = props;
   }
 
   @Override
@@ -30,6 +35,11 @@ public class DynamoWriter implements
   }
 
   public RecordToDynamoHandler getHandler() {
-    return modules.load(RecordToDynamoHandler.class);
+    return Guice.createInjector(newArrayList(
+      new PropertiesModule(this.props),
+      DefaultCredentialsModule.create(this.props),
+      new DynamoModule(),
+      new DynamoRegionConfigurator()
+    )).getInstance(RecordToDynamoHandler.class);
   }
 }

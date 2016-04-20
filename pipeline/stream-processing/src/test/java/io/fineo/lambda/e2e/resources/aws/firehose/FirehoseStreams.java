@@ -92,16 +92,6 @@ public class FirehoseStreams {
   }
 
   /**
-   * @param stream
-   * @return get the S3 output path for a given stream. May not be unique with other stream
-   * locations
-   */
-  public String getPath(Pair<String, StreamType> stream) {
-    FirehoseInfo info = streams.get(stream);
-    return info == null ? null : info.s3Path;
-  }
-
-  /**
    * Remove a claim to an S3 location made by given stream
    *
    * @param s3Path s3 location

@@ -11,7 +11,6 @@
 
   <artifactId>batch-processing</artifactId>
 
-
   <dependencies>
     <dependency>
       <groupId>io.fineo.schema</groupId>
@@ -32,6 +31,13 @@
       <artifactId>spark-common</artifactId>
     </dependency>
 
+    <!-- AWS -->
+    <dependency>
+      <groupId>com.amazonaws</groupId>
+      <artifactId>aws-java-sdk</artifactId>
+    </dependency>
+
+    <!-- Spark/Scala -->
     <dependency>
       <groupId>org.scala-lang</groupId>
       <artifactId>scala-library</artifactId>

@@ -199,6 +199,7 @@
 
   <dependencyManagement>
     <dependencies>
+      <!-- Intra-project -->
       <dependency>
         <groupId>io.fineo.etl.pipeline</groupId>
         <artifactId>stream-processing</artifactId>
@@ -252,6 +253,14 @@
         <artifactId>spark-common</artifactId>
         <version>${project.version}</version>
       </dependency>
+
+      <dependency>
+        <groupId>com.amazonaws</groupId>
+        <artifactId>aws-java-sdk</artifactId>
+        <version>${aws-java-sdk.version}</version>
+      </dependency>
+
+      <!-- Spark/Scala -->
       <dependency>
         <groupId>org.scala-lang</groupId>
         <artifactId>scala-library</artifactId>
@@ -288,6 +297,7 @@
         <artifactId>commons-cli</artifactId>
         <version>1.2<!-- match hadoop version --></version>
       </dependency>
+
       <!-- Test dependencies -->
       <dependency>
         <groupId>io.fineo.schema</groupId>

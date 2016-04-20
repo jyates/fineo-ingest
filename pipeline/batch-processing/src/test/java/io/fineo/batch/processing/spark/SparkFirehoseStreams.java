@@ -12,7 +12,7 @@ public class SparkFirehoseStreams extends FirehoseStreams {
 
   public SparkFirehoseStreams(long waitTime, Map<String, StreamLookup> mapping) {
     super(waitTime, null, null);
-    this.streamToLookup =mapping;
+    this.streamToLookup = mapping;
   }
 
   @Override
@@ -25,20 +25,13 @@ public class SparkFirehoseStreams extends FirehoseStreams {
     return streamToLookup.get(stream).authority;
   }
 
-  @Override
-  public String getPath(String streamName) {
-    return streamToLookup.get(streamName).prefix;
-  }
-
-  public static class StreamLookup{
+  public static class StreamLookup {
     public final String authority;
     public final String bucket;
-    public final String prefix;
 
-    public StreamLookup(String authority, String bucket, String prefix) {
+    public StreamLookup(String authority, String bucket) {
       this.authority = authority;
       this.bucket = bucket;
-      this.prefix = prefix;
     }
   }
 }

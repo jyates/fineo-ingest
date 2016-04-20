@@ -54,13 +54,13 @@ import static org.junit.Assert.assertEquals;
 public class FirehoseResource implements AwsResource {
   private static final Log LOG = LogFactory.getLog(FirehoseResource.class);
   public static final long READ_S3_INTERVAL = TestProperties.ONE_SECOND * 10;
+  private static final String S3_URI_AUTHORITY = "s3";
 
   private final LambdaClientProperties props;
   private final AWSCredentialsProvider provider;
   private final AmazonS3Client s3;
   private final AmazonKinesisFirehoseClient firehoseClient;
   private final ResultWaiter.ResultWaiterFactory waiter;
-  ;
   private final FirehoseStreams streams;
 
   @Inject
@@ -130,6 +130,9 @@ public class FirehoseResource implements AwsResource {
   }
 
   private boolean exists(String stream) {
+    if (!streams.getAuthority(stream).equals(S3_URI_AUTHORITY)) {
+      return true;
+    }
     try {
       firehoseClient.describeDeliveryStream(new DescribeDeliveryStreamRequest()
         .withDeliveryStreamName(stream));
@@ -142,23 +145,24 @@ public class FirehoseResource implements AwsResource {
 
   public List<ByteBuffer> read(String streamName) {
     String authority = streams.getAuthority(streamName);
-    if (authority.startsWith("s3")) {
-      return readS3(streamName);
+    String bucket = streams.getBucket(streamName);
+    String prefix = streams.getPath(streamName);
+    long timeout = streams.getTimeout(prefix);
+    if (authority.startsWith(S3_URI_AUTHORITY)) {
+      return readS3(streamName, bucket, prefix, timeout);
     } else {
       try {
-        return readLocalFs(streamName);
+        return readLocalFs(bucket, prefix, timeout);
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
     }
   }
 
-  private List<ByteBuffer> readLocalFs(String streamName) throws IOException {
-    File output = new File(streams.getBucket());
-    String prefix = streams.getPath(streamName);
+  private List<ByteBuffer> readLocalFs(String bucket, String prefix, long timeout)
+    throws IOException {
+    File output = new File(bucket);
     File testFiles = new File(output, prefix);
-    long timeout = streams.getTimeout(prefix);
-
 
     ResultWaiter<File[]> wait =
       waiter.get()
@@ -168,7 +172,7 @@ public class FirehoseResource implements AwsResource {
               "Firehose -> file://" + testFiles.getAbsolutePath() + "] "
               + "flush; max expected: ~60sec")
             .withStatus(() -> {
-              if (testFiles::exists) {
+              if (testFiles.exists()) {
                 return testFiles.listFiles();
               }
               return null;
@@ -187,10 +191,7 @@ public class FirehoseResource implements AwsResource {
     return buffers;
   }
 
-  private List<ByteBuffer> readS3(String streamName) {
-    String bucket = streams.getBucket();
-    String prefix = streams.getPath(streamName);
-    long timeout = streams.getTimeout(prefix);
+  private List<ByteBuffer> readS3(String streamName, String bucket, String prefix, long timeout) {
     // read the data from S3 to ensure it matches the raw data sent
     ResultWaiter<ObjectListing> wait =
       waiter.get()

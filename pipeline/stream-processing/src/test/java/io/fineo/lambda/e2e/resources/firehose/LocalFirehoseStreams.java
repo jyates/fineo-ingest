@@ -79,8 +79,7 @@ public class LocalFirehoseStreams implements Serializable {
       props.getFirehoseStreamName(RAW_PREFIX, StreamType.PROCESSING_ERROR),
       props.getFirehoseStreamName(STAGED_PREFIX, StreamType.ARCHIVE),
       props.getFirehoseStreamName(STAGED_PREFIX, StreamType.COMMIT_ERROR),
-      props
-        .getFirehoseStreamName(STAGED_PREFIX, StreamType.PROCESSING_ERROR))
+      props.getFirehoseStreamName(STAGED_PREFIX, StreamType.PROCESSING_ERROR))
           .forEach(name -> {
             FirehoseBatchWriter firehose = Mockito.mock(FirehoseBatchWriter.class);
             firehoses.put(name, firehose);

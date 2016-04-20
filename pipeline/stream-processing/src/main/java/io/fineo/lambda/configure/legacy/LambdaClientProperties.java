@@ -68,22 +68,13 @@ public class LambdaClientProperties implements Serializable{
     return injector.getInstance(LambdaClientProperties.class);
   }
 
-
   @VisibleForTesting
   public String getSchemaStoreTable() {
     return props.getProperty(DYNAMO_SCHEMA_STORE_TABLE);
   }
 
-  public String getKinesisEndpoint() {
-    return props.getProperty(KINESIS_URL);
-  }
-
   public String getRawToStagedKinesisStreamName() {
     return props.getProperty(KINESIS_PARSED_RAW_OUT_STREAM_NAME);
-  }
-
-  private String getFirehoseUrl() {
-    return props.getProperty(FIREHOSE_URL);
   }
 
   public String getFirehoseStreamName(String phaseName, StreamType type) {

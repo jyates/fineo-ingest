@@ -10,6 +10,8 @@ import org.apache.commons.logging.LogFactory;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.Map;
 
@@ -62,5 +64,14 @@ public class JsonParser implements Serializable{
     String json = IOUtils.toString(stream, "UTF-8");
     LOG.trace("Got message: " + json);
     return new ByteArrayInputStream(json.getBytes());
+  }
+
+  private void writeObject(ObjectOutputStream out) throws IOException {
+    out.defaultWriteObject();
+  }
+
+  private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
+    in.defaultReadObject();
+    jsonFactory.setCodec(new ObjectMapper());
   }
 }

@@ -55,7 +55,9 @@ public class BaseITEndToEndAwsServices {
       this.runner.cleanup();
     } else {
       LOG.info("trying manager, runner is null");
-      this.manager.cleanup(null);
+      if (this.manager != null) {
+        this.manager.cleanup(null);
+      }
     }
   }
 
@@ -121,6 +123,8 @@ public class BaseITEndToEndAwsServices {
     props.setProperty("dynamo.limit.write", "1");
     props.setProperty("dynamo.limit.read", "1");
     props.setProperty("dynamo.limit.retries", "3");
+
+    props.setProperty("aws.testing.creds", "aws-testing");
 
     // replace all the properties with one that is prefixed by "fineo"
     List<String> names = newArrayList(props.stringPropertyNames());
