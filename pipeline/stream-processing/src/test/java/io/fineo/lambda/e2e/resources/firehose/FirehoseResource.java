@@ -148,7 +148,7 @@ public class FirehoseResource implements AwsResource {
             .withTimeout(Math.max(timeout, READ_S3_INTERVAL))
             .withDescription(
               "Firehose -> s3 [" + TestProperties.Firehose.S3_BUCKET_NAME + "/" + prefix + "] "
-              + "flush; max expceted: ~60sec")
+              + "flush; max expected: ~60sec")
             .withStatus(() -> s3.listObjects(TestProperties.Firehose.S3_BUCKET_NAME, prefix))
             .withStatusCheck(listing -> ((ObjectListing) listing).getObjectSummaries().size() > 0);
     if (!wait.waitForResult()) {
