@@ -63,7 +63,7 @@ public class ITKinesisProducerAws {
 
     // write some data to the stream
     GenericRecord data = SchemaTestUtils.createRandomRecord();
-    KinesisProducer producer = new KinesisProducer(manager.getKinesis(), 1);
+    IKinesisProducer producer = new KinesisProducer(manager.getKinesis(), 1);
     producer.add(streamName, "a", data);
     MultiWriteFailures<GenericRecord> failures = producer.flush();
     assertFalse("Some actions failed: " + failures.getActions(), failures.any());

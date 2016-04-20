@@ -3,7 +3,7 @@ package io.fineo.lambda.handle.raw;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import io.fineo.lambda.aws.MultiWriteFailures;
-import io.fineo.lambda.kinesis.KinesisProducer;
+import io.fineo.lambda.kinesis.IKinesisProducer;
 import io.fineo.schema.MapRecord;
 import io.fineo.schema.avro.AvroSchemaEncoder;
 import io.fineo.schema.store.SchemaStore;
@@ -22,13 +22,13 @@ import static io.fineo.lambda.configure.legacy.LambdaClientProperties.KINESIS_PA
 public class RawJsonToRecordHandler {
 
   private static final Log LOG = LogFactory.getLog(RawJsonToRecordHandler.class);
-  private final KinesisProducer convertedRecords;
+  private final IKinesisProducer convertedRecords;
   private final String stream;
   private final SchemaStore store;
 
   @Inject
   public RawJsonToRecordHandler(@Named(KINESIS_PARSED_RAW_OUT_STREAM_NAME) String archiveStream,
-    SchemaStore store, KinesisProducer kinesis) {
+    SchemaStore store, IKinesisProducer kinesis) {
     this.stream = archiveStream;
     this.store = store;
     this.convertedRecords = kinesis;

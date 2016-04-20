@@ -1,9 +1,10 @@
-package io.fineo.etl.spark;
+package io.fineo.batch.processing.spark;
 
 import com.fasterxml.jackson.jr.ob.JSON;
-import io.fineo.etl.FieldTranslatorFactory;
-import io.fineo.etl.options.ETLOptions;
+import io.fineo.etl.spark.SparkETL;
 import io.fineo.etl.spark.read.DataFrameLoader;
+import io.fineo.etl.spark.util.FieldTranslatorFactory;
+import io.fineo.etl.spark.options.ETLOptions;
 import io.fineo.internal.customer.Metadata;
 import io.fineo.internal.customer.Metric;
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;

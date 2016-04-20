@@ -8,6 +8,7 @@ import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import com.google.inject.name.Named;
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
+import io.fineo.lambda.kinesis.IKinesisProducer;
 import io.fineo.lambda.kinesis.KinesisProducer;
 
 /**
@@ -29,7 +30,7 @@ public class KinesisModule extends AbstractModule {
   }
 
   @Provides
-  public KinesisProducer getKinesisProducer(AmazonKinesisAsyncClient client,
+  public IKinesisProducer getKinesisProducer(AmazonKinesisAsyncClient client,
     @Named(LambdaClientProperties.KINESIS_RETRIES) int retries) {
     return new KinesisProducer(client, retries);
   }

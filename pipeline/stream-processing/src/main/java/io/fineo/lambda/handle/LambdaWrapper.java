@@ -55,7 +55,6 @@ public abstract class LambdaWrapper<T, C extends LambdaHandler<?>> {
   protected static void addBasicProperties(List<Module> modules, Properties props) {
     modules.add(new PropertiesModule(props));
     modules.add(new DefaultCredentialsModule());
-    modules.add(instanceModule(new JsonParser()));
   }
 
   protected static void addDynamo(List<Module> modules){

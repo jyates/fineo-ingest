@@ -7,7 +7,6 @@ import org.apache.hadoop.fs.RemoteIterator;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.input.PortableDataStream;
-import scala.Tuple2;
 
 import java.io.IOException;
 import java.net.URI;
@@ -16,7 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- *
+ * Load an RDD from files under a specified directory
  */
 public class RddLoader {
 

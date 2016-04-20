@@ -3,6 +3,7 @@ package io.fineo.lambda.handle.raw;
 import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.Module;
+import io.fineo.lambda.JsonParser;
 import io.fineo.lambda.configure.KinesisModule;
 import io.fineo.lambda.configure.SchemaStoreModule;
 import io.fineo.lambda.configure.firehose.FirehoseModule;
@@ -13,6 +14,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
+
+import static io.fineo.lambda.configure.util.SingleInstanceModule.instanceModule;
 
 /**
  * Wrapper to instantiate the raw stage
@@ -36,6 +39,7 @@ public class RawStageWrapper extends LambdaWrapper<KinesisEvent, RawRecordToAvro
   public static Module[] getModules(Properties props) {
     List<Module> modules = new ArrayList<>();
     addBasicProperties(modules, props);
+    modules.add(instanceModule(new JsonParser()));
     // schema store needs dynamo
     modules.add(new SchemaStoreModule());
     addDynamo(modules);

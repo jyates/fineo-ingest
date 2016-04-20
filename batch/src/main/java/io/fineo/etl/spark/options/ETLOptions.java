@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.fineo.etl.options;
+package io.fineo.etl.spark.options;
 
 import io.fineo.etl.spark.SparkETL;
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;

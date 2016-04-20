@@ -17,6 +17,7 @@ import io.fineo.lambda.firehose.FirehoseBatchWriter;
 import io.fineo.lambda.handle.LambdaWrapper;
 import io.fineo.lambda.handle.raw.RawRecordToAvroHandler;
 import io.fineo.lambda.handle.raw.RawStageWrapper;
+import io.fineo.lambda.kinesis.IKinesisProducer;
 import io.fineo.lambda.kinesis.KinesisProducer;
 import io.fineo.lambda.util.LambdaTestUtils;
 import io.fineo.schema.avro.AvroSchemaEncoder;
@@ -103,7 +104,7 @@ public class TestLambdaRawToAvroWithLocalSchemaStore {
     List<KinesisEvent> events,
     Map<String, Object>[] records) throws Exception {
     Properties props = getClientProperties();
-    KinesisProducer producer = Mockito.mock(KinesisProducer.class);
+    IKinesisProducer producer = Mockito.mock(KinesisProducer.class);
     Mockito.when(producer.flush()).thenReturn(new MultiWriteFailures<>(new ArrayList<>()));
 
     // do the writing
@@ -147,7 +148,7 @@ public class TestLambdaRawToAvroWithLocalSchemaStore {
 
     // setup the mocks/fakes
     Properties props = getClientProperties();
-    KinesisProducer producer = Mockito.mock(KinesisProducer.class);
+    IKinesisProducer producer = Mockito.mock(KinesisProducer.class);
     // no failures when we write to firehose/kinesis
     Mockito.when(producer.flush()).thenReturn(new MultiWriteFailures<>(new ArrayList<>()));
 
@@ -231,7 +232,7 @@ public class TestLambdaRawToAvroWithLocalSchemaStore {
   }
 
   private List<KinesisRequest> doSetupAndWrite(
-    Properties props, OutputFirehoseManager firehose, KinesisProducer producer,
+    Properties props, OutputFirehoseManager firehose, IKinesisProducer producer,
     Provider<SchemaStore> store, KinesisEvent... events) throws IOException {
     LambdaWrapper<KinesisEvent, RawRecordToAvroHandler> writer =
       getLambda(props, firehose, producer, store);
@@ -253,7 +254,7 @@ public class TestLambdaRawToAvroWithLocalSchemaStore {
 
   private LambdaWrapper<KinesisEvent, RawRecordToAvroHandler> getLambda(Properties props,
     OutputFirehoseManager firehoses,
-    KinesisProducer producer, Provider<SchemaStore> store) {
+    IKinesisProducer producer, Provider<SchemaStore> store) {
     return new RawStageWrapper(
       new AbstractModule() {
         @Override
@@ -267,7 +268,7 @@ public class TestLambdaRawToAvroWithLocalSchemaStore {
         firehoses.commit(), FirehoseBatchWriter.class),
       new NullableNamedInstanceModule<>(FirehoseModule.FIREHOSE_MALFORMED_RECORDS_STREAM,
         firehoses.process(), FirehoseBatchWriter.class),
-      new MockOnNullInstanceModule<>(producer, KinesisProducer.class),
+      new MockOnNullInstanceModule<>(producer, IKinesisProducer.class),
       new PropertiesModule(props));
   }
 

@@ -10,12 +10,13 @@ import org.apache.commons.logging.LogFactory;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.Serializable;
 import java.util.Map;
 
 /**
  * Simple wrapper around parsing facilities to support streams and strings
  */
-public class JsonParser {
+public class JsonParser implements Serializable{
 
   private static final Log LOG = LogFactory.getLog(JsonParser.class);
   private final JsonFactory jsonFactory;

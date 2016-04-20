@@ -2,6 +2,7 @@ package io.fineo.lambda.e2e.resources.kinesis;
 
 import com.google.common.collect.Lists;
 import io.fineo.lambda.aws.MultiWriteFailures;
+import io.fineo.lambda.kinesis.IKinesisProducer;
 import io.fineo.lambda.kinesis.KinesisProducer;
 import org.apache.avro.file.FirehoseRecordWriter;
 import org.apache.avro.generic.GenericRecord;
@@ -26,7 +27,7 @@ import java.util.concurrent.TimeUnit;
 public class MockKinesisStreams implements IKinesisStreams {
 
   private Map<String, List<List<ByteBuffer>>> kinesisEvents = new HashMap<>();
-  private KinesisProducer producer = Mockito.mock(KinesisProducer.class);
+  private IKinesisProducer producer = Mockito.mock(KinesisProducer.class);
 
   public MockKinesisStreams() throws IOException {
     // setup the 'stream' handling
@@ -43,7 +44,7 @@ public class MockKinesisStreams implements IKinesisStreams {
   }
 
   @Override
-  public KinesisProducer getProducer() {
+  public IKinesisProducer getProducer() {
     return this.producer;
   }
 

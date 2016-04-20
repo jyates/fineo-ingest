@@ -93,6 +93,7 @@ public class DynamoTableManager {
       if (tables.count() > 0) {
         return;
       }
+      LOG.info("Creating table: " + fullTableName);
       baseRequest.setTableName(fullTableName);
       Table t = dynamo.createTable(baseRequest);
       while (true) {

@@ -25,7 +25,7 @@ import java.io.IOException;
  *
  * @see AwsAsyncSubmitter for more information about thread safety
  */
-public class KinesisProducer {
+public class KinesisProducer implements IKinesisProducer {
   private final AwsAsyncSubmitter<PutRecordRequest, PutRecordResult, GenericRecord> submitter;
   private final FirehoseRecordWriter converter;
 
@@ -34,6 +34,7 @@ public class KinesisProducer {
     this.converter = FirehoseRecordWriter.create();
   }
 
+  @Override
   public void add(String stream, String partitionKey, GenericRecord data) throws IOException {
     PutRecordRequest request =
       new PutRecordRequest().withStreamName(stream)
@@ -42,6 +43,7 @@ public class KinesisProducer {
     submitter.submit(new AwsAsyncRequest<>(data, request));
   }
 
+  @Override
   public MultiWriteFailures<GenericRecord> flush() {
     return this.submitter.flush();
   }

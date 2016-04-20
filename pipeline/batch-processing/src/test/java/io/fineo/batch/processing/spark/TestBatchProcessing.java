@@ -1,4 +1,4 @@
-package io.fineo.etl.spark;
+package io.fineo.batch.processing.spark;
 
 import org.junit.Test;
 

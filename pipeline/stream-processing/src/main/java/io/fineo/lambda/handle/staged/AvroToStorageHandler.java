@@ -1,6 +1,7 @@
 package io.fineo.lambda.handle.staged;
 
 import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
+import com.google.common.collect.AbstractIterator;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.name.Named;
@@ -10,6 +11,8 @@ import io.fineo.lambda.firehose.FirehoseBatchWriter;
 import io.fineo.lambda.handle.KinesisHandler;
 import org.apache.avro.file.FirehoseRecordReader;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -38,16 +41,17 @@ import static io.fineo.lambda.configure.firehose.FirehoseModule.FIREHOSE_MALFORM
  */
 public class AvroToStorageHandler extends KinesisHandler {
 
-  private AvroToDynamoWriter dynamo;
+  private static final Log LOG = LogFactory.getLog(AvroToStorageHandler.class);
+  private final RecordToDynamoHandler handler;
 
   @Inject
   public AvroToStorageHandler(
     @Named(FIREHOSE_ARCHIVE_STREAM) Provider<FirehoseBatchWriter> archive,
     @Named(FIREHOSE_MALFORMED_RECORDS_STREAM) Provider<FirehoseBatchWriter> processErrors,
     @Named(FIREHOSE_COMMIT_ERROR_STREAM) Provider<FirehoseBatchWriter> commitFailures,
-    AvroToDynamoWriter dynamo) {
+    RecordToDynamoHandler handler) {
     super(archive, processErrors, commitFailures);
-    this.dynamo = dynamo;
+    this.handler = handler;
   }
 
   @Override
@@ -55,16 +59,38 @@ public class AvroToStorageHandler extends KinesisHandler {
     ByteBuffer data = record.getKinesis().getData();
     // convert the raw bytes to a GenericRecord and let the writer deal with writing it
     FirehoseRecordReader<GenericRecord> recordReader = FirehoseRecordReader.create(data);
-    GenericRecord reuse = recordReader.next();
-    while (reuse != null) {
-      this.dynamo.write(reuse);
-      reuse = recordReader.next(reuse);
+    // no data
+    GenericRecord startRecord = recordReader.next();
+    if (startRecord == null) {
+      LOG.warn("Didn't get any data from record: " + record);
+      return;
     }
+    handler.handle(new AbstractIterator<GenericRecord>() {
+
+      private GenericRecord reuse;
+
+      @Override
+      protected GenericRecord computeNext() {
+        // first time
+        if (reuse == null) {
+          reuse = startRecord;
+        } else {
+          try {
+            reuse = recordReader.next(reuse);
+            if (reuse == null) {
+              endOfData();
+            }
+          } catch (IOException e) {
+            throw new RuntimeException(e);
+          }
+        }
+        return reuse;
+      }
+    });
   }
 
   @Override
   public MultiWriteFailures<GenericRecord> commit() throws IOException {
-    // get any failed writes and flush them into the right firehose for failures
-    return this.dynamo.flush();
+    return this.handler.flush();
   }
 }

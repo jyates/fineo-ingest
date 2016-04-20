@@ -1,4 +1,4 @@
-package io.fineo.etl;
+package io.fineo.etl.spark.util;
 
 import io.fineo.internal.customer.Metric;
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;

@@ -26,7 +26,7 @@ import io.fineo.lambda.handle.raw.RawStageWrapper;
 import io.fineo.lambda.handle.staged.AvroToStorageHandler;
 import io.fineo.lambda.handle.staged.AvroToStorageWrapper;
 import io.fineo.lambda.handle.util.HandlerUtils;
-import io.fineo.lambda.kinesis.KinesisProducer;
+import io.fineo.lambda.kinesis.IKinesisProducer;
 import io.fineo.lambda.util.LambdaTestUtils;
 import io.fineo.lambda.util.ResourceManager;
 import io.fineo.schema.store.SchemaStore;
@@ -110,7 +110,6 @@ public class ITEndToEndLambdaLocal {
 
     Map<String, List<IngestUtil.Lambda>> stageMap =
       IngestUtil.newBuilder()
-                .local()
                 .then(INGEST_CONNECTOR, start, HandlerUtils.getHandler(start))
                 .then(STAGE_CONNECTOR, storage, HandlerUtils.getHandler(storage))
                 .build();
@@ -167,7 +166,7 @@ public class ITEndToEndLambdaLocal {
 
     @Provides
     @Inject
-    public KinesisProducer producer(IKinesisStreams streams) {
+    public IKinesisProducer producer(IKinesisStreams streams) {
       return streams.getProducer();
     }
 
