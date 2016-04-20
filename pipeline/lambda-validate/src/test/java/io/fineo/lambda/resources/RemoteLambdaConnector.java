@@ -1,11 +1,13 @@
 package io.fineo.lambda.resources;
 
+import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.services.lambda.AWSLambdaClient;
 import com.amazonaws.services.lambda.model.CreateEventSourceMappingRequest;
 import com.amazonaws.services.lambda.model.CreateEventSourceMappingResult;
 import com.amazonaws.services.lambda.model.DeleteEventSourceMappingRequest;
 import com.amazonaws.services.lambda.model.EventSourcePosition;
-import io.fineo.lambda.configure.LambdaClientProperties;
+import com.google.inject.Inject;
+import com.google.inject.name.Named;
 import io.fineo.lambda.e2e.resources.TestProperties;
 import io.fineo.lambda.e2e.resources.kinesis.IKinesisStreams;
 import io.fineo.lambda.e2e.resources.lambda.LambdaKinesisConnector;
@@ -27,14 +29,16 @@ public class RemoteLambdaConnector extends LambdaKinesisConnector<String> {
   private static final Log LOG = LogFactory.getLog(RemoteLambdaConnector.class);
 
   private final String region;
+  private final AWSCredentialsProvider credentials;
   private IKinesisStreams kinesis;
   private List<String> kinesisToLambdaUUIDs = new ArrayList<>(1);
   private AWSLambdaClient lambda;
 
-  public RemoteLambdaConnector(
-    Map<String, List<String>> streamToLambdaMapping, String pipelineSource, String region) {
-    super(streamToLambdaMapping, pipelineSource);
+  @Inject
+  public RemoteLambdaConnector(@Named("aws.region") String region,
+    AWSCredentialsProvider credentials) {
     this.region = region;
+    this.credentials = credentials;
   }
 
   @Override
@@ -43,10 +47,9 @@ public class RemoteLambdaConnector extends LambdaKinesisConnector<String> {
   }
 
   @Override
-  public void connect(LambdaClientProperties props, IKinesisStreams kinesis) throws IOException {
+  public void connect(IKinesisStreams kinesis) throws IOException {
     this.kinesis = kinesis;
-
-    this.lambda = new AWSLambdaClient(props.getProvider());
+    this.lambda = new AWSLambdaClient(credentials);
 
     // create each stream
     for (String stream : this.mapping.keySet()) {

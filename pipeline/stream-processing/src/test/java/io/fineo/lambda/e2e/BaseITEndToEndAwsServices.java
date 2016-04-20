@@ -1,7 +1,9 @@
 package io.fineo.lambda.e2e;
 
+import com.amazonaws.auth.AWSCredentialsProvider;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
+import com.google.inject.Module;
 import io.fineo.aws.rule.AwsCredentialResource;
 import io.fineo.lambda.configure.util.SingleInstanceModule;
 import io.fineo.lambda.configure.PropertiesModule;
@@ -53,7 +55,7 @@ public class BaseITEndToEndAwsServices {
 
   protected void run(LambdaKinesisConnector connector, Map<String, Object>... msgs)
     throws Exception {
-    this.manager = new AwsResourceManager(awsCredentials, output, connector, region);
+    this.manager = new AwsResourceManager(getCredentialsModule(), output, connector, region);
     this.manager.cleanupResourcesOnFailure(cleanup);
     this.runner = new EndToEndTestRunner(props, manager);
     runner.setup();
@@ -74,5 +76,9 @@ public class BaseITEndToEndAwsServices {
 
   protected LambdaClientProperties getProps() {
     return props;
+  }
+
+  protected Module getCredentialsModule() {
+    return new SingleInstanceModule<>(awsCredentials.getProvider(), AWSCredentialsProvider.class);
   }
 }

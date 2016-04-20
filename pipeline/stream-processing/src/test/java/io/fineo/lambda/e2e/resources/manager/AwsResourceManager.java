@@ -1,15 +1,13 @@
 package io.fineo.lambda.e2e.resources.manager;
 
-import com.amazonaws.auth.AWSCredentialsProvider;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
-import io.fineo.aws.rule.AwsCredentialResource;
+import com.google.inject.Module;
 import io.fineo.lambda.configure.PropertiesModule;
 import io.fineo.lambda.configure.SchemaStoreModule;
-import io.fineo.lambda.configure.util.SingleInstanceModule;
 import io.fineo.lambda.configure.dynamo.DynamoModule;
 import io.fineo.lambda.configure.dynamo.DynamoRegionConfigurator;
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
@@ -57,7 +55,7 @@ public class AwsResourceManager extends BaseResourceManager {
 
   private final String region;
 
-  private final AwsCredentialResource awsCredentials;
+  private final Module awsCredentials;
   private final TestOutput output;
 
   private FirehoseResource firehose;
@@ -66,7 +64,7 @@ public class AwsResourceManager extends BaseResourceManager {
   private List<AwsResource> resources = new ArrayList<>();
   private boolean cleanup;
 
-  public AwsResourceManager(AwsCredentialResource awsCredentials, TestOutput output,
+  public AwsResourceManager(Module awsCredentials, TestOutput output,
     LambdaKinesisConnector connector, String region) {
     super(connector);
     this.awsCredentials = awsCredentials;
@@ -88,11 +86,11 @@ public class AwsResourceManager extends BaseResourceManager {
       .FIVE_MINUTES, TestProperties.ONE_SECOND);
 
     Injector injector = Guice.createInjector(
+      awsCredentials,
       instanceModule(props),
       instanceModule(props.getRawPropertiesForTesting()),
       new PropertiesModule(props.getRawPropertiesForTesting()),
       instanceModule(waiter),
-      new SingleInstanceModule<>(awsCredentials.getProvider(), AWSCredentialsProvider.class),
       new SchemaStoreModule(),
       new DynamoModule(),
       new DynamoRegionConfigurator(),

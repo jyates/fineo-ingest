@@ -49,15 +49,15 @@
 
     <!-- Fineo dependencies -->
     <dependency>
-      <groupId>io.fineo.etl</groupId>
-      <artifactId>processing</artifactId>
+      <groupId>io.fineo.etl.pipeline</groupId>
+      <artifactId>stream-processing</artifactId>
       <version>${project.version}</version>
       <classifier>aws</classifier>
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>io.fineo.etl</groupId>
-      <artifactId>processing</artifactId>
+      <groupId>io.fineo.etl.pipeline</groupId>
+      <artifactId>stream-processing</artifactId>
       <version>${project.version}</version>
       <classifier>tests</classifier>
       <scope>test</scope>
@@ -76,9 +76,9 @@
       <classifier>tests</classifier>
     </dependency>
     <dependency>
-      <groupId>io.fineo.aws</groupId>
-      <artifactId>aws-common</artifactId>
-      <version>${project.version}</version>
+      <groupId>io.fineo.etl.pipeline</groupId>
+      <artifactId>pipeline-utils</artifactId>
+      <classifier>tests</classifier>
       <scope>test</scope>
     </dependency>
 

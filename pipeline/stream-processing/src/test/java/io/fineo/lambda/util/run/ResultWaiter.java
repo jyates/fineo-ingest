@@ -124,7 +124,7 @@ public class ResultWaiter<RESULT> {
         // ignore
       }
       if ((i % 10) == 0 && i > 0) {
-        LOG.info("(" + (i * intervalMs / 1000) + "s) Waiting [" + description + "]");
+        LOG.info("(" + (i * intervalMs / 1000) + "s) Awaiting [" + description + "]");
       }
       i++;
       Thread.sleep(intervalMs);

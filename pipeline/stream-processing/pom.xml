@@ -210,6 +210,7 @@
                       <exclude>com.amazonaws:DynamoDBLocal</exclude>
                       <exclude>io.fineo.aws:aws-common</exclude>
                       <exclude>io.fineo.schema:schema-mgmt:tests</exclude>
+                      <exclude>io.fineo.etl.pipeline:pipeline-utils</exclude>
                     </excludes>
                   </artifactSet>
                   <filters>
