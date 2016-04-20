@@ -70,8 +70,7 @@ public class ITEndToEndLambdaSemiLocal extends BaseITEndToEndAwsServices {
       }
       ret.add(module);
     }
-    ret
-      .add(getCredentialsModule());
+    ret.add(getCredentialsModule());
 
     return ret;
   }

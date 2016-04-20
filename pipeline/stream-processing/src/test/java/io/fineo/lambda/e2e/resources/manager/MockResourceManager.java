@@ -24,9 +24,8 @@ public class MockResourceManager extends BaseResourceManager {
 
   private final IKinesisStreams streams;
   private final LocalFirehoseStreams firehoses;
-
-  private MockAvroToDynamo dynamo;
-  private SchemaStore store;
+  private final MockAvroToDynamo dynamo;
+  private final SchemaStore store;
 
   public MockResourceManager(LambdaKinesisConnector connector, SchemaStore store,
     IKinesisStreams streams) {
@@ -34,6 +33,7 @@ public class MockResourceManager extends BaseResourceManager {
     this.store = store;
     this.streams = streams;
     this.firehoses = new LocalFirehoseStreams();
+    this.dynamo = new MockAvroToDynamo(store);
   }
 
   @Override
@@ -65,11 +65,10 @@ public class MockResourceManager extends BaseResourceManager {
 
   @Override
   public void verifyDynamoWrites(RecordMetadata metadata, Map<String, Object> json) {
-   this.dynamo.verifyWrites(metadata, json);
+    this.dynamo.verifyWrites(metadata, json);
   }
 
   private void setupMocks(LambdaClientProperties props) {
-   this.dynamo = new MockAvroToDynamo(store);
     firehoses.setup(props);
   }
 

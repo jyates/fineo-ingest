@@ -101,11 +101,4 @@ public class FirehoseBatchWriter {
     batch.setRecords(retries);
     writeBatch(batch);
   }
-
-  @VisibleForTesting
-  public static FirehoseBatchWriter createWriterForTesting(
-    Function<ByteBuffer, ByteBuffer> transform,
-    String firehoseMalformedStreamName, AmazonKinesisFirehoseClient client) {
-    return new FirehoseBatchWriter(firehoseMalformedStreamName, client, transform);
-  }
 }

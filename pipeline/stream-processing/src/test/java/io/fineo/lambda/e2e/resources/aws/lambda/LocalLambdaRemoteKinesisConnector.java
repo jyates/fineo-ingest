@@ -10,7 +10,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,7 +23,6 @@ import java.util.concurrent.Executors;
 public class LocalLambdaRemoteKinesisConnector extends LambdaKinesisConnector<IngestUtil.Lambda> {
 
   private static final Log LOG = LogFactory.getLog(LocalLambdaRemoteKinesisConnector.class);
-  protected IKinesisStreams kinesis;
   private ExecutorService executor;
   private boolean done;
 

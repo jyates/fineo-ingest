@@ -2,6 +2,9 @@ package io.fineo.lambda.firehose;
 
 
 import com.amazonaws.services.kinesisfirehose.AmazonKinesisFirehoseClient;
+import com.amazonaws.services.kinesisfirehose.model.DeliveryStreamDescription;
+import com.amazonaws.services.kinesisfirehose.model.DeliveryStreamStatus;
+import com.amazonaws.services.kinesisfirehose.model.DescribeDeliveryStreamResult;
 import com.amazonaws.services.kinesisfirehose.model.PutRecordBatchRequest;
 import com.amazonaws.services.kinesisfirehose.model.PutRecordBatchResponseEntry;
 import com.amazonaws.services.kinesisfirehose.model.PutRecordBatchResult;
@@ -45,14 +48,13 @@ public class TestFirehoseBatchWriter {
 
   private void writeReadRecordsOneBatch(ByteBuffer... data) throws IOException {
     String stream = "streamname";
-    AmazonKinesisFirehoseClient client = Mockito.mock(AmazonKinesisFirehoseClient.class);
-    FirehoseBatchWriter writer =
-      FirehoseBatchWriter.createWriterForTesting(ByteBuffer::duplicate, stream, client);
+    AmazonKinesisFirehoseClient client = getMockActiveClient();
+    FirehoseBatchWriter writer = new FirehoseBatchWriter(stream, client, ByteBuffer::duplicate);
 
     for (ByteBuffer datum : data) {
       writer.addToBatch(datum);
     }
-    Mockito.verifyZeroInteractions(client);
+    verifyActiveClient(client);
 
     PutRecordBatchResult result = Mockito.mock(PutRecordBatchResult.class);
     List<PutRecordBatchRequest> requests = new ArrayList<>();
@@ -74,9 +76,9 @@ public class TestFirehoseBatchWriter {
     final int batchThreshold = 490;
     ByteBuffer[] data = createData(500);
     String stream = "streamname";
-    AmazonKinesisFirehoseClient client = Mockito.mock(AmazonKinesisFirehoseClient.class);
-    FirehoseBatchWriter writer =
-      FirehoseBatchWriter.createWriterForTesting(ByteBuffer::duplicate, stream, client);
+    AmazonKinesisFirehoseClient client = getMockActiveClient();
+    FirehoseBatchWriter writer = new FirehoseBatchWriter(stream, client, ByteBuffer::duplicate);
+    verifyActiveClient(client);
 
     PutRecordBatchResult result = Mockito.mock(PutRecordBatchResult.class);
     List<PutRecordBatchRequest> requests = new ArrayList<>();
@@ -110,13 +112,27 @@ public class TestFirehoseBatchWriter {
     }
   }
 
+  private AmazonKinesisFirehoseClient getMockActiveClient() {
+    AmazonKinesisFirehoseClient client = Mockito.mock(AmazonKinesisFirehoseClient.class);
+    DescribeDeliveryStreamResult describeResult = new DescribeDeliveryStreamResult();
+    DeliveryStreamDescription desc = new DeliveryStreamDescription();
+    desc.setDeliveryStreamStatus(DeliveryStreamStatus.ACTIVE);
+    describeResult.setDeliveryStreamDescription(desc);
+    Mockito.when(client.describeDeliveryStream(Mockito.any())).thenReturn(describeResult);
+    return client;
+  }
+
+  private void verifyActiveClient(AmazonKinesisFirehoseClient mock) {
+    Mockito.verify(mock).describeDeliveryStream(Mockito.any());
+  }
+
   @Test
   public void retries() throws Exception {
     int recordCount = 5;
     int failureCount = 2;
     ByteBuffer[] data = createData(recordCount);
 
-    AmazonKinesisFirehoseClient client = Mockito.mock(AmazonKinesisFirehoseClient.class);
+    AmazonKinesisFirehoseClient client = getMockActiveClient();
 
     // setup the responses as 2 failures and then all success
     PutRecordBatchResult result = new PutRecordBatchResult();
@@ -142,8 +158,8 @@ public class TestFirehoseBatchWriter {
            });
 
     String stream = "streamname";
-    FirehoseBatchWriter writer =
-      FirehoseBatchWriter.createWriterForTesting(ByteBuffer::duplicate, stream, client);
+    FirehoseBatchWriter writer = new FirehoseBatchWriter(stream, client, ByteBuffer::duplicate);
+    verifyActiveClient(client);
     for (ByteBuffer datum : data) {
       writer.addToBatch(datum);
     }
@@ -158,7 +174,7 @@ public class TestFirehoseBatchWriter {
     verifyRecordsMatchData(new ByteBuffer[]{data[1], data[4]}, requests.get(1).getValue());
   }
 
-  private void verifyRecordsMatchData(ByteBuffer[] data, List<Record> records){
+  private void verifyRecordsMatchData(ByteBuffer[] data, List<Record> records) {
     assertEquals(data.length, records.size());
     for (int i = 0; i < data.length; i++) {
       assertEquals(data[i], records.get(i).getData());

@@ -9,6 +9,8 @@ import io.fineo.lambda.configure.util.SingleInstanceModule;
 import io.fineo.lambda.configure.PropertiesModule;
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import io.fineo.lambda.e2e.EndToEndTestRunner;
+import io.fineo.lambda.e2e.resources.TestProperties;
+import io.fineo.lambda.e2e.resources.aws.firehose.FirehoseStreams;
 import io.fineo.lambda.e2e.resources.aws.lambda.LambdaKinesisConnector;
 import io.fineo.lambda.e2e.resources.aws.manager.AwsResourceManager;
 import io.fineo.test.rule.TestOutput;
@@ -24,6 +26,8 @@ import java.util.Map;
 import java.util.Properties;
 
 import static com.google.common.collect.Lists.newArrayList;
+import static io.fineo.lambda.configure.util.SingleInstanceModule.instanceModule;
+import static java.util.Arrays.asList;
 
 /**
  * Base class for tests that use the {@link AwsResourceManager} and the {@link EndToEndTestRunner}
@@ -77,7 +81,9 @@ public class BaseITEndToEndAwsServices {
   }
 
   protected List<Module> getAdditionalModules() {
-    return Collections.emptyList();
+    return asList(instanceModule(
+      new FirehoseStreams(2 * TestProperties.ONE_MINUTE, "s3",
+        TestProperties.Firehose.S3_BUCKET_NAME)));
   }
 
   protected Properties setProperties(String uuid) throws IOException {
