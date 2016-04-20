@@ -1,7 +1,6 @@
 package io.fineo.lambda;
 
 import com.google.common.base.Preconditions;
-import io.fineo.etl.processing.Message;
 import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.lambda.firehose.FirehoseBatchWriter;
 import org.apache.avro.file.FirehoseRecordWriter;
