@@ -133,9 +133,6 @@
     </pluginManagement>
 
     <plugins>
-      <plugin>
-        <artifactId>maven-failsafe-plugin</artifactId>
-      </plugin>
       <!-- Process the 'static' schema files in src/main/resources/avro -->
       <plugin>
         <groupId>org.apache.avro</groupId>

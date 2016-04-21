@@ -1,24 +1,21 @@
-package io.fineo.lambda.e2e.validation;
+package io.fineo.lambda.e2e.validation.step;
 
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
-import io.fineo.lambda.e2e.ProgressTracker;
+import io.fineo.lambda.e2e.EventFormTracker;
 import io.fineo.lambda.util.ResourceManager;
 import io.fineo.schema.avro.RecordMetadata;
 
-/**
- *
- */
 public class DynamoWrites extends ValidationStep {
 
   public DynamoWrites(String phase) {
-    super(phase, 3);
+    super(phase);
   }
 
   @Override
   public void validate(ResourceManager manager, LambdaClientProperties props,
-    ProgressTracker progress) {
+    EventFormTracker progress) {
     // verify that we wrote the right things to DynamoDB
-    RecordMetadata metadata = RecordMetadata.get(progress.avro);
-    manager.verifyDynamoWrites(metadata, progress.json);
+    RecordMetadata metadata = RecordMetadata.get(progress.getAvro());
+    manager.verifyDynamoWrites(metadata, progress.getJson());
   }
 }

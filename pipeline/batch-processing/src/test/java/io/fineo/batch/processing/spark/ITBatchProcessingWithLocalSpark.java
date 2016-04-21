@@ -3,21 +3,28 @@ package io.fineo.batch.processing.spark;
 import com.google.inject.Module;
 import io.fineo.aws.AwsDependentTests;
 import io.fineo.batch.processing.spark.options.BatchOptions;
+import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import io.fineo.lambda.configure.legacy.StreamType;
 import io.fineo.lambda.configure.util.SingleInstanceModule;
 import io.fineo.lambda.e2e.EndToEndTestBuilder;
+import io.fineo.lambda.e2e.EventFormTracker;
 import io.fineo.lambda.e2e.aws.BaseITEndToEndAwsServices;
 import io.fineo.lambda.e2e.resources.TestProperties;
 import io.fineo.lambda.e2e.resources.aws.firehose.FirehoseStreams;
-import io.fineo.lambda.e2e.resources.aws.manager.AwsResourceManager;
+import io.fineo.lambda.e2e.validation.PhaseValidationBuilder;
+import io.fineo.lambda.e2e.validation.step.ValidationStep;
+import io.fineo.lambda.e2e.validation.util.ValidationUtils;
 import io.fineo.lambda.util.LambdaTestUtils;
+import io.fineo.lambda.util.ResourceManager;
 import io.fineo.spark.rule.LocalSparkRule;
 import io.fineo.test.rule.TestOutput;
 import org.junit.ClassRule;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,7 +32,9 @@ import java.util.Properties;
 
 import static io.fineo.lambda.configure.legacy.LambdaClientProperties.RAW_PREFIX;
 import static io.fineo.lambda.configure.legacy.LambdaClientProperties.STAGED_PREFIX;
+import static io.fineo.lambda.configure.legacy.StreamType.ARCHIVE;
 import static java.util.Arrays.asList;
+import static org.junit.Assert.assertEquals;
 
 @Category(AwsDependentTests.class)
 public class ITBatchProcessingWithLocalSpark extends BaseITEndToEndAwsServices {
@@ -56,38 +65,63 @@ public class ITBatchProcessingWithLocalSpark extends BaseITEndToEndAwsServices {
     run(connector, LambdaTestUtils.createRecords(1, 1));
   }
 
-  private void run(SparkLambdaKinesisConnector connector, Map<String, Object>... events)
-    throws Exception {
-    this.manager = new AwsResourceManager(getCredentialsModule(), output, connector, region,
-      getAdditionalModules());
-    this.manager.cleanupResourcesOnFailure(cleanup);
-    EndToEndTestBuilder builder = new EndToEndTestBuilder(props, manager)
-      .validateRawPhase().archive().errorStreams().done()
-      .validateStoragePhase().all();
-    this.runner = builder.build();
-    runner.setup();
+  @Override
+  protected void setValidationSteps(EndToEndTestBuilder builder) {
+    builder.validateRawPhase().archive().errorStreams().done()
+           .addPhase(new SparkVerificationStep(builder)).archiveToAvro().done()
+           .validateStoragePhase().all();
 
-    for (Map<String, Object> json : events) {
-      runner.run(json);
-    }
-    Thread.currentThread().sleep(3000);
-    runner.validate();
   }
 
-//  @Test
-//  public void testtmp() throws Exception {
-//    String uuid = "integration-test-" + System.currentTimeMillis() + "-";
-//    Properties props = setProperties(uuid);
-//
-//    BatchOptions opts = new BatchOptions();
-//    opts.setProps(props);
-//    setFirehose(props);
-//    SparkLambdaKinesisConnector connector =
-//      new SparkLambdaKinesisConnector(output, opts, spark.jsc());
-//    connector.configure(null, "bulk-load-source");
-//    byte[] bytes = LambdaTestUtils.asBytes(LambdaTestUtils.createRecords(1, 1)[0]);
-//    connector.write(bytes);
-//  }
+  private static class SparkVerificationStep extends PhaseValidationBuilder<SparkVerificationStep> {
+
+    public SparkVerificationStep(EndToEndTestBuilder builder) {
+      super(builder, "spark-verification", null);
+    }
+
+    /**
+     * Validate that we read the archive record correctly as Avro. Similar to the
+     * {@link io.fineo.lambda.e2e.validation.step.KinesisValidation}, but reads the s3 output
+     * archive instead
+     *
+     * @return <tt>this</tt> for chaining
+     */
+    public SparkVerificationStep archiveToAvro() {
+      this.getSteps().add(new ArchiveToAvroValidation(phase));
+      return this;
+    }
+  }
+
+  private static class ArchiveToAvroValidation extends ValidationStep {
+
+    public ArchiveToAvroValidation(String phase) {
+      super(phase);
+    }
+
+    @Override
+    public void validate(ResourceManager manager, LambdaClientProperties props,
+      EventFormTracker progress) throws IOException {
+      String stream = props.getFirehoseStreamName(STAGED_PREFIX, ARCHIVE);
+      ValidationUtils.verifyAvroRecordsFromStream(manager, progress, stream,
+        () -> manager.getFirehoseWrites(stream));
+    }
+  }
+
+  @Test
+  @Ignore("Enable this test to check that the job can be kicked off correctly - doesn't use AWS")
+  public void testtmp() throws Exception {
+    String uuid = "integration-test-" + System.currentTimeMillis() + "-";
+    Properties props = setProperties(uuid);
+
+    BatchOptions opts = new BatchOptions();
+    opts.setProps(props);
+    setFirehose(props);
+    SparkLambdaKinesisConnector connector =
+      new SparkLambdaKinesisConnector(output, opts, spark.jsc());
+    connector.configure(null, "bulk-load-source");
+    byte[] bytes = LambdaTestUtils.asBytes(LambdaTestUtils.createRecords(1, 1)[0]);
+    connector.write(bytes);
+  }
 
   private void setFirehose(Properties props) {
     Map<String, SparkFirehoseStreams.StreamLookup> map = new HashMap<>();

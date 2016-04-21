@@ -12,7 +12,6 @@ import io.fineo.lambda.configure.dynamo.DynamoRegionConfigurator;
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import io.fineo.lambda.configure.legacy.StreamType;
 import io.fineo.lambda.configure.util.InstanceToNamed;
-import io.fineo.lambda.e2e.EndToEndTestRunner;
 import io.fineo.lambda.e2e.EndtoEndSuccessStatus;
 import io.fineo.lambda.e2e.resources.aws.AwsResource;
 import io.fineo.lambda.e2e.resources.ResourceUtils;
@@ -43,7 +42,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static io.fineo.lambda.configure.util.SingleInstanceModule.instanceModule;
-import static io.fineo.lambda.e2e.validation.ValidationUtils.verifyRecordMatchesJson;
+import static io.fineo.lambda.e2e.validation.util.ValidationUtils.verifyRecordMatchesJson;
 import static java.lang.String.format;
 import static org.junit.Assert.assertEquals;
 

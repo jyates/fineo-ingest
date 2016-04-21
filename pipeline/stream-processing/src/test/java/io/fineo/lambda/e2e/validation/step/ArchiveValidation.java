@@ -1,7 +1,9 @@
-package io.fineo.lambda.e2e.validation;
+package io.fineo.lambda.e2e.validation.step;
 
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
-import io.fineo.lambda.e2e.ProgressTracker;
+import io.fineo.lambda.e2e.EventFormTracker;
+import io.fineo.lambda.e2e.validation.util.TriFunction;
+import io.fineo.lambda.e2e.validation.util.ValidationUtils;
 import io.fineo.lambda.util.ResourceManager;
 
 import java.nio.ByteBuffer;
@@ -14,17 +16,17 @@ import static org.junit.Assert.assertTrue;
 
 public class ArchiveValidation extends ValidationStep {
 
-  private final TriFunction<ResourceManager, LambdaClientProperties, ProgressTracker, byte[]> func;
+  private final TriFunction<ResourceManager, LambdaClientProperties, EventFormTracker, byte[]> func;
 
   public ArchiveValidation(String phase,
-    TriFunction<ResourceManager, LambdaClientProperties, ProgressTracker, byte[]> dataExtractor) {
-    super(phase, 1);
+    TriFunction<ResourceManager, LambdaClientProperties, EventFormTracker, byte[]> dataExtractor) {
+    super(phase);
     this.func = dataExtractor;
   }
 
   @Override
   public void validate(ResourceManager manager, LambdaClientProperties props,
-    ProgressTracker progress) {
+    EventFormTracker progress) {
     List<ByteBuffer> archived = manager.getFirehoseWrites(props.getFirehoseStreamName(phase,
       ARCHIVE));
     assertNotNull("Got a null set of messages from " + phase + "-archive", archived);

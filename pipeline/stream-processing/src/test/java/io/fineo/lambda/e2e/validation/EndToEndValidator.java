@@ -1,7 +1,8 @@
-package io.fineo.lambda.e2e;
+package io.fineo.lambda.e2e.validation;
 
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
-import io.fineo.lambda.e2e.validation.ValidationStep;
+import io.fineo.lambda.e2e.EventFormTracker;
+import io.fineo.lambda.e2e.validation.step.ValidationStep;
 import io.fineo.lambda.util.ResourceManager;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -20,10 +21,12 @@ public class EndToEndValidator {
   }
 
   public void validate(ResourceManager manager, LambdaClientProperties properties,
-    ProgressTracker progress) throws IOException {
+    EventFormTracker progress) throws IOException {
+    LOG.info("\n -------- Validating Test Run ------- \n");
     for (ValidationStep step : steps) {
       LOG.info("Running validation " + step.getPhase() + " -> " + step);
       step.validate(manager, properties, progress);
     }
+    LOG.info("\n -------- Validation SUCCESS ------- \n");
   }
 }

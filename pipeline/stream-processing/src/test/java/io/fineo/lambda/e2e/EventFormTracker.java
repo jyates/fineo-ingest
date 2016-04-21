@@ -4,11 +4,13 @@ import org.apache.avro.generic.GenericRecord;
 
 import java.util.Map;
 
-
-public class ProgressTracker {
-  public byte[] sent;
-  public Map<String, Object> json;
-  public GenericRecord avro;
+/**
+ * Track the various forms of the event that was sent.
+ */
+public class EventFormTracker {
+  private byte[] sent;
+  private Map<String, Object> json;
+  private GenericRecord avro;
 
   public void sent(byte[] send) {
     this.sent = send;
@@ -28,5 +30,9 @@ public class ProgressTracker {
 
   public GenericRecord getAvro() {
     return avro;
+  }
+
+  public void setRecord(GenericRecord record) {
+    this.avro = record;
   }
 }

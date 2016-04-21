@@ -3,12 +3,16 @@ package io.fineo.batch.processing.spark;
 import io.fineo.batch.processing.spark.options.BatchOptions;
 import io.fineo.lambda.e2e.resources.aws.lambda.LambdaKinesisConnector;
 import io.fineo.test.rule.TestOutput;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.spark.api.java.JavaSparkContext;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -18,6 +22,8 @@ import java.util.UUID;
  * messages for consumption
  */
 public class SparkLambdaKinesisConnector extends LambdaKinesisConnector<Object> {
+
+  private static final Log LOG = LogFactory.getLog(SparkLambdaKinesisConnector.class);
 
   private final JavaSparkContext context;
   private final Map<String, File> folders = new HashMap<>();
@@ -47,7 +53,11 @@ public class SparkLambdaKinesisConnector extends LambdaKinesisConnector<Object> 
 
     // kick off the job
     try {
+      Instant start = Instant.now();
       new BatchProcessor(opts).run(context);
+      Instant end = Instant.now();
+      Duration duration = Duration.between(start, end);
+      LOG.info("Batch job took: "+ duration.toMillis()+" ms OR"+duration.toMinutes()+" mins");
     } catch (Exception e) {
       throw new IOException(e);
     }

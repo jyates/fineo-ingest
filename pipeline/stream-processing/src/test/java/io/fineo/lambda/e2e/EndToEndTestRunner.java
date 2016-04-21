@@ -4,6 +4,7 @@ import com.google.common.base.Preconditions;
 import io.fineo.internal.customer.Metadata;
 import io.fineo.internal.customer.Metric;
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
+import io.fineo.lambda.e2e.validation.EndToEndValidator;
 import io.fineo.lambda.util.ResourceManager;
 import io.fineo.schema.avro.AvroSchemaEncoder;
 import io.fineo.schema.avro.SchemaTestUtils;
@@ -28,7 +29,7 @@ public class EndToEndTestRunner {
   private final ResourceManager manager;
   private final EndToEndValidator validator;
   private final EndtoEndSuccessStatus status;
-  private ProgressTracker progress;
+  private EventFormTracker progress;
 
   public EndToEndTestRunner(LambdaClientProperties props, ResourceManager manager, EndToEndValidator validator)
     throws Exception {
@@ -102,7 +103,7 @@ public class EndToEndTestRunner {
 
   public void setup() throws Exception {
     this.manager.setup(props);
-    this.progress = new ProgressTracker();
+    this.progress = new EventFormTracker();
   }
 
   public void run(Map<String, Object> json) throws Exception {
@@ -135,7 +136,7 @@ public class EndToEndTestRunner {
     return this.props;
   }
 
-  public ProgressTracker getProgress() {
+  public EventFormTracker getProgress() {
     return this.progress;
   }
 }

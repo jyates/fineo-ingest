@@ -1,18 +1,24 @@
-package io.fineo.lambda.e2e.validation;
+package io.fineo.lambda.e2e.validation.util;
 
 import com.google.common.collect.Lists;
+import io.fineo.lambda.e2e.EventFormTracker;
+import io.fineo.lambda.util.LambdaTestUtils;
+import io.fineo.lambda.util.ResourceManager;
 import io.fineo.lambda.util.SchemaUtil;
 import io.fineo.schema.avro.AvroSchemaEncoder;
 import io.fineo.schema.avro.RecordMetadata;
+import io.fineo.schema.avro.TestRecordMetadata;
 import io.fineo.schema.store.SchemaStore;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import static org.junit.Assert.assertEquals;
@@ -30,7 +36,7 @@ public class ValidationUtils {
     return combined;
   }
 
-  static void empty(Function<List<ByteBuffer>, String> errorResult,
+  public static void empty(Function<List<ByteBuffer>, String> errorResult,
     List<ByteBuffer> records) {
     String readable = errorResult.apply(records);
     assertEquals("Found records: " + readable, Lists.newArrayList(), records);
@@ -64,5 +70,22 @@ public class ValidationUtils {
       }
     });
     LOG.info("Record matches JSON!");
+  }
+
+  public static void verifyAvroRecordsFromStream(ResourceManager manager, EventFormTracker progress,
+    String stream, Supplier<List<ByteBuffer>> bytes)
+    throws IOException {
+    List<ByteBuffer> parsedBytes = bytes.get();
+    // read the parsed avro records
+    List<GenericRecord> parsedRecords = LambdaTestUtils.readRecords(
+      combine(parsedBytes));
+    assertEquals("[" + stream + "] Got unexpected number of records: " + parsedRecords, 1,
+      parsedRecords.size());
+    GenericRecord record = parsedRecords.get(0);
+
+    // org/schema naming
+    TestRecordMetadata.verifyRecordMetadataMatchesExpectedNaming(record);
+    verifyRecordMatchesJson(manager.getStore(), progress.getJson(), record);
+    progress.setRecord(record);
   }
 }

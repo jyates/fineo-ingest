@@ -42,11 +42,11 @@ public class BaseITEndToEndAwsServices {
   public static TestOutput output = new TestOutput(false);
 
   protected final String region = System.getProperty("aws-region", "us-east-1");
-  protected final boolean cleanup;
+  private final boolean cleanup;
 
-  protected LambdaClientProperties props;
-  protected EndToEndTestRunner runner;
-  protected AwsResourceManager manager;
+  private LambdaClientProperties props;
+  private EndToEndTestRunner runner;
+  private AwsResourceManager manager;
 
   public BaseITEndToEndAwsServices(boolean cleanup) {
     this.cleanup = cleanup;
@@ -71,7 +71,9 @@ public class BaseITEndToEndAwsServices {
     this.manager = new AwsResourceManager(getCredentialsModule(), output, connector, region,
       getAdditionalModules());
     this.manager.cleanupResourcesOnFailure(cleanup);
-    this.runner = new EndToEndTestBuilder(props, manager).validateAll().build();
+    EndToEndTestBuilder builder = new EndToEndTestBuilder(props, manager);
+    setValidationSteps(builder);
+    this.runner = builder.build();
     runner.setup();
 
     for (Map<String, Object> json : msgs) {
@@ -79,6 +81,10 @@ public class BaseITEndToEndAwsServices {
     }
     Thread.currentThread().sleep(3000);
     runner.validate();
+  }
+
+  protected void setValidationSteps(EndToEndTestBuilder builder) {
+    builder.validateAll();
   }
 
   protected List<Module> getAdditionalModules() {

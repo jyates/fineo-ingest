@@ -1,8 +1,9 @@
-package io.fineo.lambda.e2e.validation;
+package io.fineo.lambda.e2e.validation.step;
 
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import io.fineo.lambda.configure.legacy.StreamType;
-import io.fineo.lambda.e2e.ProgressTracker;
+import io.fineo.lambda.e2e.EventFormTracker;
+import io.fineo.lambda.e2e.validation.util.ValidationUtils;
 import io.fineo.lambda.util.LambdaTestUtils;
 import io.fineo.lambda.util.ResourceManager;
 import io.fineo.lambda.util.SchemaUtil;
@@ -22,12 +23,12 @@ public class ErrorStreams extends ValidationStep {
   private static final Log LOG = LogFactory.getLog(ErrorStreams.class);
 
   public ErrorStreams(String stage) {
-    super(stage, 2);
+    super(stage);
   }
 
   @Override
   public void validate(ResourceManager manager, LambdaClientProperties props,
-    ProgressTracker progress) {
+    EventFormTracker progress) {
     LOG.info("Checking to make sure that there are no errors in stage: " + phase);
     verifyNoFirehoseWrites(manager, props, bbs -> {
       try {
