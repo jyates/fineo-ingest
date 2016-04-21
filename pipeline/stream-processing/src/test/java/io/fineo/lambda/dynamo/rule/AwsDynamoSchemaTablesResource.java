@@ -58,10 +58,6 @@ public class AwsDynamoSchemaTablesResource extends ExternalResource {
     }
   }
 
-  public void setStoreTableCreated(boolean created) {
-    this.storeTableCreated = created;
-  }
-
   public String getTestTableName() {
     return getUtil().getCurrentTestTable();
   }

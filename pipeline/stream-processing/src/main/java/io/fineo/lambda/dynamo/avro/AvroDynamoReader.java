@@ -17,6 +17,8 @@ import io.fineo.schema.Pair;
 import io.fineo.schema.avro.AvroSchemaManager;
 import io.fineo.schema.store.SchemaStore;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -33,6 +35,7 @@ import java.util.stream.StreamSupport;
  */
 public class AvroDynamoReader {
 
+  private static final Log LOG = LogFactory.getLog(AvroDynamoReader.class);
   private final AmazonDynamoDBAsyncClient client;
   private final SchemaStore store;
   private final DynamoTableManager tableManager;
@@ -84,6 +87,7 @@ public class AvroDynamoReader {
     GenericRecord> translator, Optional<ScanRequest> baseRequest) {
     // get the potential tables that match the range
     List<Pair<String, Range<Instant>>> tables = tableManager.getExistingTableNames(range);
+    LOG.debug("Scanning tables: " + tables);
     // get a scan across each table
     List<ScanPager> scanners = new ArrayList<>(tables.size());
 

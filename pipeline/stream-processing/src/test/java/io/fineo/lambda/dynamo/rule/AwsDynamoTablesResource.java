@@ -52,6 +52,10 @@ public class AwsDynamoTablesResource extends ExternalResource {
     }
   }
 
+  public String getTestTableName() {
+    return getUtil().getCurrentTestTable();
+  }
+
   public AmazonDynamoDBAsyncClient getAsyncClient() {
     if (this.client == null) {
       this.client = getUtil().getAsyncClient();

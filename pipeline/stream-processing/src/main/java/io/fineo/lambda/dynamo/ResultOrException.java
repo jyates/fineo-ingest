@@ -57,4 +57,12 @@ public class ResultOrException<RESULT> {
     }
     throw new RuntimeException(exception);
   }
+
+  @Override
+  public String toString() {
+    return "ResultOrException{" +
+           "exception=" + exception +
+           ", result=" + result +
+           '}';
+  }
 }

@@ -1,5 +1,8 @@
 package io.fineo.lambda.dynamo.iter;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import java.util.Queue;
 
 /**
@@ -7,6 +10,7 @@ import java.util.Queue;
  */
 public abstract class BasePager<T> implements PagingRunner<T> {
 
+  private static final Log LOG = LogFactory.getLog(BasePager.class);
   private VoidCallWithArg<PagingRunner<T>> done;
   private Runnable batchComplete;
 
@@ -20,12 +24,12 @@ public abstract class BasePager<T> implements PagingRunner<T> {
 
   protected abstract void page(Queue<T> queue);
 
-  protected final void complete() {
+  protected void complete() {
     this.done.call(this);
     batchComplete();
   }
 
-  protected final void batchComplete() {
+  protected void batchComplete() {
     this.batchComplete.run();
   }
 }

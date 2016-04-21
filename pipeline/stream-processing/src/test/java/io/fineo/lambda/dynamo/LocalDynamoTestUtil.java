@@ -32,7 +32,7 @@ public class LocalDynamoTestUtil {
   private int port;
   private String url;
   private final AwsCredentialResource credentials;
-  private String storeTableName = generateTableName();
+  private String randomTableName = generateTableName();
   private Random random = new Random();
   private String ingestPrefix = generateIngestPrefix();
 
@@ -62,7 +62,7 @@ public class LocalDynamoTestUtil {
 
   public void setConnectionProperties(Properties props) {
     props.setProperty(LambdaClientProperties.DYNAMO_URL_FOR_TESTING, url);
-    props.setProperty(LambdaClientProperties.DYNAMO_SCHEMA_STORE_TABLE, storeTableName);
+    props.setProperty(LambdaClientProperties.DYNAMO_SCHEMA_STORE_TABLE, randomTableName);
     String prefix = (String) props.get(LambdaClientProperties.DYNAMO_INGEST_TABLE_PREFIX);
     props.setProperty(LambdaClientProperties.DYNAMO_INGEST_TABLE_PREFIX,
       prefix == null ? ingestPrefix : prefix);
@@ -81,14 +81,14 @@ public class LocalDynamoTestUtil {
             .forEach(name -> dynamodb.deleteTable(name));
 
     if (storeTableCreated) {
-      dynamodb.deleteTable(storeTableName);
+      dynamodb.deleteTable(randomTableName);
     } else {
       List<String> tables = dynamodb.listTables().getTableNames();
       assertEquals("Created tables when didn't use store", new ArrayList<>(), tables);
     }
 
     // get the next table name
-    this.storeTableName = generateTableName();
+    this.randomTableName = generateTableName();
     this.ingestPrefix = generateIngestPrefix();
   }
 
@@ -101,7 +101,7 @@ public class LocalDynamoTestUtil {
   }
 
   public String getCurrentTestTable() {
-    return this.storeTableName;
+    return this.randomTableName;
   }
 
   public AmazonDynamoDBClient getClient() {

@@ -37,7 +37,7 @@ public class ScanPager extends BasePager<ResultOrException<Map<String, Attribute
   }
 
   @Override
-  public void page(Queue<ResultOrException<Map<String, AttributeValue>>> queue) {
+  protected void page(Queue<ResultOrException<Map<String, AttributeValue>>> queue) {
     client.scanAsync(scan, new AsyncHandler<ScanRequest, ScanResult>() {
       @Override
       public void onError(Exception exception) {
@@ -52,10 +52,8 @@ public class ScanPager extends BasePager<ResultOrException<Map<String, Attribute
                     .filter(map -> stopKey == null ||
                                    map.get(pkName).getS().compareTo(stopKey) < 0)
                     .map(map -> new ResultOrException<>(map)).collect(Collectors.toList());
-
         // return all the values
         queue.addAll(result);
-        batchComplete();
 
         // we dropped off the end of the results that we care about
         if (result.size() < scanResult.getCount() ||
@@ -67,6 +65,8 @@ public class ScanPager extends BasePager<ResultOrException<Map<String, Attribute
           // results
           scan.setExclusiveStartKey(scanResult.getLastEvaluatedKey());
         }
+        // this batch is done. This notification is discarded if the page is already done
+        batchComplete();
       }
     });
   }

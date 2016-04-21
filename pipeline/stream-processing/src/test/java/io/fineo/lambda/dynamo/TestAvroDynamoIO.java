@@ -13,7 +13,7 @@ import io.fineo.lambda.configure.dynamo.AvroToDynamoModule;
 import io.fineo.lambda.dynamo.avro.AvroDynamoReader;
 import io.fineo.lambda.dynamo.avro.AvroToDynamoWriter;
 import io.fineo.lambda.dynamo.rule.AwsDynamoResource;
-import io.fineo.lambda.dynamo.rule.AwsDynamoSchemaTablesResource;
+import io.fineo.lambda.dynamo.rule.AwsDynamoTablesResource;
 import io.fineo.lambda.util.SchemaUtil;
 import io.fineo.schema.avro.AvroSchemaEncoder;
 import io.fineo.schema.avro.RecordMetadata;
@@ -21,6 +21,8 @@ import io.fineo.schema.avro.SchemaTestUtils;
 import io.fineo.schema.store.SchemaStore;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
@@ -46,11 +48,13 @@ import static org.junit.Assert.assertTrue;
 @Category(AwsDependentTests.class)
 public class TestAvroDynamoIO {
 
+  private static final Log LOG = LogFactory.getLog(TestAvroDynamoIO.class);
+
   private static final long ONE_WEEK = Duration.ofDays(7).toMillis();
   @ClassRule
   public static AwsDynamoResource dynamo = new AwsDynamoResource();
   @Rule
-  public AwsDynamoSchemaTablesResource tables = new AwsDynamoSchemaTablesResource(dynamo, false);
+  public AwsDynamoTablesResource tables = new AwsDynamoTablesResource(dynamo);
 
   @Test
   public void testSingleWrite() throws Exception {
@@ -185,14 +189,18 @@ public class TestAvroDynamoIO {
 
     public void verifyRecords(Reader recordReader) {
       // ensure that the record we wrote matches what we created
-      List<GenericRecord> stream =
+      List<GenericRecord> records =
         recordReader.read(reader, org, metric, range).collect(Collectors.toList());
+
+      LOG.info("Expected records: "+this.expected);
+      LOG.info("Got records: "+records);
+
       int[] count = new int[1];
-      for (GenericRecord actual : stream) {
+      for (GenericRecord actual : records) {
         assertTrue(
           "More records read than expected \nexpected:" + SchemaUtil.toString(expected) +
           "\n --------------------- \n " +
-          "actual:" + SchemaUtil.toString(stream),
+          "actual:" + SchemaUtil.toString(records),
           expected.size() > count[0]);
         GenericRecord expected = this.expected.get(count[0]++);
         RecordMetadata actualMeta = RecordMetadata.get(actual);
@@ -206,9 +214,10 @@ public class TestAvroDynamoIO {
         // Instead, we have to verify them by hand
         BaseFields actualBase = actualMeta.getBaseFields();
         BaseFields expectedBase = expectedMeta.getBaseFields();
-        assertEquals("Timestamp is wrong", expectedBase.getTimestamp(), actualBase.getTimestamp());
-        assertEquals("Unknown fields are wrong", expectedBase.getUnknownFields(), actualBase
-          .getUnknownFields());
+        assertEquals("Timestamp is wrong. Expected: " + expected + "\nActual: " + actual,
+          expectedBase.getTimestamp(), actualBase.getTimestamp());
+        assertEquals("Unknown fields are wrong. Expected: " + expected + "\nActual: " + actual,
+          expectedBase.getUnknownFields(), actualBase.getUnknownFields());
 
         // verify the non-base fields match
         Schema schema = expectedMeta.getMetricSchema();
