@@ -34,7 +34,6 @@ import static io.fineo.lambda.configure.legacy.LambdaClientProperties.RAW_PREFIX
 import static io.fineo.lambda.configure.legacy.LambdaClientProperties.STAGED_PREFIX;
 import static io.fineo.lambda.configure.legacy.StreamType.ARCHIVE;
 import static java.util.Arrays.asList;
-import static org.junit.Assert.assertEquals;
 
 @Category(AwsDependentTests.class)
 public class ITBatchProcessingWithLocalSpark extends BaseITEndToEndAwsServices {
