@@ -8,6 +8,7 @@ import io.fineo.aws.rule.AwsCredentialResource;
 import io.fineo.lambda.configure.util.SingleInstanceModule;
 import io.fineo.lambda.configure.PropertiesModule;
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
+import io.fineo.lambda.e2e.EndToEndTestBuilder;
 import io.fineo.lambda.e2e.EndToEndTestRunner;
 import io.fineo.lambda.e2e.resources.TestProperties;
 import io.fineo.lambda.e2e.resources.aws.firehose.FirehoseStreams;
@@ -41,11 +42,11 @@ public class BaseITEndToEndAwsServices {
   public static TestOutput output = new TestOutput(false);
 
   protected final String region = System.getProperty("aws-region", "us-east-1");
-  private final boolean cleanup;
+  protected final boolean cleanup;
 
-  private LambdaClientProperties props;
-  private EndToEndTestRunner runner;
-  private AwsResourceManager manager;
+  protected LambdaClientProperties props;
+  protected EndToEndTestRunner runner;
+  protected AwsResourceManager manager;
 
   public BaseITEndToEndAwsServices(boolean cleanup) {
     this.cleanup = cleanup;
@@ -70,7 +71,7 @@ public class BaseITEndToEndAwsServices {
     this.manager = new AwsResourceManager(getCredentialsModule(), output, connector, region,
       getAdditionalModules());
     this.manager.cleanupResourcesOnFailure(cleanup);
-    this.runner = new EndToEndTestRunner(props, manager);
+    this.runner = new EndToEndTestBuilder(props, manager).validateAll().build();
     runner.setup();
 
     for (Map<String, Object> json : msgs) {

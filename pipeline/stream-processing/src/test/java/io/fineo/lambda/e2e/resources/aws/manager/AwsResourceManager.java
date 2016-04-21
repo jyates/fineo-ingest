@@ -43,6 +43,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static io.fineo.lambda.configure.util.SingleInstanceModule.instanceModule;
+import static io.fineo.lambda.e2e.validation.ValidationUtils.verifyRecordMatchesJson;
 import static java.lang.String.format;
 import static org.junit.Assert.assertEquals;
 
@@ -152,7 +153,7 @@ public class AwsResourceManager extends BaseResourceManager {
   public void verifyDynamoWrites(RecordMetadata metadata, Map<String, Object> json) {
     List<GenericRecord> records = dynamo.read(metadata);
     assertEquals(newArrayList(records.get(0)), records);
-    EndToEndTestRunner.verifyRecordMatchesJson(getStore(), json, records.get(0));
+    verifyRecordMatchesJson(getStore(), json, records.get(0));
   }
 
   @Override

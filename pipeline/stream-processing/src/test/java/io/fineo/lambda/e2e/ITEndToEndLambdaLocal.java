@@ -115,7 +115,7 @@ public class ITEndToEndLambdaLocal {
                 .build();
     connector.configure(stageMap, INGEST_CONNECTOR);
 
-    EndToEndTestRunner runner = new EndToEndTestRunner(props, manager);
+    EndToEndTestRunner runner = new EndToEndTestBuilder(manager, props).validateAll().build();
     return new TestState(stageMap, runner, manager);
   }
 

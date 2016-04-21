@@ -14,7 +14,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import static io.fineo.lambda.e2e.EndToEndTestRunner.verifyRecordMatchesJson;
+import static io.fineo.lambda.e2e.validation.ValidationUtils.verifyRecordMatchesJson;
 import static org.junit.Assert.assertEquals;
 
 /**

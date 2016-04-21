@@ -5,9 +5,11 @@ import io.fineo.aws.AwsDependentTests;
 import io.fineo.batch.processing.spark.options.BatchOptions;
 import io.fineo.lambda.configure.legacy.StreamType;
 import io.fineo.lambda.configure.util.SingleInstanceModule;
+import io.fineo.lambda.e2e.EndToEndTestBuilder;
 import io.fineo.lambda.e2e.aws.BaseITEndToEndAwsServices;
 import io.fineo.lambda.e2e.resources.TestProperties;
 import io.fineo.lambda.e2e.resources.aws.firehose.FirehoseStreams;
+import io.fineo.lambda.e2e.resources.aws.manager.AwsResourceManager;
 import io.fineo.lambda.util.LambdaTestUtils;
 import io.fineo.spark.rule.LocalSparkRule;
 import io.fineo.test.rule.TestOutput;
@@ -52,6 +54,24 @@ public class ITBatchProcessingWithLocalSpark extends BaseITEndToEndAwsServices {
       new SparkLambdaKinesisConnector(output, opts, spark.jsc());
     connector.configure(null, source);
     run(connector, LambdaTestUtils.createRecords(1, 1));
+  }
+
+  private void run(SparkLambdaKinesisConnector connector, Map<String, Object>... events)
+    throws Exception {
+    this.manager = new AwsResourceManager(getCredentialsModule(), output, connector, region,
+      getAdditionalModules());
+    this.manager.cleanupResourcesOnFailure(cleanup);
+    EndToEndTestBuilder builder = new EndToEndTestBuilder(props, manager)
+      .validateRawPhase().archive().errorStreams().done()
+      .validateStoragePhase().all();
+    this.runner = builder.build();
+    runner.setup();
+
+    for (Map<String, Object> json : events) {
+      runner.run(json);
+    }
+    Thread.currentThread().sleep(3000);
+    runner.validate();
   }
 
 //  @Test

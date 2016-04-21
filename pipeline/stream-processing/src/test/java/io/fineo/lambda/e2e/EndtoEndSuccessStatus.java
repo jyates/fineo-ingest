@@ -65,14 +65,6 @@ public class EndtoEndSuccessStatus {
     return correctFirehoses;
   }
 
-  public boolean isRawToAvroSuccessful() {
-    return rawToAvro;
-  }
-
-  public boolean isAvroToStorageSuccessful() {
-    return avroToStorage;
-  }
-
   public void success() {
     this.successful = true;
   }
