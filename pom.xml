@@ -49,6 +49,7 @@
 
     <!-- Test configuration -->
     <test.output.to.file>true</test.output.to.file>
+    <it.output.to.file>true</it.output.to.file>
     <test.exclude.pattern></test.exclude.pattern>
 
     <!-- Testing Phases -->
@@ -125,6 +126,7 @@
           <version>${maven.failsafe.plugin.version}</version>
           <configuration>
             <includes>**/IT*.java</includes>
+            <redirectTestOutputToFile>${it.output.to.file}</redirectTestOutputToFile>
           </configuration>
           <executions>
             <execution>
