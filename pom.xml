@@ -14,6 +14,7 @@
     <module>pipeline</module>
     <module>drill-test</module>
     <module>spark-common</module>
+    <module>deploy</module>
   </modules>
 
   <properties>
@@ -24,8 +25,10 @@
     <!-- Plugins -->
     <maven.compiler.version>3.3</maven.compiler.version>
     <maven.dependency.version>2.10</maven.dependency.version>
+    <avro.plugin.version>1.7.7</avro.plugin.version>
+    <maven.shade.version>2.3</maven.shade.version>
     <surefire.version>2.19</surefire.version>
-    <maven.failsafe.plugin.version>2.19.1</maven.failsafe.plugin.version>
+    <failsafe.version>2.19.1</failsafe.version>
 
     <!-- Dependencies -->
     <commons-cli.version>1.2</commons-cli.version>
@@ -37,7 +40,7 @@
 
     <!-- AWS -->
     <dynamo-local.version>1.10.5.1</dynamo-local.version>
-    <aws-java-sdk.version>1.10.66</aws-java-sdk.version>
+    <aws-java-sdk.version>1.10.72</aws-java-sdk.version>
     <aws-lambda-java-core.version>1.1.0</aws-lambda-java-core.version>
     <amazon-kinesis-producer.version>0.10.2</amazon-kinesis-producer.version>
     <amazon-kinesis-client.version>1.6.1</amazon-kinesis-client.version>
@@ -123,7 +126,7 @@
         </plugin>
         <plugin>
           <artifactId>maven-failsafe-plugin</artifactId>
-          <version>${maven.failsafe.plugin.version}</version>
+          <version>${failsafe.version}</version>
           <configuration>
             <includes>**/IT*.java</includes>
             <redirectTestOutputToFile>${it.output.to.file}</redirectTestOutputToFile>

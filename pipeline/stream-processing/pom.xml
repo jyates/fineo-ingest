@@ -14,10 +14,7 @@
 
   <properties>
     <!-- Plugin Versions -->
-    <maven.dependency.version>2.10</maven.dependency.version>
-    <maven.compiler.version>3.3</maven.compiler.version>
-    <avro.maven.plugin.version>1.7.7</avro.maven.plugin.version>
-    <maven.shade.version>2.3</maven.shade.version>
+
 
     <!-- Other -->
     <fineo-schema-mgmt.version>1.0-SNAPSHOT</fineo-schema-mgmt.version>
@@ -137,7 +134,7 @@
       <plugin>
         <groupId>org.apache.avro</groupId>
         <artifactId>avro-maven-plugin</artifactId>
-        <version>${avro.maven.plugin.version}</version>
+        <version>${avro.plugin.version}</version>
         <executions>
           <execution>
             <phase>generate-sources</phase>
