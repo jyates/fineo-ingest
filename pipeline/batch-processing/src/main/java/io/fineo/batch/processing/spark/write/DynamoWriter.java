@@ -3,6 +3,7 @@ package io.fineo.batch.processing.spark.write;
 import com.google.inject.Guice;
 import io.fineo.lambda.configure.DefaultCredentialsModule;
 import io.fineo.lambda.configure.PropertiesModule;
+import io.fineo.lambda.configure.dynamo.AvroToDynamoModule;
 import io.fineo.lambda.configure.dynamo.DynamoModule;
 import io.fineo.lambda.configure.dynamo.DynamoRegionConfigurator;
 import io.fineo.lambda.handle.staged.RecordToDynamoHandler;
@@ -39,6 +40,7 @@ public class DynamoWriter implements
       new PropertiesModule(this.props),
       DefaultCredentialsModule.create(this.props),
       new DynamoModule(),
+      new AvroToDynamoModule(),
       new DynamoRegionConfigurator()
     )).getInstance(RecordToDynamoHandler.class);
   }

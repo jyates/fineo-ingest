@@ -2,13 +2,14 @@ package io.fineo.lambda.configure.dynamo;
 
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
+import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-public class DynamoModule extends AvroToDynamoModule{
+public class DynamoModule extends AbstractModule{
   private static final Log LOG = LogFactory.getLog(DynamoModule.class);
 
   @Provides
@@ -21,5 +22,9 @@ public class DynamoModule extends AvroToDynamoModule{
     configurator.configure(client);
     LOG.debug("Got client, setting endpoint");
     return client;
+  }
+
+  @Override
+  protected void configure() {
   }
 }

@@ -7,6 +7,7 @@ import io.fineo.lambda.configure.firehose.FirehoseFunctions;
 import io.fineo.lambda.configure.firehose.FirehoseModule;
 import io.fineo.lambda.configure.util.PropertiesLoaderUtil;
 import io.fineo.lambda.handle.LambdaWrapper;
+import io.fineo.lambda.handle.StreamLambdaUtils;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -29,8 +30,8 @@ public class AvroToStorageWrapper extends LambdaWrapper<KinesisEvent, AvroToStor
   @VisibleForTesting
   public static Module[] getModules(Properties props) {
     List<Module> modules = new ArrayList<>();
-    addBasicProperties(modules, props);
-    addDynamo(modules);
+    StreamLambdaUtils.addBasicProperties(modules, props);
+    StreamLambdaUtils.addDynamo(modules);
 
     //firehose
     modules.add(new FirehoseModule());

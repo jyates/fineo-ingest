@@ -68,6 +68,7 @@
     <failsafe.skip.validation>true</failsafe.skip.validation>
     <drill.version>1.6.0</drill.version>
     <logback.version>1.1.3</logback.version>
+    <schema-mgmt.version>1.0-SNAPSHOT</schema-mgmt.version>
   </properties>
 
   <repositories>
@@ -261,6 +262,11 @@
         <artifactId>spark-common</artifactId>
         <version>${project.version}</version>
       </dependency>
+      <dependency>
+        <groupId>io.fineo.etl.pipeline</groupId>
+        <artifactId>lambda-common</artifactId>
+        <version>${project.version}</version>
+      </dependency>
 
       <dependency>
         <groupId>com.amazonaws</groupId>
@@ -306,17 +312,31 @@
         <version>1.2<!-- match hadoop version --></version>
       </dependency>
 
+      <!-- Other dependencies -->
+      <dependency>
+        <groupId>com.google.inject</groupId>
+        <artifactId>guice</artifactId>
+        <version>4.0</version>
+      </dependency>
+
       <!-- Test dependencies -->
       <dependency>
         <groupId>io.fineo.schema</groupId>
         <artifactId>schema-mgmt</artifactId>
-        <version>1.0-SNAPSHOT</version>
+        <version>${schema-mgmt.version}</version>
         <classifier>tests</classifier>
         <scope>test</scope>
       </dependency>
       <dependency>
         <groupId>io.fineo.etl</groupId>
         <artifactId>spark-common</artifactId>
+        <version>${project.version}</version>
+        <classifier>tests</classifier>
+        <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>io.fineo.etl.pipeline</groupId>
+        <artifactId>lambda-common</artifactId>
         <version>${project.version}</version>
         <classifier>tests</classifier>
         <scope>test</scope>

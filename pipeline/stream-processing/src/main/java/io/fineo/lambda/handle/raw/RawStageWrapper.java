@@ -9,6 +9,7 @@ import io.fineo.lambda.configure.SchemaStoreModule;
 import io.fineo.lambda.configure.firehose.FirehoseModule;
 import io.fineo.lambda.configure.util.PropertiesLoaderUtil;
 import io.fineo.lambda.handle.LambdaWrapper;
+import io.fineo.lambda.handle.StreamLambdaUtils;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -38,11 +39,11 @@ public class RawStageWrapper extends LambdaWrapper<KinesisEvent, RawRecordToAvro
   @VisibleForTesting
   public static Module[] getModules(Properties props) {
     List<Module> modules = new ArrayList<>();
-    addBasicProperties(modules, props);
+    StreamLambdaUtils.addBasicProperties(modules, props);
     modules.add(instanceModule(new JsonParser()));
     // schema store needs dynamo
     modules.add(new SchemaStoreModule());
-    addDynamo(modules);
+    StreamLambdaUtils.addDynamo(modules);
     // writing to kinesis
     modules.add(new KinesisModule());
     // writing to firehoses
