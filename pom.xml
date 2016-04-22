@@ -10,7 +10,7 @@
   <packaging>pom</packaging>
 
   <modules>
-    <module>batch</module>
+    <module>batch-etl</module>
     <module>pipeline</module>
     <module>drill-test</module>
     <module>spark-common</module>
