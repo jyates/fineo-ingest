@@ -1,7 +1,7 @@
 {
   "swagger": "2.0",
   "info": {
-    "version": "2016-04-22T18:30:59Z",
+    "version": "2016-04-22T22:24:47Z",
     "title": "remote-s3-bulk-upload-notification"
   },
   "host": "6s6rc7bqxb.execute-api.us-east-1.amazonaws.com",
@@ -10,6 +10,49 @@
     "https"
   ],
   "paths": {
+    "/batch/status/{file}": {
+      "get": {
+        "produces": [
+          "application/json",
+          "application/xml"
+        ],
+        "parameters": [
+          {
+            "name": "file",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "200 response",
+            "schema": {
+              "$ref": "#/definitions/Empty"
+            },
+            "headers": {
+              "Timestamp": {
+                "type": "string"
+              },
+              "Content-Type": {
+                "type": "string"
+              }
+            }
+          },
+          "404": {
+            "description": "404 response"
+          }
+        },
+        "security": [
+          {
+            "sigv4": []
+          },
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
     "/batch/upload/data/{file}": {
       "post": {
         "produces": [
@@ -56,24 +99,7 @@
           {
             "api_key": []
           }
-        ],
-        "x-amazon-apigateway-integration": {
-          "credentials": "arn:aws:iam::766732214526:role/apigateway_batch-upload-data",
-          "responses": {
-            "\\d{3}": {
-              "statusCode": "200"
-            }
-          },
-          "requestParameters": {
-            "integration.request.path.file": "method.request.path.file",
-            "integration.request.header.Content-MD5": "method.request.header.Content-MD5",
-            "integration.request.header.Content-Type": "method.request.header.Content-Type",
-            "integration.request.header.Content-Length": "method.request.header.Content-Length"
-          },
-          "httpMethod": "PUT",
-          "uri": "arn:aws:apigateway:us-east-1:s3:path/batch.fineo.io/ingest/{file}",
-          "type": "aws"
-        }
+        ]
       }
     },
     "/batch/upload/file": {
@@ -99,25 +125,7 @@
           {
             "api_key": []
           }
-        ],
-        "x-amazon-apigateway-integration": {
-          "credentials": "arn:aws:iam::766732214526:role/apigateway_batch-upload-file",
-          "responses": {
-            "default": {
-              "statusCode": "200"
-            }
-          },
-          "requestParameters": {
-            "integration.request.querystring.MessageBody": "method.request.body",
-            "integration.request.querystring.Action": "'SendMessage'"
-          },
-          "httpMethod": "POST",
-          "requestTemplates": {
-            "application/json": "#set($inputRoot = $input.path('$'))\n{ }"
-          },
-          "uri": "arn:aws:apigateway:us-east-1:sqs:path//766732214526/batch-ingest-files",
-          "type": "aws"
-        }
+        ]
       }
     }
   },
