@@ -11,11 +11,19 @@
 
   <artifactId>lambda-common</artifactId>
 
+  <properties>
+    <jackson-jr.version>2.7.0</jackson-jr.version>
+  </properties>
 
   <dependencies>
     <dependency>
       <groupId>com.google.inject</groupId>
       <artifactId>guice</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.jr</groupId>
+      <artifactId>jackson-jr-objects</artifactId>
+      <version>${jackson-jr.version}</version>
     </dependency>
 
     <!-- AWS -->
