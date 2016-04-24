@@ -102,6 +102,8 @@ public class TestIngestManifest extends BaseDynamoTableTest {
 
     manifest.add(org, "file1");
     manifest.add(org, "file2");
+    manifest.flush();
+
     manifest.remove(org, "file1");
     manifest.flush();
     assertReadFiles("file2");
@@ -114,6 +116,8 @@ public class TestIngestManifest extends BaseDynamoTableTest {
     manifest.add(org, "file1");
     manifest.add(org, "file2");
     manifest.add(org, "file3");
+    manifest.flush();
+
     manifest.remove(org, "file1", "file3");
     manifest.flush();
     assertReadFiles("file2");

@@ -5,16 +5,12 @@ import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBMapper;
 import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBScanExpression;
 import com.amazonaws.services.dynamodbv2.datamodeling.PaginatedList;
 import com.amazonaws.services.dynamodbv2.document.DynamoDB;
-import com.amazonaws.services.dynamodbv2.document.Table;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
-import com.amazonaws.services.dynamodbv2.xspec.ExpressionSpecBuilder;
-import com.amazonaws.services.dynamodbv2.xspec.UpdateItemExpressionSpec;
-import com.google.common.collect.Maps;
 import com.google.inject.Provider;
 import io.fineo.lambda.aws.AwsAsyncRequest;
 import io.fineo.lambda.aws.AwsAsyncSubmitter;
@@ -24,20 +20,26 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static com.amazonaws.services.dynamodbv2.xspec.ExpressionSpecBuilder.SS;
 import static com.google.common.collect.Lists.newArrayList;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
 
+/**
+ * Manifest for tracking ingest. It can only be used for adding files ({@link #add(String,
+ * String)} or removing files {@link #remove(String, String...)}, but not both. {@link #flush()}
+ * will take just one of the operation type (default: add, any remove operation with turn on
+ * 'remove' mode) and use that for all updates. Calls to {@link #flush()} will cause the operation
+ * mode to reset
+ */
 public class IngestManifest {
 
   private static final Log LOG = LogFactory.getLog(IngestManifest.class);
 
+  private boolean addMode = true;
   private final AmazonDynamoDBClient client;
   private final DynamoDB dynamo;
   private final Provider<ProvisionedThroughput> throughput;
@@ -77,7 +79,7 @@ public class IngestManifest {
       UpdateItemRequest request = new UpdateItemRequest();
       request.setTableName(getCreate().getTableName());
       request.addKeyEntry("id", new AttributeValue(manifest.getOrgID()));
-      request.withUpdateExpression("ADD files :0");
+      updateRequestForMode(request);
 
       Map<String, AttributeValue> values = new HashMap<>();
       request.withExpressionAttributeValues(values);
@@ -91,6 +93,15 @@ public class IngestManifest {
       throw new RuntimeException("Failed to write all the batches! Failed: " + failed.getActions());
     }
     manifests.clear();
+    this.addMode = true;
+  }
+
+  private void updateRequestForMode(UpdateItemRequest request) {
+    if(addMode){
+      request.withUpdateExpression("ADD files :0");
+    }else{
+      request.withUpdateExpression("DELETE files :0");
+    }
   }
 
   public void load() {
@@ -111,12 +122,15 @@ public class IngestManifest {
                     .collect(toList());
   }
 
-  public void remove(String org, String ... files){
+  public void remove(String org, String... files) {
     remove(org, asList(files));
   }
 
   private void remove(String org, List<String> files) {
-
+    addMode = false;
+    for (String file : files) {
+      add(org, file);
+    }
   }
 
   private void ensureTable() {
