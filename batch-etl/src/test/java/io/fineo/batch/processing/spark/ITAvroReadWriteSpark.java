@@ -46,7 +46,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static com.google.common.collect.Lists.newArrayList;
-import static io.fineo.lambda.configure.legacy.LambdaClientProperties.STAGED_PREFIX;
+import static io.fineo.etl.FineoProperties.STAGED_PREFIX;
 import static io.fineo.lambda.configure.legacy.StreamType.ARCHIVE;
 import static io.fineo.schema.avro.AvroSchemaEncoder.ORG_ID_KEY;
 import static io.fineo.schema.avro.AvroSchemaEncoder.ORG_METRIC_TYPE_KEY;

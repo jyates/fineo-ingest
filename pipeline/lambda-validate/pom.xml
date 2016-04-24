@@ -44,7 +44,6 @@
     <dependency>
       <groupId>com.amazonaws</groupId>
       <artifactId>aws-java-sdk-dynamodb</artifactId>
-      <version>${aws-java-sdk.version}</version>
     </dependency>
 
     <!-- Fineo dependencies -->

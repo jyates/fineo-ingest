@@ -19,8 +19,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
-import static io.fineo.lambda.configure.legacy.LambdaClientProperties.RAW_PREFIX;
-import static io.fineo.lambda.configure.legacy.LambdaClientProperties.STAGED_PREFIX;
+import static io.fineo.etl.FineoProperties.RAW_PREFIX;
+import static io.fineo.etl.FineoProperties.STAGED_PREFIX;
 
 /**
  *

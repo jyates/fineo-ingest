@@ -10,9 +10,9 @@ import com.google.inject.Inject;
 import com.google.inject.Provider;
 import io.fineo.internal.customer.Metric;
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
-import io.fineo.lambda.dynamo.DynamoTableManager;
 import io.fineo.lambda.dynamo.Range;
 import io.fineo.lambda.dynamo.ResultOrException;
+import io.fineo.lambda.dynamo.TableUtils;
 import io.fineo.lambda.dynamo.avro.AvroDynamoReader;
 import io.fineo.lambda.dynamo.avro.Schema;
 import io.fineo.lambda.dynamo.iter.PageManager;
@@ -131,7 +131,7 @@ public class DynamoResource implements AwsResource {
     Preconditions.checkArgument(prefix.startsWith(props.getTestPrefix()),
       "Table names have to start with the test prefix: %s. Got prefix: %s", props.getTestPrefix(),
       prefix);
-    return DynamoTableManager.getTables(dynamo, prefix, 1);
+    return TableUtils.getTables(dynamo, prefix, 1);
   }
 
   public List<GenericRecord> read(RecordMetadata metadata) {

@@ -16,8 +16,8 @@ import org.schemarepo.ValidatorFactory;
 
 import java.io.Serializable;
 
-import static io.fineo.lambda.configure.legacy.LambdaClientProperties.DYNAMO_SCHEMA_STORE_TABLE;
-import static io.fineo.lambda.configure.legacy.LambdaClientProperties.DYNAMO_WRITE_LIMIT;
+import static io.fineo.etl.FineoProperties.DYNAMO_SCHEMA_STORE_TABLE;
+import static io.fineo.etl.FineoProperties.DYNAMO_WRITE_LIMIT;
 
 public class SchemaStoreModule extends AbstractModule implements Serializable {
   private static final Log LOG = LogFactory.getLog(SchemaStoreModule.class);

@@ -7,7 +7,7 @@ import com.google.inject.Inject;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import com.google.inject.name.Named;
-import io.fineo.lambda.configure.legacy.LambdaClientProperties;
+import io.fineo.etl.FineoProperties;
 import io.fineo.lambda.firehose.FirehoseBatchWriter;
 
 import java.io.Serializable;
@@ -39,7 +39,7 @@ public class FirehoseModule extends AbstractModule implements Serializable {
   @Inject
   @Singleton
   public AmazonKinesisFirehoseAsyncClient getFirehoseClient(AWSCredentialsProvider credentials,
-    @Named(LambdaClientProperties.FIREHOSE_URL) String url) {
+    @Named(FineoProperties.FIREHOSE_URL) String url) {
     AmazonKinesisFirehoseAsyncClient client = new AmazonKinesisFirehoseAsyncClient(credentials);
     client.setEndpoint(url);
     return client;

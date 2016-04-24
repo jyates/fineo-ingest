@@ -7,7 +7,7 @@ import com.google.inject.Inject;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import com.google.inject.name.Named;
-import io.fineo.lambda.configure.legacy.LambdaClientProperties;
+import io.fineo.etl.FineoProperties;
 import io.fineo.lambda.kinesis.IKinesisProducer;
 import io.fineo.lambda.kinesis.KinesisProducer;
 
@@ -25,7 +25,7 @@ public class KinesisModule extends AbstractModule implements Serializable {
   @Inject
   @Singleton
   public AmazonKinesisAsyncClient getKinesisClient(AWSCredentialsProvider provider,
-    @Named(LambdaClientProperties.KINESIS_URL) String url) {
+    @Named(FineoProperties.KINESIS_URL) String url) {
     AmazonKinesisAsyncClient client = new AmazonKinesisAsyncClient(provider);
     client.setEndpoint(url);
     return client;
@@ -33,7 +33,7 @@ public class KinesisModule extends AbstractModule implements Serializable {
 
   @Provides
   public IKinesisProducer getKinesisProducer(AmazonKinesisAsyncClient client,
-    @Named(LambdaClientProperties.KINESIS_RETRIES) int retries) {
+    @Named(FineoProperties.KINESIS_RETRIES) int retries) {
     return new KinesisProducer(client, retries);
   }
 }

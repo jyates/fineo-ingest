@@ -7,6 +7,7 @@ import com.google.common.util.concurrent.MoreExecutors;
 import com.google.inject.Guice;
 import com.google.inject.Provider;
 import io.fineo.aws.AwsDependentTests;
+import io.fineo.etl.FineoProperties;
 import io.fineo.lambda.configure.PropertiesModule;
 import io.fineo.lambda.configure.SchemaStoreModule;
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
@@ -50,9 +51,9 @@ public class TestDynamoResource {
   public void testWriteAndCopyToFile() throws Exception {
     Properties props = new Properties();
     String prefix = "test-ingest";
-    props.put(LambdaClientProperties.TEST_PREFIX, prefix);
-    props.put(LambdaClientProperties.DYNAMO_INGEST_TABLE_PREFIX, prefix);
-    props.put(LambdaClientProperties.DYNAMO_SCHEMA_STORE_TABLE, tableResource.getTestTableName());
+    props.put(FineoProperties.TEST_PREFIX, prefix);
+    props.put(FineoProperties.DYNAMO_INGEST_TABLE_PREFIX, prefix);
+    props.put(FineoProperties.DYNAMO_SCHEMA_STORE_TABLE, tableResource.getTestTableName());
     LambdaClientProperties clientProperties = tableResource.getClientProperties(props);
 
     AmazonDynamoDBAsyncClient client = tableResource.getAsyncClient();

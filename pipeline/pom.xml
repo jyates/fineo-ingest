@@ -17,9 +17,8 @@
   <modules>
     <module>stream-processing</module>
     <module>pipeline-utils</module>
-    <module>batch-processing</module>
-    <module>batch-processing-lambda-prepare</module>
     <module>lambda-common</module>
+    <module>batch-processing-parent</module>
   </modules>
 
   <profiles>

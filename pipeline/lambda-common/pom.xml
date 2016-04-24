@@ -17,6 +17,10 @@
 
   <dependencies>
     <dependency>
+      <groupId>io.fineo.etl</groupId>
+      <artifactId>common</artifactId>
+    </dependency>
+    <dependency>
       <groupId>com.google.inject</groupId>
       <artifactId>guice</artifactId>
     </dependency>
@@ -54,12 +58,6 @@
     <dependency>
       <groupId>com.amazonaws</groupId>
       <artifactId>aws-java-sdk-dynamodb</artifactId>
-      <version>${aws-java-sdk.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.amazonaws</groupId>
-      <artifactId>aws-java-sdk-iot</artifactId>
-      <version>${aws-java-sdk.version}</version>
     </dependency>
   </dependencies>
 </project>

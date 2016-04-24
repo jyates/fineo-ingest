@@ -7,16 +7,16 @@ import com.google.inject.Module;
 import com.google.inject.Provider;
 import com.google.inject.Provides;
 import com.google.inject.name.Names;
-import io.fineo.lambda.configure.firehose.FirehoseModule;
+import io.fineo.etl.FineoProperties;
 import io.fineo.lambda.configure.PropertiesModule;
-import io.fineo.lambda.configure.util.SingleInstanceModule;
-import io.fineo.lambda.configure.legacy.LambdaClientProperties;
+import io.fineo.lambda.configure.firehose.FirehoseModule;
 import io.fineo.lambda.configure.legacy.StreamType;
+import io.fineo.lambda.configure.util.SingleInstanceModule;
 import io.fineo.lambda.dynamo.avro.AvroToDynamoWriter;
 import io.fineo.lambda.e2e.resources.IngestUtil;
+import io.fineo.lambda.e2e.resources.aws.lambda.LambdaKinesisConnector;
 import io.fineo.lambda.e2e.resources.kinesis.IKinesisStreams;
 import io.fineo.lambda.e2e.resources.kinesis.MockKinesisStreams;
-import io.fineo.lambda.e2e.resources.aws.lambda.LambdaKinesisConnector;
 import io.fineo.lambda.e2e.resources.lambda.LocalLambdaLocalKinesisConnector;
 import io.fineo.lambda.e2e.resources.manager.MockResourceManager;
 import io.fineo.lambda.firehose.FirehoseBatchWriter;
@@ -43,12 +43,13 @@ import java.util.Map;
 import java.util.Properties;
 
 import static com.google.common.collect.Lists.newArrayList;
-import static io.fineo.lambda.configure.util.SingleInstanceModule.instanceModule;
-import static io.fineo.lambda.configure.legacy.LambdaClientProperties.RAW_PREFIX;
-import static io.fineo.lambda.configure.legacy.LambdaClientProperties.STAGED_PREFIX;
+import static io.fineo.etl.FineoProperties.KINESIS_PARSED_RAW_OUT_STREAM_NAME;
+import static io.fineo.etl.FineoProperties.RAW_PREFIX;
+import static io.fineo.etl.FineoProperties.STAGED_PREFIX;
 import static io.fineo.lambda.configure.legacy.LambdaClientProperties
   .getFirehoseStreamPropertyVisibleForTesting;
 import static io.fineo.lambda.configure.legacy.StreamType.ARCHIVE;
+import static io.fineo.lambda.configure.util.SingleInstanceModule.instanceModule;
 
 /**
  * Test the end-to-end workflow of the lambda architecture.
@@ -98,7 +99,7 @@ public class ITEndToEndLambdaLocal {
       "staged-archive");
 
     // between stage stream
-    props.setProperty(LambdaClientProperties.KINESIS_PARSED_RAW_OUT_STREAM_NAME,
+    props.setProperty(KINESIS_PARSED_RAW_OUT_STREAM_NAME,
       STAGE_CONNECTOR);
 
     LambdaKinesisConnector connector = new LocalLambdaLocalKinesisConnector();
@@ -124,11 +125,11 @@ public class ITEndToEndLambdaLocal {
     SchemaStore store, MockResourceManager manager) throws IOException {
     NamedProvider module = new NamedProvider();
     module.add(FirehoseModule.FIREHOSE_ARCHIVE_STREAM, FirehoseBatchWriter.class,
-      () -> manager.getWriter(LambdaClientProperties.RAW_PREFIX, StreamType.ARCHIVE));
+      () -> manager.getWriter(RAW_PREFIX, StreamType.ARCHIVE));
     module.add(FirehoseModule.FIREHOSE_COMMIT_ERROR_STREAM, FirehoseBatchWriter.class,
-      () -> manager.getWriter(LambdaClientProperties.RAW_PREFIX, StreamType.COMMIT_ERROR));
+      () -> manager.getWriter(RAW_PREFIX, StreamType.COMMIT_ERROR));
     module.add(FirehoseModule.FIREHOSE_MALFORMED_RECORDS_STREAM, FirehoseBatchWriter.class,
-      () -> manager.getWriter(LambdaClientProperties.RAW_PREFIX, StreamType.PROCESSING_ERROR));
+      () -> manager.getWriter(RAW_PREFIX, StreamType.PROCESSING_ERROR));
     List<Module> modules = getBaseModules(props, store, manager);
     modules.add(module);
     return new RawStageWrapper(modules.toArray(new Module[0]));
@@ -138,11 +139,11 @@ public class ITEndToEndLambdaLocal {
     props, SchemaStore store, MockResourceManager manager) throws IOException {
     NamedProvider module = new NamedProvider();
     module.add(FirehoseModule.FIREHOSE_ARCHIVE_STREAM, FirehoseBatchWriter.class,
-      () -> manager.getWriter(LambdaClientProperties.STAGED_PREFIX, StreamType.ARCHIVE));
+      () -> manager.getWriter(FineoProperties.STAGED_PREFIX, StreamType.ARCHIVE));
     module.add(FirehoseModule.FIREHOSE_COMMIT_ERROR_STREAM, FirehoseBatchWriter.class,
-      () -> manager.getWriter(LambdaClientProperties.STAGED_PREFIX, StreamType.COMMIT_ERROR));
+      () -> manager.getWriter(FineoProperties.STAGED_PREFIX, StreamType.COMMIT_ERROR));
     module.add(FirehoseModule.FIREHOSE_MALFORMED_RECORDS_STREAM, FirehoseBatchWriter.class,
-      () -> manager.getWriter(LambdaClientProperties.STAGED_PREFIX, StreamType.PROCESSING_ERROR));
+      () -> manager.getWriter(FineoProperties.STAGED_PREFIX, StreamType.PROCESSING_ERROR));
     List<Module> modules = getBaseModules(props, store, manager);
     modules.add(module);
     return new AvroToStorageWrapper(modules.toArray(new Module[0]));

@@ -14,7 +14,7 @@ import org.apache.commons.logging.LogFactory;
 import java.io.IOException;
 import java.util.Map;
 
-import static io.fineo.lambda.configure.legacy.LambdaClientProperties.KINESIS_PARSED_RAW_OUT_STREAM_NAME;
+import static io.fineo.etl.FineoProperties.KINESIS_PARSED_RAW_OUT_STREAM_NAME;
 
 /**
  * Handle converting raw JSON records to avro encoded values

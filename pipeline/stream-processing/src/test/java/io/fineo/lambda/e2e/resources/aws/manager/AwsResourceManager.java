@@ -5,6 +5,7 @@ import com.google.common.util.concurrent.MoreExecutors;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.Module;
+import io.fineo.etl.FineoProperties;
 import io.fineo.lambda.configure.PropertiesModule;
 import io.fineo.lambda.configure.SchemaStoreModule;
 import io.fineo.lambda.configure.dynamo.DynamoModule;
@@ -97,7 +98,7 @@ public class AwsResourceManager extends BaseResourceManager {
       new SchemaStoreModule(),
       new DynamoModule(),
       new DynamoRegionConfigurator(),
-      new InstanceToNamed<>(LambdaClientProperties.DYNAMO_REGION, region, String.class),
+      new InstanceToNamed<>(FineoProperties.DYNAMO_REGION, region, String.class),
       new InstanceToNamed<>("aws.region", region, String.class),
       new InstanceToNamed<>("aws.kinesis.shard.count", TestProperties.Kinesis.SHARD_COUNT,
         Integer.class)
@@ -169,8 +170,8 @@ public class AwsResourceManager extends BaseResourceManager {
           firehose.ensureNoDataStored();
         } else {
           // just get all the data, maybe we messed up the test
-          cloneS3(LambdaClientProperties.RAW_PREFIX);
-          cloneS3(LambdaClientProperties.STAGED_PREFIX);
+          cloneS3(FineoProperties.RAW_PREFIX);
+          cloneS3(FineoProperties.STAGED_PREFIX);
 
           // copy kinesis data
           File out = output.newFolder("kinesis");
@@ -178,7 +179,7 @@ public class AwsResourceManager extends BaseResourceManager {
             ResourceUtils.writeStream(streamName, out, () -> this.connector.getWrites(streamName));
           }
           // copy any dynamo data
-          dynamo.copyStoreTables(output.newFolder(LambdaClientProperties.STAGED_PREFIX, "dynamo"));
+          dynamo.copyStoreTables(output.newFolder(FineoProperties.STAGED_PREFIX, "dynamo"));
         }
       }
     } finally {

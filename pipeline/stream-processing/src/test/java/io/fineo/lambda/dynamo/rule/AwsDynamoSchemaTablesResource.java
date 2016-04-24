@@ -4,6 +4,7 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
+import io.fineo.etl.FineoProperties;
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import io.fineo.lambda.configure.legacy.LambdaModule;
 import io.fineo.lambda.dynamo.LocalDynamoTestUtil;
@@ -64,9 +65,9 @@ public class AwsDynamoSchemaTablesResource extends ExternalResource {
 
   public LambdaClientProperties getClientProperties() throws Exception {
     Properties props = new Properties();
-    props.put(LambdaClientProperties.DYNAMO_READ_LIMIT, "1");
-    props.put(LambdaClientProperties.DYNAMO_WRITE_LIMIT, "1");
-    props.put(LambdaClientProperties.DYNAMO_SCHEMA_STORE_TABLE, "store");
+    props.put(FineoProperties.DYNAMO_READ_LIMIT, "1");
+    props.put(FineoProperties.DYNAMO_WRITE_LIMIT, "1");
+    props.put(FineoProperties.DYNAMO_SCHEMA_STORE_TABLE, "store");
     return getClientProperties(props);
   }
 

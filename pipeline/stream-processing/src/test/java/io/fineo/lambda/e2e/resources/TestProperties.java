@@ -1,10 +1,12 @@
 package io.fineo.lambda.e2e.resources;
 
 import com.google.common.collect.Lists;
-import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 
 import java.time.Duration;
 import java.util.List;
+
+import static io.fineo.etl.FineoProperties.RAW_PREFIX;
+import static io.fineo.etl.FineoProperties.STAGED_PREFIX;
 
 /**
  * Properties for manage remote test resources
@@ -40,9 +42,7 @@ public class TestProperties {
     private static final String AVRO_TO_STORE_ARN_TO_FORMAT =
       "arn:aws:lambda:%s:766732214526:function:AvroToStorage";
 
-    public static final List<String> STAGES = Lists.newArrayList(LambdaClientProperties.RAW_PREFIX,
-      LambdaClientProperties
-      .STAGED_PREFIX);
+    public static final List<String> STAGES = Lists.newArrayList(RAW_PREFIX, STAGED_PREFIX);
 
     public static String getRawToAvroArn(String region){
       return String.format(RAW_TO_AVRO_ARN_TO_FORMAT, region);

@@ -6,12 +6,12 @@ import com.google.common.util.concurrent.Futures;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provider;
 import com.google.inject.util.Providers;
+import io.fineo.etl.FineoProperties;
 import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.lambda.configure.MockOnNullInstanceModule;
 import io.fineo.lambda.configure.NullableNamedInstanceModule;
 import io.fineo.lambda.configure.PropertiesModule;
 import io.fineo.lambda.configure.firehose.FirehoseModule;
-import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import io.fineo.lambda.e2e.EndToEndTestRunner;
 import io.fineo.lambda.firehose.FirehoseBatchWriter;
 import io.fineo.lambda.handle.LambdaWrapper;
@@ -305,9 +305,9 @@ public class TestLambdaRawToAvroWithLocalSchemaStore {
 
   protected Properties getClientProperties() throws Exception {
     Properties props = new Properties();
-    props.put(LambdaClientProperties.KINESIS_URL, "kurl");
-    props.put(LambdaClientProperties.FIREHOSE_URL, "url");
-    props.put(LambdaClientProperties.KINESIS_PARSED_RAW_OUT_STREAM_NAME, "stream");
+    props.put(FineoProperties.KINESIS_URL, "kurl");
+    props.put(FineoProperties.FIREHOSE_URL, "url");
+    props.put(FineoProperties.KINESIS_PARSED_RAW_OUT_STREAM_NAME, "stream");
     return props;
   }
 }

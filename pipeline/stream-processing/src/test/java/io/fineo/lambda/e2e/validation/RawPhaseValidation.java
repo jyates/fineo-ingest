@@ -3,7 +3,7 @@ package io.fineo.lambda.e2e.validation;
 import io.fineo.lambda.e2e.EndToEndTestBuilder;
 import io.fineo.lambda.e2e.validation.step.KinesisValidation;
 
-import static io.fineo.lambda.configure.legacy.LambdaClientProperties.RAW_PREFIX;
+import static io.fineo.etl.FineoProperties.RAW_PREFIX;
 
 /**
  *

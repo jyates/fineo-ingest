@@ -8,7 +8,7 @@ import io.fineo.lambda.e2e.validation.step.ValidationStep;
 import java.nio.ByteBuffer;
 import java.util.List;
 
-import static io.fineo.lambda.configure.legacy.LambdaClientProperties.STAGED_PREFIX;
+import static io.fineo.etl.FineoProperties.STAGED_PREFIX;
 import static io.fineo.lambda.e2e.validation.util.ValidationUtils.combine;
 
 public class StoragePhaseValidation

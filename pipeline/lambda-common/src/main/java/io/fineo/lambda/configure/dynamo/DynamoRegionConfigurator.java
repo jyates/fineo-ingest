@@ -5,7 +5,7 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Provides;
 import com.google.inject.name.Named;
-import io.fineo.lambda.configure.legacy.LambdaClientProperties;
+import io.fineo.etl.FineoProperties;
 
 import java.io.Serializable;
 
@@ -21,7 +21,7 @@ public class DynamoRegionConfigurator extends AbstractModule implements Serializ
   @Provides
   @Inject
   public AwsDynamoConfigurator getRegionConfigurator(
-    @Named(LambdaClientProperties.DYNAMO_REGION) String region) {
+    @Named(FineoProperties.DYNAMO_REGION) String region) {
     return client -> client.setRegion(RegionUtils.getRegion(region));
   }
 }

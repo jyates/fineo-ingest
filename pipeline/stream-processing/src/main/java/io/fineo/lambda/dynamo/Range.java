@@ -1,6 +1,5 @@
 package io.fineo.lambda.dynamo;
 
-import com.google.common.base.Preconditions;
 import io.fineo.schema.Pair;
 
 import java.time.Instant;

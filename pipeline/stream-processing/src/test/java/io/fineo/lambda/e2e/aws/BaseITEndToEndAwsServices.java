@@ -5,6 +5,7 @@ import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.Module;
 import io.fineo.aws.rule.AwsCredentialResource;
+import io.fineo.etl.FineoProperties;
 import io.fineo.lambda.configure.util.SingleInstanceModule;
 import io.fineo.lambda.configure.PropertiesModule;
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
@@ -21,7 +22,6 @@ import org.junit.After;
 import org.junit.ClassRule;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -98,7 +98,7 @@ public class BaseITEndToEndAwsServices {
   }
 
   protected Properties setProperties(Properties properties) {
-    properties.setProperty(LambdaClientProperties.DYNAMO_REGION, region);
+    properties.setProperty(FineoProperties.DYNAMO_REGION, region);
     Injector injector = Guice
       .createInjector(new SingleInstanceModule<>(properties), new PropertiesModule(properties));
     this.props = injector.getInstance(LambdaClientProperties.class);

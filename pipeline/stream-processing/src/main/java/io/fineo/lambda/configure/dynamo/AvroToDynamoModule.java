@@ -6,7 +6,7 @@ import com.google.inject.Inject;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import com.google.inject.name.Named;
-import io.fineo.lambda.configure.legacy.LambdaClientProperties;
+import io.fineo.etl.FineoProperties;
 import io.fineo.lambda.dynamo.avro.AvroToDynamoWriter;
 
 import java.io.Serializable;
@@ -17,10 +17,10 @@ public class AvroToDynamoModule extends AbstractModule implements Serializable {
   @Inject
   @Singleton
   public AvroToDynamoWriter getDynamoWriter(AmazonDynamoDBAsyncClient client,
-    @Named(LambdaClientProperties.DYNAMO_INGEST_TABLE_PREFIX) String prefix,
-    @Named(LambdaClientProperties.DYNAMO_READ_LIMIT) long readLimit,
-    @Named(LambdaClientProperties.DYNAMO_WRITE_LIMIT) long writeLimit,
-    @Named(LambdaClientProperties.DYNAMO_RETRIES) long retries) {
+    @Named(FineoProperties.DYNAMO_INGEST_TABLE_PREFIX) String prefix,
+    @Named(FineoProperties.DYNAMO_READ_LIMIT) long readLimit,
+    @Named(FineoProperties.DYNAMO_WRITE_LIMIT) long writeLimit,
+    @Named(FineoProperties.DYNAMO_RETRIES) long retries) {
     return new AvroToDynamoWriter(client, prefix, readLimit, writeLimit, retries);
   }
 
