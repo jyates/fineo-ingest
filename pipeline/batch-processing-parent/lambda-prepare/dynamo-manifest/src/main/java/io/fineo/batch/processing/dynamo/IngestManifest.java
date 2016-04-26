@@ -11,6 +11,8 @@ import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.Multimap;
 import com.google.inject.Provider;
 import io.fineo.lambda.aws.AwsAsyncRequest;
 import io.fineo.lambda.aws.AwsAsyncSubmitter;
@@ -19,14 +21,11 @@ import io.fineo.lambda.dynamo.TableUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static java.util.Arrays.asList;
-import static java.util.stream.Collectors.toList;
 
 /**
  * Manifest for tracking ingest. It can only be used for adding files ({@link #add(String,
@@ -115,18 +114,19 @@ public class IngestManifest {
     }
   }
 
-  public Collection<String> files() {
-    return manifests.values()
-                    .stream()
-                    .flatMap(manifest -> manifest.getFiles().stream())
-                    .collect(toList());
+  public Multimap<String, String> files() {
+    Multimap<String, String> files = ArrayListMultimap.create();
+    for(DynamoIngestManifest manifest: manifests.values()){
+      files.putAll(manifest.getOrgID(), manifest.getFiles());
+    }
+    return files;
   }
 
   public void remove(String org, String... files) {
     remove(org, asList(files));
   }
 
-  private void remove(String org, List<String> files) {
+  public void remove(String org, Iterable<String> files) {
     addMode = false;
     for (String file : files) {
       add(org, file);

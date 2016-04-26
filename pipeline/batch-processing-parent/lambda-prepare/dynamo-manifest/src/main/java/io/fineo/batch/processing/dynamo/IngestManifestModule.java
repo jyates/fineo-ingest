@@ -8,10 +8,9 @@ import com.google.inject.Inject;
 import com.google.inject.Provides;
 import com.google.inject.name.Named;
 
-/**
- *
- */
 public class IngestManifestModule extends AbstractModule {
+
+  public static final String INGEST_MANIFEST_OVERRIDE = "ingest.batch.manifest.override";
 
   @Override
   protected void configure() {
@@ -20,7 +19,7 @@ public class IngestManifestModule extends AbstractModule {
   @Provides
   @Inject
   public DynamoDBMapper getMapper(AmazonDynamoDBAsyncClient client,
-    @Named("ingest.manifest.override") DynamoDBMapperConfig.TableNameOverride override) {
+    @Named(INGEST_MANIFEST_OVERRIDE) DynamoDBMapperConfig.TableNameOverride override) {
     return new DynamoDBMapper(client, new DynamoDBMapperConfig.Builder()
       .withConsistentReads(DynamoDBMapperConfig.ConsistentReads.CONSISTENT)
       .withPaginationLoadingStrategy(DynamoDBMapperConfig.PaginationLoadingStrategy.EAGER_LOADING)

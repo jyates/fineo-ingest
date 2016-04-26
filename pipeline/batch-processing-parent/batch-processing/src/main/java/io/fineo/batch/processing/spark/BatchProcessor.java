@@ -1,5 +1,7 @@
 package io.fineo.batch.processing.spark;
 
+import com.google.common.collect.Multimap;
+import io.fineo.batch.processing.dynamo.IngestManifest;
 import io.fineo.batch.processing.spark.convert.RecordConverter;
 import io.fineo.batch.processing.spark.options.BatchOptions;
 import io.fineo.batch.processing.spark.write.DynamoWriter;
@@ -19,6 +21,7 @@ import org.apache.spark.storage.StorageLevel;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -36,22 +39,27 @@ public class BatchProcessor {
 
   public void run(JavaSparkContext context)
     throws IOException, URISyntaxException, ExecutionException, InterruptedException {
-    List<String> sources = loadManifest();
-    runJob(context, sources);
+    Multimap<String,String> sources = loadManifest();
+    runJob(context, sources.values());
     clearManifest(sources);
   }
 
-  private void clearManifest(List<String> sources) {
-
+  private void clearManifest(Multimap<String, String> sources) {
+    IngestManifest manifest = opts.getManifest();
+    for (Map.Entry<String, Collection<String>> files: sources.asMap().entrySet()){
+      manifest.remove(files.getKey(), files.getValue());
+    }
+    manifest.flush();
   }
 
-  private List<String> loadManifest() {
-    return null;
+  private Multimap<String,String> loadManifest() {
+    IngestManifest manifest = opts.getManifest();
+    return manifest.files();
   }
 
-  private void runJob(JavaSparkContext context, List<String> sources)
+  private void runJob(JavaSparkContext context, Collection<String> sources)
     throws IOException, URISyntaxException, ExecutionException, InterruptedException {
-    RddLoader loader = new RddLoader(context, opts.ingest());
+    RddLoader loader = new RddLoader(context, sources);
     loader.load();
     JavaPairRDD<String, PortableDataStream>[] stringRdds = loader.getRdds();
     // convert the records

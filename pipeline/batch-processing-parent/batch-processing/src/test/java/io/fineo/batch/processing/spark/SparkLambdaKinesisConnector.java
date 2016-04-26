@@ -1,6 +1,5 @@
 package io.fineo.batch.processing.spark;
 
-import io.fineo.batch.processing.spark.options.BatchOptions;
 import io.fineo.lambda.e2e.resources.aws.lambda.LambdaKinesisConnector;
 import io.fineo.test.rule.TestOutput;
 import org.apache.commons.logging.Log;
@@ -10,7 +9,6 @@ import org.apache.spark.api.java.JavaSparkContext;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.net.URISyntaxException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
@@ -28,9 +26,9 @@ public class SparkLambdaKinesisConnector extends LambdaKinesisConnector<Object> 
   private final JavaSparkContext context;
   private final Map<String, File> folders = new HashMap<>();
   private final TestOutput output;
-  private final BatchOptions opts;
+  private final LocalMockBatchOptions opts;
 
-  public SparkLambdaKinesisConnector(TestOutput directory, BatchOptions opts,
+  public SparkLambdaKinesisConnector(TestOutput directory, LocalMockBatchOptions opts,
     JavaSparkContext context) {
     this.output = directory;
     this.opts = opts;

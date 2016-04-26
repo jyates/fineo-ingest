@@ -7,7 +7,7 @@ import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBTable;
 import java.util.HashSet;
 import java.util.Set;
 
-@DynamoDBTable(tableName = "ingest-manifest")
+@DynamoDBTable(tableName = "ingest-batch-manifest")
 public class DynamoIngestManifest {
 
   private String orgID;

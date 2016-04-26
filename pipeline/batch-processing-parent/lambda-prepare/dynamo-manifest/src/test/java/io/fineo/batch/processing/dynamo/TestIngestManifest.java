@@ -3,25 +3,17 @@ package io.fineo.batch.processing.dynamo;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBMapper;
-import com.amazonaws.services.dynamodbv2.document.DynamoDB;
-import com.amazonaws.services.dynamodbv2.document.Table;
-import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
-import com.amazonaws.services.dynamodbv2.xspec.ExpressionSpecBuilder;
-import com.amazonaws.services.dynamodbv2.xspec.UpdateItemExpressionSpec;
+import com.google.common.collect.Multimap;
 import io.fineo.lambda.aws.AwsAsyncSubmitter;
 import io.fineo.lambda.dynamo.rule.BaseDynamoTableTest;
 import org.junit.Test;
 
-import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
-import static com.amazonaws.services.dynamodbv2.xspec.ExpressionSpecBuilder.SS;
 import static com.google.common.collect.Lists.newArrayList;
 import static org.junit.Assert.assertEquals;
 
@@ -29,9 +21,7 @@ public class TestIngestManifest extends BaseDynamoTableTest {
 
   @Test
   public void testReadNoTable() throws Exception {
-    IngestManifest read = getNewManifest();
-    read.load();
-    assertEquals(newArrayList(), newArrayList(read.files()));
+    assertReadFiles();
   }
 
   @Test
@@ -126,8 +116,8 @@ public class TestIngestManifest extends BaseDynamoTableTest {
   private void assertReadFiles(String... files) {
     IngestManifest read = getNewManifest();
     read.load();
-    Collection<String> readFiles = read.files();
-    List<String> actual = newArrayList(readFiles);
+    Multimap<String, String> readFiles = read.files();
+    List<String> actual = newArrayList(readFiles.values());
     Collections.sort(actual);
     List<String> expected = newArrayList(files);
     assertEquals("Wrong values read! Got: " + expected + ", actual: " + actual, expected, actual);
@@ -135,6 +125,7 @@ public class TestIngestManifest extends BaseDynamoTableTest {
 
   private IngestManifest getNewManifest() {
     AmazonDynamoDBAsyncClient client = tables.getAsyncClient();
+
     DynamoDBMapper mapper = new IngestManifestModule().getMapper(client, null);
     ProvisionedThroughput throughput = new ProvisionedThroughput(1L, 1L);
     AwsAsyncSubmitter<UpdateItemRequest, UpdateItemResult, DynamoIngestManifest> submitter =
