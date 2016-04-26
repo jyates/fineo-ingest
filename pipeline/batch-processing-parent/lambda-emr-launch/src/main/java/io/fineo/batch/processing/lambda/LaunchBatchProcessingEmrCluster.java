@@ -1,6 +1,5 @@
-package io.fineo.etl.deploy;
+package io.fineo.batch.processing.lambda;
 
-import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.regions.RegionUtils;
 import com.amazonaws.services.elasticmapreduce.AmazonElasticMapReduceClient;
 import com.amazonaws.services.elasticmapreduce.model.ActionOnFailure;
@@ -12,6 +11,9 @@ import com.amazonaws.services.elasticmapreduce.model.RunJobFlowRequest;
 import com.amazonaws.services.elasticmapreduce.model.RunJobFlowResult;
 import com.amazonaws.services.elasticmapreduce.model.StepConfig;
 import com.amazonaws.services.elasticmapreduce.util.StepFactory;
+import com.google.inject.Inject;
+import com.google.inject.name.Named;
+import io.fineo.lambda.handle.LambdaHandler;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -19,11 +21,11 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * Deploy an EMR Cluster
+ * Deploy an EMR Cluster to handle the batch procesing
  */
-public class LaunchSparkEmrCluster {
+public class LaunchBatchProcessingEmrCluster implements LambdaHandler<?> {
 
-  private static final Log LOG = LogFactory.getLog(LaunchSparkEmrCluster.class);
+  private static final Log LOG = LogFactory.getLog(LaunchBatchProcessingEmrCluster.class);
 
   public static final String SOURCE_JAR_LOCATION_KEY = "fineo.deploy.spark.jar-location";
 
@@ -42,22 +44,27 @@ public class LaunchSparkEmrCluster {
 
   private final String sourceJar;
   private final String mainClass;
-  private final AWSCredentialsProvider credentials;
   private final String region;
   private final String clusterName;
+  private final AmazonElasticMapReduceClient emr;
 
-  public LaunchSparkEmrCluster(String sourceJar, String mainClass,
-    AWSCredentialsProvider credentials, String region,
-    String clusterName) {
+  @Inject
+  public LaunchBatchProcessingEmrCluster(@Named("aws.region") String region,
+    @Named("fineo.batch.cluster.jar") String sourceJar,
+    @Named("fineo.batch.cluster.main") String mainClass,
+    @Named("fineo.batch.cluster.name") String clusterName, AmazonElasticMapReduceClient emr) {
     this.mainClass = mainClass;
     this.region = region;
     this.sourceJar = sourceJar;
-    this.credentials = credentials;
     this.clusterName = clusterName;
+    this.emr = emr;
+  }
+
+  public void handle(Object event){
+    deploy();
   }
 
   public void deploy() {
-    AmazonElasticMapReduceClient emr = new AmazonElasticMapReduceClient(credentials);
     StepFactory factory = new StepFactory(region + ".elasticmapreduce");
 
     StepConfig enabledebugging = new StepConfig()
@@ -98,8 +105,8 @@ public class LaunchSparkEmrCluster {
       .withApplications(new Application().withName("Spark"));
 
     emr.withRegion(RegionUtils.getRegion(region));
-    LOG.info("Submitting request: "+request);
+    LOG.info("Submitting request: " + request);
     RunJobFlowResult result = emr.runJobFlow(request);
-    LOG.info("Got result: "+result);
+    LOG.info("Got result: " + result);
   }
 }

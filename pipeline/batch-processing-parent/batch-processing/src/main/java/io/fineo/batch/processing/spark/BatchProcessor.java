@@ -10,6 +10,8 @@ import io.fineo.etl.spark.fs.RddLoader;
 import io.fineo.lambda.JsonParser;
 import io.fineo.lambda.configure.util.PropertiesLoaderUtil;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaFutureAction;
 import org.apache.spark.api.java.JavaPairRDD;
@@ -31,6 +33,7 @@ import java.util.concurrent.ExecutionException;
  */
 public class BatchProcessor {
 
+  private static final Log LOG = LogFactory.getLog(BatchProcessor.class);
   private final BatchOptions opts;
 
   public BatchProcessor(BatchOptions opts) {
@@ -39,20 +42,24 @@ public class BatchProcessor {
 
   public void run(JavaSparkContext context)
     throws IOException, URISyntaxException, ExecutionException, InterruptedException {
-    Multimap<String,String> sources = loadManifest();
+    Multimap<String, String> sources = loadManifest();
+    if (sources.size() == 0) {
+      LOG.warn("No input sources found!");
+      return;
+    }
     runJob(context, sources.values());
     clearManifest(sources);
   }
 
   private void clearManifest(Multimap<String, String> sources) {
     IngestManifest manifest = opts.getManifest();
-    for (Map.Entry<String, Collection<String>> files: sources.asMap().entrySet()){
+    for (Map.Entry<String, Collection<String>> files : sources.asMap().entrySet()) {
       manifest.remove(files.getKey(), files.getValue());
     }
     manifest.flush();
   }
 
-  private Multimap<String,String> loadManifest() {
+  private Multimap<String, String> loadManifest() {
     IngestManifest manifest = opts.getManifest();
     return manifest.files();
   }

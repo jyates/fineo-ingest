@@ -27,4 +27,8 @@ public class PropertiesModule extends AbstractModule implements Serializable {
   protected void configure() {
     Names.bindProperties(this.binder(), props);
   }
+
+  public static PropertiesModule load() throws IOException {
+    return new PropertiesModule(PropertiesLoaderUtil.load());
+  }
 }

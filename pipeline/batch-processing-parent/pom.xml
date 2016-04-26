@@ -15,5 +15,6 @@
   <modules>
     <module>batch-processing</module>
     <module>lambda-prepare</module>
+    <module>lambda-emr-launch</module>
   </modules>
 </project>
