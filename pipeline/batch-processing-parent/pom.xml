@@ -9,6 +9,7 @@
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
+  <groupId>io.fineo.etl.pipeline.batch</groupId>
   <artifactId>batch-processing-parent</artifactId>
   <packaging>pom</packaging>
   <modules>

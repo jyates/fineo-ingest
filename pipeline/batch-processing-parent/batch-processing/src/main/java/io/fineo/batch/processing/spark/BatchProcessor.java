@@ -36,6 +36,21 @@ public class BatchProcessor {
 
   public void run(JavaSparkContext context)
     throws IOException, URISyntaxException, ExecutionException, InterruptedException {
+    List<String> sources = loadManifest();
+    runJob(context, sources);
+    clearManifest(sources);
+  }
+
+  private void clearManifest(List<String> sources) {
+
+  }
+
+  private List<String> loadManifest() {
+    return null;
+  }
+
+  private void runJob(JavaSparkContext context, List<String> sources)
+    throws IOException, URISyntaxException, ExecutionException, InterruptedException {
     RddLoader loader = new RddLoader(context, opts.ingest());
     loader.load();
     JavaPairRDD<String, PortableDataStream>[] stringRdds = loader.getRdds();

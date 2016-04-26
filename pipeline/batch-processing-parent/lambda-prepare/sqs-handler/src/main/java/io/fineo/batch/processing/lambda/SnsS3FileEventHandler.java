@@ -32,8 +32,6 @@ public abstract class SnsS3FileEventHandler implements LambdaHandler<SNSEvent> {
     manifest.flush();
   }
 
-
-
   protected abstract RecordUpload parseOrgAndS3Location(SNSEvent.SNSRecord record)
     throws IOException;
 

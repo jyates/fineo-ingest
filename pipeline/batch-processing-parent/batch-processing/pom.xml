@@ -3,8 +3,8 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <parent>
-    <artifactId>pipeline</artifactId>
-    <groupId>io.fineo.etl.pipeline</groupId>
+    <artifactId>batch-processing-parent</artifactId>
+    <groupId>io.fineo.etl.pipeline.batch</groupId>
     <version>1.0-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
@@ -25,6 +25,10 @@
           <artifactId>slf4j-log4j12</artifactId>
         </exclusion>
       </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>io.fineo.etl.pipeline.batch</groupId>
+      <artifactId>dynamo-manifest</artifactId>
     </dependency>
     <dependency>
       <groupId>io.fineo.etl</groupId>
