@@ -10,7 +10,7 @@ import io.fineo.lambda.aws.AwsAsyncRequest;
 import io.fineo.lambda.aws.AwsAsyncSubmitter;
 import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.lambda.dynamo.DynamoExpressionPlaceHolders;
-import io.fineo.lambda.dynamo.DynamoTableManager;
+import io.fineo.lambda.dynamo.DynamoTableCreator;
 import io.fineo.schema.avro.AvroSchemaEncoder;
 import io.fineo.schema.avro.RecordMetadata;
 import org.apache.avro.generic.GenericRecord;
@@ -39,7 +39,7 @@ import java.util.Map;
  * Generally, this is fine as this writer is called from a short-running lambda function that
  * only handles a very small number of requests.
  * </p>
- * <p/>
+ * <p>
  * All writes are accumulated until a call to {@link #flush()}, which is <b>blocks until all
  * requests have completed</b>. This is merely a simple wrapper around an {@link AwsAsyncSubmitter}
  *
@@ -50,14 +50,13 @@ public class AvroToDynamoWriter {
   private static final Log LOG = LogFactory.getLog(AvroToDynamoWriter.class);
   private static final Joiner COMMAS = Joiner.on(',');
 
-  private final DynamoTableManager.DynamoTableCreator tables;
+  private final DynamoTableCreator tables;
   private final AwsAsyncSubmitter<UpdateItemRequest, UpdateItemResult, GenericRecord> submitter;
 
-  public AvroToDynamoWriter(AmazonDynamoDBAsyncClient client, String dynamoIngestTablePrefix, long
-    writeMax, long readMax, long maxRetries) {
+  public AvroToDynamoWriter(AmazonDynamoDBAsyncClient client,
+    long maxRetries, DynamoTableCreator creator) {
     this.submitter = new AwsAsyncSubmitter<>(maxRetries, client::updateItemAsync);
-    this.tables = new DynamoTableManager(client, dynamoIngestTablePrefix).creator(readMax,
-      writeMax);
+    this.tables = creator;
   }
 
   /**

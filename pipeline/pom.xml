@@ -19,6 +19,8 @@
     <module>pipeline-utils</module>
     <module>lambda-common</module>
     <module>batch-processing-parent</module>
+    <module>lambda-chores</module>
+    <module>dynamo-access</module>
   </modules>
 
   <profiles>

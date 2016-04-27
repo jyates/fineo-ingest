@@ -286,6 +286,11 @@
         <scope>test</scope>
       </dependency>
       <dependency>
+        <groupId>io.fineo.etl.pipeline</groupId>
+        <artifactId>dynamo-access</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
         <groupId>io.fineo.etl.pipeline.batch</groupId>
         <artifactId>dynamo-manifest</artifactId>
         <version>${project.version}</version>

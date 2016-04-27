@@ -1,17 +1,12 @@
 package io.fineo.lambda.dynamo;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
-import com.amazonaws.services.dynamodbv2.document.DynamoDB;
-import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
-import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
-import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
 import com.amazonaws.services.dynamodbv2.model.ListTablesResult;
-import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Joiner;
-import io.fineo.lambda.dynamo.avro.Schema;
-import io.fineo.schema.Pair;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -39,57 +34,10 @@ public class DynamoTableManager {
   private static final ZoneOffset ZONE = ZoneOffset.UTC;
 
   private final AmazonDynamoDBAsyncClient client;
-  private final DynamoDB dynamo;
 
   public DynamoTableManager(AmazonDynamoDBAsyncClient client, String prefix) {
     this.prefix = prefix;
     this.client = client;
-    this.dynamo = new DynamoDB(client);
-  }
-
-  public DynamoTableCreator creator(long readCapacity, long writeCapacity) {
-    return new DynamoTableCreator(readCapacity, writeCapacity);
-  }
-
-  public class DynamoTableCreator {
-    private final CreateTableRequest baseRequest;
-
-    private DynamoTableCreator(long readCapacity, long writeCapacity) {
-      Pair<List<KeySchemaElement>, List<AttributeDefinition>> schema = Schema.get();
-      this.baseRequest = new CreateTableRequest()
-        .withKeySchema(schema.getKey())
-        .withAttributeDefinitions(schema.getValue())
-        .withProvisionedThroughput(new ProvisionedThroughput(readCapacity, writeCapacity));
-    }
-
-    /**
-     * Get the name of the table from the millisecond timestamp
-     *
-     * @param ts time of the record to map in milliseconds
-     * @return name of the table created
-     */
-    public String getTableAndEnsureExists(long ts) {
-      String name = getTableName(ts);
-      // The the actual heavy lifting, if the table does not exist yet
-      createTable(name);
-      return name;
-    }
-
-    @VisibleForTesting
-    void createTable(String fullTableName) {
-      // get the prefix since
-      LOG.debug("Checking for table: " + fullTableName);
-      String tableAndStart = DynamoTableManager.getPrefixAndStart(fullTableName);
-      Stream<String> tables = TableUtils.getTables(client, tableAndStart, 1);
-      // we have the table already, we are done
-      if (tables.count() > 0) {
-        return;
-      }
-      LOG.info("Creating table: " + fullTableName);
-      baseRequest.setTableName(fullTableName);
-
-      TableUtils.createTable(dynamo, baseRequest);
-    }
   }
 
   /**
@@ -117,7 +65,7 @@ public class DynamoTableManager {
       String tableName = getTableName(startEnd);
       try {
         client.describeTable(tableName);
-        tables.add(new Pair<>(tableName, startEnd));
+        tables.add(new ImmutablePair<>(tableName, startEnd));
       } catch (ResourceNotFoundException e) {
         LOG.debug("Skipping table: " + tableName + " because it doesn't exist!");
         // check to see if we are asking too far in the future at which point we should stop looking
@@ -153,5 +101,12 @@ public class DynamoTableManager {
     int weekOffset = (day - 1) % 7;
     Instant start = time.minusDays(weekOffset).toInstant(ZONE);
     return new Range<>(start, start.plus(TABLE_TIME_LENGTH));
+  }
+
+  public boolean tableExists(String fullTableName) {
+    String tableAndStart = DynamoTableManager.getPrefixAndStart(fullTableName);
+    Stream<String> tables = TableUtils.getTables(client, tableAndStart, 1);
+    // we have the table already, we are done
+    return tables.count() > 0;
   }
 }

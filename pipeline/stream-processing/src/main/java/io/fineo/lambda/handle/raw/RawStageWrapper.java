@@ -27,7 +27,7 @@ public class RawStageWrapper extends LambdaWrapper<KinesisEvent, RawRecordToAvro
     this(getModules(PropertiesLoaderUtil.load()));
   }
 
-  public RawStageWrapper(Module... modules) {
+  public RawStageWrapper(List<Module> modules) {
     super(RawRecordToAvroHandler.class, modules);
   }
 
@@ -37,7 +37,7 @@ public class RawStageWrapper extends LambdaWrapper<KinesisEvent, RawRecordToAvro
   }
 
   @VisibleForTesting
-  public static Module[] getModules(Properties props) {
+  public static List<Module> getModules(Properties props) {
     List<Module> modules = new ArrayList<>();
     StreamLambdaUtils.addBasicProperties(modules, props);
     modules.add(instanceModule(new JsonParser()));
@@ -50,6 +50,6 @@ public class RawStageWrapper extends LambdaWrapper<KinesisEvent, RawRecordToAvro
     modules.add(new FirehosePropertyBridge());
     modules.add(new FirehoseModule());
     modules.add(new FirehoseToMalformedInstanceFunctionModule());
-    return modules.toArray(new Module[0]);
+    return modules;
   }
 }

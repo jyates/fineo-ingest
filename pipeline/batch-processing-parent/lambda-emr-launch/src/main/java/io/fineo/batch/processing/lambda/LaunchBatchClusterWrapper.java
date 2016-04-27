@@ -22,7 +22,7 @@ public class LaunchBatchClusterWrapper
     this(getModules());
   }
 
-  public LaunchBatchClusterWrapper(Module... modules) {
+  public LaunchBatchClusterWrapper(List<Module> modules) {
     super(LaunchBatchProcessingEmrCluster.class, modules);
   }
 
@@ -31,12 +31,11 @@ public class LaunchBatchClusterWrapper
     getInstance().handle(event);
   }
 
-  private static Module[] getModules() throws IOException {
-    List<Module> modules = newArrayList(
+  private static List<Module> getModules() throws IOException {
+    return newArrayList(
       PropertiesModule.load(),
       new DefaultCredentialsModule(),
       new EmrClientModule()
     );
-    return modules.toArray(new Module[0]);
   }
 }

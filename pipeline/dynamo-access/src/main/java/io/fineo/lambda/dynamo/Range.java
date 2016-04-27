@@ -1,6 +1,8 @@
 package io.fineo.lambda.dynamo;
 
-import io.fineo.schema.Pair;
+
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 
 import java.time.Instant;
 import java.time.temporal.Temporal;
@@ -13,7 +15,7 @@ public class Range<TIME extends Temporal> {
   private final Pair<TIME, TIME> pair;
 
   public Range(TIME start, TIME end) {
-    this.pair = new Pair<>(start, end);
+    this.pair = new ImmutablePair<>(start, end);
   }
 
   @Override

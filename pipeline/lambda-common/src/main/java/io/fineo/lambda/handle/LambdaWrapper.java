@@ -19,9 +19,13 @@ public abstract class LambdaWrapper<T, C extends LambdaHandler<?>> {
   private final List<Module> modules;
   private C inst;
 
-  public LambdaWrapper(Class<C> handlerClass, Module... modules) {
+  public LambdaWrapper(Class<C> handlerClass, List<Module> modules) {
     this.clazz = handlerClass;
-    this.modules = newArrayList(modules);
+    this.modules = modules;
+  }
+
+  public LambdaWrapper(Class<C> handlerClass, Module... modules) {
+    this(handlerClass, newArrayList(modules));
   }
 
   protected C getInstance(){

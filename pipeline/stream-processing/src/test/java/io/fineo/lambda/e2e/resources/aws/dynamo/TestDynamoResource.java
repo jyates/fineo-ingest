@@ -11,6 +11,7 @@ import io.fineo.etl.FineoProperties;
 import io.fineo.lambda.configure.PropertiesModule;
 import io.fineo.lambda.configure.SchemaStoreModule;
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
+import io.fineo.lambda.dynamo.DynamoTableCreator;
 import io.fineo.lambda.dynamo.DynamoTableManager;
 import io.fineo.lambda.dynamo.avro.Schema;
 import io.fineo.lambda.dynamo.rule.AwsDynamoResource;
@@ -74,7 +75,7 @@ public class TestDynamoResource {
 
     DynamoTableManager tables =
       new DynamoTableManager(client, clientProperties.getDynamoIngestTablePrefix());
-    DynamoTableManager.DynamoTableCreator creator = tables.creator(1, 1);
+    DynamoTableCreator creator = tables.creator(1, 1);
     String name = creator.getTableAndEnsureExists(System.currentTimeMillis());
 
     Map<String, AttributeValue> item = new HashMap<>();

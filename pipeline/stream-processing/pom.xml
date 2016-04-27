@@ -18,8 +18,8 @@
       <artifactId>lambda-common</artifactId>
     </dependency>
     <dependency>
-      <groupId>io.fineo.etl</groupId>
-      <artifactId>dynamo-common</artifactId>
+      <groupId>io.fineo.etl.pipeline</groupId>
+      <artifactId>dynamo-access</artifactId>
     </dependency>
 
     <dependency>

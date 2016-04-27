@@ -14,7 +14,6 @@ import org.apache.commons.logging.LogFactory;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -41,8 +40,8 @@ public class ITEndToEndLambdaSemiLocal extends BaseITEndToEndAwsServices {
     Properties props = setProperties(uuid);
 
     // setup the stages
-    List<Module> modules = updateCredentials(newArrayList(RawStageWrapper.getModules(props)));
-    RawStageWrapper start = new RawStageWrapper(modules.toArray(new Module[0]));
+    List<Module> modules = updateCredentials(RawStageWrapper.getModules(props));
+    RawStageWrapper start = new RawStageWrapper(modules);
     modules = updateCredentials(newArrayList(AvroToStorageWrapper.getModules(props)));
     AvroToStorageWrapper storage = new AvroToStorageWrapper(modules.toArray(new Module[0]));
 

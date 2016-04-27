@@ -23,12 +23,12 @@ public class AvroToStorageWrapper extends LambdaWrapper<KinesisEvent, AvroToStor
   }
 
   @VisibleForTesting
-  public AvroToStorageWrapper(Module... modules) {
+  public AvroToStorageWrapper(List<Module> modules) {
     super(AvroToStorageHandler.class, modules);
   }
 
   @VisibleForTesting
-  public static Module[] getModules(Properties props) {
+  public static List<Module> getModules(Properties props) {
     List<Module> modules = new ArrayList<>();
     StreamLambdaUtils.addBasicProperties(modules, props);
     StreamLambdaUtils.addDynamo(modules);
@@ -37,7 +37,7 @@ public class AvroToStorageWrapper extends LambdaWrapper<KinesisEvent, AvroToStor
     modules.add(new FirehoseModule());
     modules.add(new FirehosePropertyBridge());
     modules.add(new FirehoseFunctions());
-    return modules.toArray(new Module[0]);
+    return modules;
   }
 
   @Override
