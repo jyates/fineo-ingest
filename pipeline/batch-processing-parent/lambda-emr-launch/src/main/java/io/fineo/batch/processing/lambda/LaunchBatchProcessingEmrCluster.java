@@ -23,7 +23,7 @@ import java.util.UUID;
 /**
  * Deploy an EMR Cluster to handle the batch procesing
  */
-public class LaunchBatchProcessingEmrCluster implements LambdaHandler<?> {
+public class LaunchBatchProcessingEmrCluster implements LambdaHandler<Object> {
 
   private static final Log LOG = LogFactory.getLog(LaunchBatchProcessingEmrCluster.class);
 

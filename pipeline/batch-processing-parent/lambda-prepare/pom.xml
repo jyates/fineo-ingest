@@ -16,6 +16,5 @@
   <modules>
     <module>sqs-handler</module>
     <module>dynamo-manifest</module>
-    <module>../../batch-batch-processing-parent/emr-launch</module>
   </modules>
 </project>

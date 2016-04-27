@@ -10,13 +10,12 @@
   <packaging>pom</packaging>
 
   <modules>
+    <module>common</module>
+    <module>dynamo-common</module>
+    <module>spark-common</module>
     <module>batch-etl</module>
     <module>pipeline</module>
     <module>drill-test</module>
-    <module>spark-common</module>
-    <module>deploy</module>
-    <module>dynamo-common</module>
-    <module>common</module>
   </modules>
 
   <properties>
