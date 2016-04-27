@@ -130,7 +130,9 @@
           <artifactId>maven-failsafe-plugin</artifactId>
           <version>${failsafe.version}</version>
           <configuration>
-            <includes>**/IT*.java</includes>
+            <includes>
+              <include>**/IT*.java</include>
+            </includes>
             <redirectTestOutputToFile>${it.output.to.file}</redirectTestOutputToFile>
           </configuration>
           <executions>
