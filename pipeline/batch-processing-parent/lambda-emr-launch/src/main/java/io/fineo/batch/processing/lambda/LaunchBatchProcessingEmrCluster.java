@@ -60,7 +60,7 @@ public class LaunchBatchProcessingEmrCluster implements LambdaHandler<Object> {
     this.emr = emr;
   }
 
-  public void handle(Object event){
+  public void handle(Object event) {
     deploy();
   }
 

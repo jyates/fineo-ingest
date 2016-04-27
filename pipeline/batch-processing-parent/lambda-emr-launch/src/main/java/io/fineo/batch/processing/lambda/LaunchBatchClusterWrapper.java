@@ -15,7 +15,8 @@ import static com.google.common.collect.Lists.newArrayList;
  *
  * @see LaunchBatchProcessingEmrCluster
  */
-public class LaunchBatchClusterWrapper extends LambdaWrapper<Object, LaunchBatchProcessingEmrCluster> {
+public class LaunchBatchClusterWrapper
+  extends LambdaWrapper<Object, LaunchBatchProcessingEmrCluster> {
 
   public LaunchBatchClusterWrapper() throws IOException {
     this(getModules());
