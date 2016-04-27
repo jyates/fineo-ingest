@@ -4,7 +4,7 @@ Pipeline to ingest reads from customers
 
 ### Test Phases
 
-Tests are broken out into five phases, of which only the first three run
+Tests are broken out into five phases, of which only the first three run by default
 
   * local tests
   * local aws tests

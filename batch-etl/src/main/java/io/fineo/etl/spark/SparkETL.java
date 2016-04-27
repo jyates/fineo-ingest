@@ -42,6 +42,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
 
+import static com.google.common.collect.Lists.newArrayList;
 import static java.util.stream.Collectors.toList;
 
 public class SparkETL {
@@ -58,7 +59,7 @@ public class SparkETL {
 
   public void run(JavaSparkContext context, SchemaStore store) throws URISyntaxException, IOException {
     this.store = store;
-    RddLoader loader = new RddLoader(context, opts.root());
+    RddLoader loader = new RddLoader(context, newArrayList(opts.root()));
     loader.load();
     JavaPairRDD<String, PortableDataStream>[] stringRdds = loader.getRdds();
     JavaRDD<GenericRecord> records = getRecords(context, stringRdds);

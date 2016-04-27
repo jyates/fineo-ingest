@@ -41,7 +41,6 @@
     <dependency>
       <groupId>io.fineo.etl</groupId>
       <artifactId>dynamo-common</artifactId>
-      <scope>test`</scope>
     </dependency>
     <dependency>
       <groupId>io.fineo.etl</groupId>

@@ -2,7 +2,6 @@ package io.fineo.batch.processing.spark;
 
 import com.google.inject.Module;
 import io.fineo.aws.AwsDependentTests;
-import io.fineo.batch.processing.spark.options.BatchOptions;
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import io.fineo.lambda.configure.legacy.StreamType;
 import io.fineo.lambda.configure.util.SingleInstanceModule;
@@ -55,13 +54,18 @@ public class ITBatchProcessingWithLocalSpark extends BaseITEndToEndAwsServices {
 
     // source dir is also the location for the 'archive'
     String source = props.getProperty(StreamType.ARCHIVE.getPropertyKey(RAW_PREFIX));
-    BatchOptions opts = new BatchOptions();
-    opts.setProps(props);
+    LocalMockBatchOptions opts = getOpts(props);
     setFirehose(props);
     SparkLambdaKinesisConnector connector =
       new SparkLambdaKinesisConnector(output, opts, spark.jsc());
     connector.configure(null, source);
     run(connector, LambdaTestUtils.createRecords(1, 1));
+  }
+
+  private LocalMockBatchOptions getOpts(Properties props){
+    LocalMockBatchOptions opts = new LocalMockBatchOptions();
+    opts.setProps(props);
+    return opts;
   }
 
   @Override
@@ -112,8 +116,7 @@ public class ITBatchProcessingWithLocalSpark extends BaseITEndToEndAwsServices {
     String uuid = "integration-test-" + System.currentTimeMillis() + "-";
     Properties props = setProperties(uuid);
 
-    BatchOptions opts = new BatchOptions();
-    opts.setProps(props);
+    LocalMockBatchOptions opts = getOpts(props);
     setFirehose(props);
     SparkLambdaKinesisConnector connector =
       new SparkLambdaKinesisConnector(output, opts, spark.jsc());
