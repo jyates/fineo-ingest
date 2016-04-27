@@ -117,7 +117,7 @@
 
   <profiles>
     <profile>
-      <id>aws-validation</id>
+      <id>lambda-aws-validation</id>
       <activation>
         <property>
           <name>validate</name>
