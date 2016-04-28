@@ -16,7 +16,6 @@ import org.apache.avro.generic.GenericRecord;
 import org.junit.Test;
 import org.mockito.Mockito;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -44,15 +43,12 @@ public class TestAvroToDynamoWriter {
       });
 
     long time = System.currentTimeMillis();
-    Range<Instant> range = DynamoTableTimeManager.getStartEnd(Instant.ofEpochMilli(time));
-    String name =
-      DynamoTableTimeManager.TABLE_NAME_PARTS_JOINER
-        .join(prefix, range.getStart().toEpochMilli(), range.getStart().toEpochMilli());
+    DynamoTableTimeManager manager = new DynamoTableTimeManager(client, prefix);
+    String name = manager.getTableName(time);
     ListTablesResult tables = new ListTablesResult();
     tables.setTableNames(Lists.newArrayList(name));
     Mockito.when(client.listTables(Mockito.any(), Mockito.any())).thenReturn(tables);
 
-    DynamoTableTimeManager manager = new DynamoTableTimeManager(client, prefix);
     DynamoDB dynamo = new DynamoDB(client);
     DynamoTableCreator creator = new DynamoTableCreator(manager, dynamo, 10L, 10L);
     AvroToDynamoWriter writer = new AvroToDynamoWriter(client, 1L, creator);

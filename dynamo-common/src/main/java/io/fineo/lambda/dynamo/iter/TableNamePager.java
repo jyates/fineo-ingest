@@ -2,6 +2,7 @@ package io.fineo.lambda.dynamo.iter;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.amazonaws.services.dynamodbv2.model.ListTablesResult;
+import com.google.common.base.Preconditions;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -21,9 +22,16 @@ public class TableNamePager extends BasePager<String> {
   private String start;
 
   public TableNamePager(String prefix, AmazonDynamoDBAsyncClient dynamo, int pageSize) {
+    this(prefix, prefix, dynamo, pageSize);
+  }
+
+  public TableNamePager(String prefix, String start, AmazonDynamoDBAsyncClient dynamo,
+    int pageSize) {
+    Preconditions.checkArgument(prefix.startsWith(start),
+      "Prefix [%s] does not start with start key [%s]", prefix, start);
     this.prefix = prefix;
     this.dynamo = dynamo;
-    this.start = prefix;
+    this.start = start;
     this.pageSize = pageSize;
     this.startName = prefix;
   }

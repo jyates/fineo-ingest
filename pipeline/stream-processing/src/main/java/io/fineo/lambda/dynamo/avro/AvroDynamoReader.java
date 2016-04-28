@@ -86,7 +86,7 @@ public class AvroDynamoReader {
     stringPartitionKey, Function<Map<String, AttributeValue>,
     GenericRecord> translator, Optional<ScanRequest> baseRequest) {
     // get the potential tables that match the range
-    List<Pair<String, Range<Instant>>> tables = tableManager.getExistingTableNames(range);
+    List<Pair<String, Range<Instant>>> tables = tableManager.getCoveringTableNames(range);
     LOG.debug("Scanning tables: " + tables);
     // get a scan across each table
     List<ScanPager> scanners = new ArrayList<>(tables.size());
