@@ -14,11 +14,12 @@ import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
-import com.google.common.collect.Lists;
 import io.fineo.aws.AwsDependentTests;
 import io.fineo.lambda.dynamo.ResultOrException;
 import io.fineo.lambda.dynamo.rule.AwsDynamoResource;
 import io.fineo.lambda.dynamo.rule.AwsDynamoTablesResource;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
@@ -32,7 +33,6 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedTransferQueue;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.StreamSupport;
 
@@ -43,7 +43,7 @@ import static org.mockito.Matchers.any;
 
 @Category(AwsDependentTests.class)
 public class TestScanPager {
-
+  private static final Log LOG = LogFactory.getLog(TestScanPager.class);
   @ClassRule
   public static AwsDynamoResource dynamoResource = new AwsDynamoResource();
   @Rule
@@ -98,6 +98,9 @@ public class TestScanPager {
     Item item3 = new Item().withString(primaryKey, "key3");
     write(createStringKeyTable(), item, item2, item3);
     for (int i = 0; i < 3000; i++) {
+      if (i % 250 == 0) {
+        LOG.info("Batch " + i + " successful");
+      }
       read(spy, new ScanRequest(table), null);
       assertEquals(i + ") Wrong number of get requests made!", 1, counter.getAndSet(0));
     }

@@ -2,12 +2,11 @@ package io.fineo.lambda;
 
 import com.amazonaws.AmazonWebServiceRequest;
 import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
-import com.google.common.collect.Lists;
 import io.fineo.lambda.aws.AwsAsyncRequest;
 import io.fineo.lambda.aws.MultiWriteFailures;
+import io.fineo.lambda.configure.MockOnNullInstanceModule;
 import io.fineo.lambda.configure.NullableNamedInstanceModule;
 import io.fineo.lambda.configure.firehose.FirehoseModule;
-import io.fineo.lambda.configure.MockOnNullInstanceModule;
 import io.fineo.lambda.dynamo.avro.AvroToDynamoWriter;
 import io.fineo.lambda.firehose.FirehoseBatchWriter;
 import io.fineo.lambda.handle.LambdaWrapper;
@@ -27,6 +26,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.google.common.collect.Lists.newArrayList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
@@ -42,7 +42,7 @@ public class TestLambdaAvroToStorage {
     // setup mocks
     FirehoseBatchWriter records = Mockito.mock(FirehoseBatchWriter.class);
     AvroToDynamoWriter dynamo = Mockito.mock(AvroToDynamoWriter.class);
-    MultiWriteFailures failures = new MultiWriteFailures(Lists.newArrayList());
+    MultiWriteFailures failures = new MultiWriteFailures(newArrayList());
     Mockito.when(dynamo.flush()).thenReturn(failures);
 
     // actually do the write
@@ -63,14 +63,14 @@ public class TestLambdaAvroToStorage {
   private LambdaWrapper<KinesisEvent, AvroToStorageHandler> getLambda(
     AvroToDynamoWriter dynamo, FirehoseBatchWriter records, FirehoseBatchWriter malformed,
     FirehoseBatchWriter error) {
-    return new AvroToStorageWrapper(
+    return new AvroToStorageWrapper(newArrayList(
       new MockOnNullInstanceModule<>(dynamo, AvroToDynamoWriter.class),
       new NullableNamedInstanceModule<>(FirehoseModule.FIREHOSE_ARCHIVE_STREAM, records,
         FirehoseBatchWriter.class),
       new NullableNamedInstanceModule<>(FirehoseModule.FIREHOSE_MALFORMED_RECORDS_STREAM, malformed,
         FirehoseBatchWriter.class),
       new NullableNamedInstanceModule<>(FirehoseModule.FIREHOSE_COMMIT_ERROR_STREAM, error,
-        FirehoseBatchWriter.class));
+        FirehoseBatchWriter.class)));
   }
 
   @Test
@@ -99,7 +99,7 @@ public class TestLambdaAvroToStorage {
     manager.verifyErrors();
 
     // verify the record we failed
-    assertEquals(Lists.newArrayList(malformed), errors);
+    assertEquals(newArrayList(malformed), errors);
   }
 
   /**
@@ -118,7 +118,7 @@ public class TestLambdaAvroToStorage {
     OutputFirehoseManager manager = new OutputFirehoseManager().withCommitErrors();
     AvroToDynamoWriter dynamo = Mockito.mock(AvroToDynamoWriter.class);
 
-    MultiWriteFailures<GenericRecord> failures = new MultiWriteFailures<>(Lists.newArrayList(new
+    MultiWriteFailures<GenericRecord> failures = new MultiWriteFailures<>(newArrayList(new
       AwsAsyncRequest<>(record, AmazonWebServiceRequest.NOOP)));
     Mockito.when(dynamo.flush()).thenReturn(failures);
 

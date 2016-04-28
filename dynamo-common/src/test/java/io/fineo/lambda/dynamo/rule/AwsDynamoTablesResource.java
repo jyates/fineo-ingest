@@ -1,8 +1,13 @@
 package io.fineo.lambda.dynamo.rule;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
+import com.amazonaws.services.dynamodbv2.document.DynamoDB;
 import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
 import com.google.common.collect.Lists;
+import com.google.inject.AbstractModule;
+import com.google.inject.Inject;
+import com.google.inject.Module;
+import com.google.inject.Provides;
 import io.fineo.lambda.dynamo.LocalDynamoTestUtil;
 import io.fineo.lambda.dynamo.iter.PageManager;
 import io.fineo.lambda.dynamo.iter.PagingIterator;
@@ -68,5 +73,25 @@ public class AwsDynamoTablesResource extends ExternalResource {
       this.util = dynamoResource.getUtil();
     }
     return this.util;
+  }
+
+  public Module getDynamoModule() {
+    return new AbstractModule() {
+      @Override
+      protected void configure() {
+      }
+
+      @Provides
+      public AmazonDynamoDBAsyncClient getClient() {
+        return getAsyncClient();
+      }
+
+      @Provides
+      @Inject
+      public DynamoDB getDB(AmazonDynamoDBAsyncClient client) {
+        return new DynamoDB(client);
+      }
+
+    };
   }
 }

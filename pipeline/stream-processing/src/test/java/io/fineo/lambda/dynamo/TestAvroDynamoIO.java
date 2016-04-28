@@ -1,6 +1,7 @@
 package io.fineo.lambda.dynamo;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
+import com.amazonaws.services.dynamodbv2.document.DynamoDB;
 import com.amazonaws.services.dynamodbv2.model.ListTablesResult;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.google.inject.Guice;
@@ -156,11 +157,10 @@ public class TestAvroDynamoIO {
       dynamo.setConnectionProperties(prop);
 
       // setup the writer/reader
-      AmazonDynamoDBAsyncClient client = tables.getAsyncClient();
       Injector injector = Guice.createInjector(
         new PropertiesModule(prop),
         new AvroToDynamoModule(),
-        instanceModule(client),
+        tables.getDynamoModule(),
         instanceModule(store));
       this.writer = injector.getInstance(AvroToDynamoWriter.class);
       this.reader = injector.getInstance(AvroDynamoReader.class);

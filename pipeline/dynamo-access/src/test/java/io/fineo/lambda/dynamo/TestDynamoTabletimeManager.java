@@ -11,13 +11,12 @@ import org.junit.experimental.categories.Category;
 import org.mockito.Mockito;
 
 import java.time.Duration;
-import java.util.UUID;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 
 @Category(AwsDependentTests.class)
-public class TestDynamoTableManager {
+public class TestDynamoTableTimeManager {
 
   @ClassRule
   public static AwsDynamoResource dynamo = new AwsDynamoResource();
@@ -28,10 +27,10 @@ public class TestDynamoTableManager {
   public void testGetTableName() throws Exception {
     AmazonDynamoDBAsyncClient client = Mockito.mock(AmazonDynamoDBAsyncClient.class);
     String prefix = "table-prefix";
-    DynamoTableManager manager = new DynamoTableManager(client, prefix);
+    DynamoTableTimeManager manager = new DynamoTableTimeManager(client, prefix);
 
     long oneWeek = Duration.ofDays(7).toMillis();
-    String firstWeek = DynamoTableManager.TABLE_NAME_PARTS_JOINER.join(prefix, "0", oneWeek);
+    String firstWeek = DynamoTableTimeManager.TABLE_NAME_PARTS_JOINER.join(prefix, "0", oneWeek);
 
     assertEquals(firstWeek, manager.getTableName(0));
     assertEquals(firstWeek, manager.getTableName(1000));
@@ -53,8 +52,8 @@ public class TestDynamoTableManager {
 
   @Test
   public void testTableNameParsing() {
-    String name = DynamoTableManager.TABLE_NAME_PARTS_JOINER.join("prefix", "0", "1");
-    assertEquals(DynamoTableManager.TABLE_NAME_PARTS_JOINER.join("prefix", 0),
-      DynamoTableManager.getPrefixAndStart(name));
+    String name = DynamoTableTimeManager.TABLE_NAME_PARTS_JOINER.join("prefix", "0", "1");
+    assertEquals(DynamoTableTimeManager.TABLE_NAME_PARTS_JOINER.join("prefix", 0),
+      DynamoTableTimeManager.getPrefixAndStart(name));
   }
 }

@@ -1,6 +1,7 @@
 package io.fineo.lambda.e2e.resources.aws.dynamo;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
+import com.amazonaws.services.dynamodbv2.document.DynamoDB;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
@@ -12,7 +13,7 @@ import io.fineo.lambda.configure.PropertiesModule;
 import io.fineo.lambda.configure.SchemaStoreModule;
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import io.fineo.lambda.dynamo.DynamoTableCreator;
-import io.fineo.lambda.dynamo.DynamoTableManager;
+import io.fineo.lambda.dynamo.DynamoTableTimeManager;
 import io.fineo.lambda.dynamo.avro.Schema;
 import io.fineo.lambda.dynamo.rule.AwsDynamoResource;
 import io.fineo.lambda.dynamo.rule.AwsDynamoSchemaTablesResource;
@@ -73,9 +74,9 @@ public class TestDynamoResource {
     dynamo.setup(waiter);
     waiter.await();
 
-    DynamoTableManager tables =
-      new DynamoTableManager(client, clientProperties.getDynamoIngestTablePrefix());
-    DynamoTableCreator creator = tables.creator(1, 1);
+    DynamoTableTimeManager tables =
+      new DynamoTableTimeManager(client, clientProperties.getDynamoIngestTablePrefix());
+    DynamoTableCreator creator = new DynamoTableCreator(tables, new DynamoDB(client), 1, 1);
     String name = creator.getTableAndEnsureExists(System.currentTimeMillis());
 
     Map<String, AttributeValue> item = new HashMap<>();

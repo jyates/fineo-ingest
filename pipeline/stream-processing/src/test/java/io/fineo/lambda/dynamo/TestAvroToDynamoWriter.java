@@ -2,6 +2,7 @@ package io.fineo.lambda.dynamo;
 
 import com.amazonaws.handlers.AsyncHandler;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
+import com.amazonaws.services.dynamodbv2.document.DynamoDB;
 import com.amazonaws.services.dynamodbv2.model.ListTablesResult;
 import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
@@ -43,15 +44,18 @@ public class TestAvroToDynamoWriter {
       });
 
     long time = System.currentTimeMillis();
-    Range<Instant> range = DynamoTableManager.getStartEnd(Instant.ofEpochMilli(time));
+    Range<Instant> range = DynamoTableTimeManager.getStartEnd(Instant.ofEpochMilli(time));
     String name =
-      DynamoTableManager.TABLE_NAME_PARTS_JOINER
+      DynamoTableTimeManager.TABLE_NAME_PARTS_JOINER
         .join(prefix, range.getStart().toEpochMilli(), range.getStart().toEpochMilli());
     ListTablesResult tables = new ListTablesResult();
     tables.setTableNames(Lists.newArrayList(name));
     Mockito.when(client.listTables(Mockito.any(), Mockito.any())).thenReturn(tables);
 
-    AvroToDynamoWriter writer = new AvroToDynamoWriter(client, prefix, 10L, 10L, 1L);
+    DynamoTableTimeManager manager = new DynamoTableTimeManager(client, prefix);
+    DynamoDB dynamo = new DynamoDB(client);
+    DynamoTableCreator creator = new DynamoTableCreator(manager, dynamo, 10L, 10L);
+    AvroToDynamoWriter writer = new AvroToDynamoWriter(client, 1L, creator);
 
     GenericRecord record = SchemaTestUtils.createRandomRecord("orgId", "metricType",
       time, 1).get(0);

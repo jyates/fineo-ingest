@@ -20,12 +20,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
+import static java.time.Instant.now;
+
 /**
  * Manages the actual table creation + schema
  */
-public class DynamoTableManager {
+public class DynamoTableTimeManager {
 
-  private static final Log LOG = LogFactory.getLog(DynamoTableManager.class);
+  private static final Log LOG = LogFactory.getLog(DynamoTableTimeManager.class);
   public static final String SEPARATOR = "_";
   static final Joiner TABLE_NAME_PARTS_JOINER = Joiner.on(SEPARATOR);
   private static final Duration TABLE_TIME_LENGTH = Duration.ofDays(7);
@@ -35,7 +37,7 @@ public class DynamoTableManager {
 
   private final AmazonDynamoDBAsyncClient client;
 
-  public DynamoTableManager(AmazonDynamoDBAsyncClient client, String prefix) {
+  public DynamoTableTimeManager(AmazonDynamoDBAsyncClient client, String prefix) {
     this.prefix = prefix;
     this.client = client;
   }
@@ -45,7 +47,7 @@ public class DynamoTableManager {
    * the table.
    *
    * @param fullTableName full name of the table, in the format described in the
-   *                      {@link DynamoTableManager}
+   *                      {@link DynamoTableTimeManager}
    * @return the non-inlcusive prefix of the table table to search in AWS
    */
   @VisibleForTesting
@@ -58,6 +60,11 @@ public class DynamoTableManager {
    * @return all table names that are required to cover the time range
    */
   public List<Pair<String, Range<Instant>>> getExistingTableNames(Range<Instant> range) {
+    return getExistingTableNames(now(), range);
+  }
+
+  public List<Pair<String, Range<Instant>>> getExistingTableNames(Instant writeTime,
+    Range<Instant> range) {
     List<Pair<String, Range<Instant>>> tables = new ArrayList<>();
     Instant start = range.getStart();
     while (start.isBefore(range.getEnd())) {
@@ -104,9 +111,16 @@ public class DynamoTableManager {
   }
 
   public boolean tableExists(String fullTableName) {
-    String tableAndStart = DynamoTableManager.getPrefixAndStart(fullTableName);
+    String tableAndStart = DynamoTableTimeManager.getPrefixAndStart(fullTableName);
     Stream<String> tables = TableUtils.getTables(client, tableAndStart, 1);
     // we have the table already, we are done
     return tables.count() > 0;
+  }
+
+  public class TableTimeInfo {
+    private String prefix;
+    private long writeTime;
+    private long dataStartTime;
+    private long dataEndTime;
   }
 }

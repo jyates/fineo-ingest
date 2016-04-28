@@ -19,7 +19,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
-import static com.google.common.collect.Lists.newArrayList;
 import static io.fineo.lambda.handle.util.HandlerUtils.getHandler;
 
 /**
@@ -42,8 +41,8 @@ public class ITEndToEndLambdaSemiLocal extends BaseITEndToEndAwsServices {
     // setup the stages
     List<Module> modules = updateCredentials(RawStageWrapper.getModules(props));
     RawStageWrapper start = new RawStageWrapper(modules);
-    modules = updateCredentials(newArrayList(AvroToStorageWrapper.getModules(props)));
-    AvroToStorageWrapper storage = new AvroToStorageWrapper(modules.toArray(new Module[0]));
+    modules = updateCredentials(AvroToStorageWrapper.getModules(props));
+    AvroToStorageWrapper storage = new AvroToStorageWrapper(modules);
 
     // create the connections between stages
     String kinesisIngest = uuid + "ingest";

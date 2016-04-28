@@ -19,10 +19,10 @@ import java.util.List;
 public class DynamoTableCreator {
   private static final Log LOG = LogFactory.getLog(DynamoTableCreator.class);
   private final CreateTableRequest baseRequest;
-  private final DynamoTableManager manager;
+  private final DynamoTableTimeManager manager;
   private final DynamoDB dynamo;
 
-  public DynamoTableCreator(DynamoTableManager manager, DynamoDB dynamo, long readCapacity,
+  public DynamoTableCreator(DynamoTableTimeManager manager, DynamoDB dynamo, long readCapacity,
     long writeCapacity) {
     this.manager = manager;
     this.dynamo = dynamo;

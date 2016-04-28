@@ -44,6 +44,7 @@ import java.util.Properties;
 import java.util.Random;
 import java.util.stream.Stream;
 
+import static com.google.common.collect.Lists.newArrayList;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -97,7 +98,7 @@ public class TestLambdaRawToAvroWithLocalSchemaStore {
 
     // setup the mocks/fakes
     KinesisEvent event = createStoreAndSingleEvent(records);
-    verifyReadWriterEventsWithoutMalformed(Lists.newArrayList(event), records);
+    verifyReadWriterEventsWithoutMalformed(newArrayList(event), records);
   }
 
   private void verifyReadWriterEventsWithoutMalformed(
@@ -255,7 +256,7 @@ public class TestLambdaRawToAvroWithLocalSchemaStore {
   private LambdaWrapper<KinesisEvent, RawRecordToAvroHandler> getLambda(Properties props,
     OutputFirehoseManager firehoses,
     IKinesisProducer producer, Provider<SchemaStore> store) {
-    return new RawStageWrapper(
+    return new RawStageWrapper(newArrayList(
       new AbstractModule() {
         @Override
         protected void configure() {
@@ -269,7 +270,7 @@ public class TestLambdaRawToAvroWithLocalSchemaStore {
       new NullableNamedInstanceModule<>(FirehoseModule.FIREHOSE_MALFORMED_RECORDS_STREAM,
         firehoses.process(), FirehoseBatchWriter.class),
       new MockOnNullInstanceModule<>(producer, IKinesisProducer.class),
-      new PropertiesModule(props));
+      new PropertiesModule(props)));
   }
 
   private class KinesisRequest {

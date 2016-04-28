@@ -244,9 +244,4 @@ public class TestPagingIterator {
     PageManager<T> manager = new PageManager<>(Lists.newArrayList(runner));
     return new PagingIterator<>(prefetch, manager);
   }
-
-  @FunctionalInterface
-  private interface BatchedPager<T> {
-    boolean page(Queue<T> queue);
-  }
 }

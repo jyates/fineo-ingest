@@ -132,7 +132,7 @@ public class ITEndToEndLambdaLocal {
       () -> manager.getWriter(RAW_PREFIX, StreamType.PROCESSING_ERROR));
     List<Module> modules = getBaseModules(props, store, manager);
     modules.add(module);
-    return new RawStageWrapper(modules.toArray(new Module[0]));
+    return new RawStageWrapper(modules);
   }
 
   private static LambdaWrapper<KinesisEvent, AvroToStorageHandler> storageStage(Properties
@@ -146,7 +146,7 @@ public class ITEndToEndLambdaLocal {
       () -> manager.getWriter(FineoProperties.STAGED_PREFIX, StreamType.PROCESSING_ERROR));
     List<Module> modules = getBaseModules(props, store, manager);
     modules.add(module);
-    return new AvroToStorageWrapper(modules.toArray(new Module[0]));
+    return new AvroToStorageWrapper(modules);
   }
 
   private static List<Module> getBaseModules(Properties

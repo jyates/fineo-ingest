@@ -27,10 +27,10 @@ public class TestDynamoTableManager {
     AmazonDynamoDBAsyncClient client = tables.getAsyncClient();
 
     DynamoTableCreator loader =
-      new DynamoTableCreator(new DynamoTableManager(client, UUID.randomUUID().toString()),
+      new DynamoTableCreator(new DynamoTableTimeManager(client, UUID.randomUUID().toString()),
         new DynamoDB(client), 10, 10);
     String prefix = tables.getClientProperties().getDynamoIngestTablePrefix();
-    String name = DynamoTableManager.TABLE_NAME_PARTS_JOINER.join(prefix, "1", "2");
+    String name = DynamoTableTimeManager.TABLE_NAME_PARTS_JOINER.join(prefix, "1", "2");
     loader.createTable(name);
     oneTableWithPrefix(client, prefix);
 
@@ -44,7 +44,7 @@ public class TestDynamoTableManager {
 
     // another table gets created with a different range, ensure that we still don't try and create
     // the table again
-    String earlierTableName = DynamoTableManager.TABLE_NAME_PARTS_JOINER.join(prefix, "0", "1");
+    String earlierTableName = DynamoTableTimeManager.TABLE_NAME_PARTS_JOINER.join(prefix, "0", "1");
     loader.createTable(earlierTableName);
     loader.createTable(name);
   }

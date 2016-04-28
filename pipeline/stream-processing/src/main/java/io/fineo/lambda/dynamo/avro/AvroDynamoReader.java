@@ -7,16 +7,16 @@ import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import io.fineo.etl.FineoProperties;
 import io.fineo.internal.customer.Metric;
-import io.fineo.lambda.dynamo.DynamoTableManager;
+import io.fineo.lambda.dynamo.DynamoTableTimeManager;
 import io.fineo.lambda.dynamo.Range;
 import io.fineo.lambda.dynamo.ResultOrException;
 import io.fineo.lambda.dynamo.iter.PageManager;
 import io.fineo.lambda.dynamo.iter.PagingIterator;
 import io.fineo.lambda.dynamo.iter.ScanPager;
-import io.fineo.schema.Pair;
 import io.fineo.schema.avro.AvroSchemaManager;
 import io.fineo.schema.store.SchemaStore;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -38,7 +38,7 @@ public class AvroDynamoReader {
   private static final Log LOG = LogFactory.getLog(AvroDynamoReader.class);
   private final AmazonDynamoDBAsyncClient client;
   private final SchemaStore store;
-  private final DynamoTableManager tableManager;
+  private final DynamoTableTimeManager tableManager;
   private int prefetchSize;
 
   @Inject
@@ -46,7 +46,7 @@ public class AvroDynamoReader {
     @Named(FineoProperties.DYNAMO_INGEST_TABLE_PREFIX) String prefix) {
     this.store = store;
     this.client = client;
-    this.tableManager = new DynamoTableManager(client, prefix);
+    this.tableManager = new DynamoTableTimeManager(client, prefix);
   }
 
   public void setPrefetchSize(int prefetchSize) {

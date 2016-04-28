@@ -9,7 +9,7 @@ import com.google.inject.Singleton;
 import com.google.inject.name.Named;
 import io.fineo.etl.FineoProperties;
 import io.fineo.lambda.dynamo.DynamoTableCreator;
-import io.fineo.lambda.dynamo.DynamoTableManager;
+import io.fineo.lambda.dynamo.DynamoTableTimeManager;
 import io.fineo.lambda.dynamo.avro.AvroToDynamoWriter;
 
 import java.io.Serializable;
@@ -19,15 +19,15 @@ public class AvroToDynamoModule extends AbstractModule implements Serializable {
   @Provides
   @Inject
   @Singleton
-  public DynamoTableManager getDynamoTableManager(AmazonDynamoDBAsyncClient client,
+  public DynamoTableTimeManager getDynamoTableManager(AmazonDynamoDBAsyncClient client,
     @Named(FineoProperties.DYNAMO_INGEST_TABLE_PREFIX) String prefix) {
-    return new DynamoTableManager(client, prefix);
+    return new DynamoTableTimeManager(client, prefix);
   }
 
   @Provides
   @Inject
   @Singleton
-  public DynamoTableCreator getDynamoTableManager(DynamoTableManager tables,
+  public DynamoTableCreator getDynamoTableManager(DynamoTableTimeManager tables,
     DynamoDB dynamo,
     @Named(FineoProperties.DYNAMO_READ_LIMIT) long readLimit,
     @Named(FineoProperties.DYNAMO_WRITE_LIMIT) long writeLimit) {
