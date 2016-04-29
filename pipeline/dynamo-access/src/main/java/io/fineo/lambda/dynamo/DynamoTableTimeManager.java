@@ -71,22 +71,33 @@ public class DynamoTableTimeManager {
   public List<Pair<String, Range<Instant>>> getCoveringTableNames(Range<Instant> range) {
     List<Pair<String, Range<Instant>>> tables = new ArrayList<>();
     Instant start = range.getStart();
-    Range<Instant> startEnd = getClientTimestampStartEnd(start);
-    String startKey =
-      TABLE_NAME_PARTS_JOINER.join(prefix, start.toEpochMilli(), startEnd.getEnd().toEpochMilli());
+    Range<Instant> clientInitialRange = getClientTimestampStartEnd(start);
+    String startKey = TABLE_NAME_PARTS_JOINER
+      .join(prefix, start.toEpochMilli(), clientInitialRange.getEnd().toEpochMilli());
     TableNamePager pager = new TableNamePager(prefix, startKey, client, 5);
     Iterator<String> names = new PagingIterator<>(5, new PageManager<>(
       Lists.newArrayList(pager)));
-    while (start.isBefore(range.getEnd()) && names.hasNext()) {
+    if (!names.hasNext()) {
+      return tables;
+    }
+    Instant tableStart;
+    Instant tableEnd;
+    do {
       String name = names.next();
       String[] parts = name.split(SEPARATOR);
-      Instant tableStart = Instant.ofEpochMilli(Long.parseLong(parts[1]));
-      start = Instant.ofEpochMilli(Long.parseLong(parts[2]));
-      startEnd = new Range<>(tableStart, start);
-      tables.add(new ImmutablePair<>(name, startEnd));
-    }
+      tableStart = Instant.ofEpochMilli(Long.parseLong(parts[1]));
+      tableEnd = Instant.ofEpochMilli(Long.parseLong(parts[2]));
+      Range tableRange = new Range<>(tableStart, tableEnd);
+      tables.add(new ImmutablePair<>(name, tableRange));
+    } while (overlaps(range, tableStart, tableEnd) && names.hasNext());
 
     return tables;
+  }
+
+  private boolean overlaps(Range<Instant> range, Instant start, Instant end) {
+    Instant rangeStart = range.getStart();
+    Instant rangeEnd = range.getEnd();
+    return rangeStart.isBefore(end) && start.isBefore(rangeEnd);
   }
 
   public String getTableName(long ts) {
@@ -111,7 +122,7 @@ public class DynamoTableTimeManager {
   }
 
   private static Pair<Month, Integer> getFineoWriteTimestampStartEnd(Instant rowTime) {
-    LocalDateTime time = LocalDateTime.ofInstant(rowTime, UTC).truncatedTo(ChronoUnit.MONTHS);
+    LocalDateTime time = LocalDateTime.ofInstant(rowTime, UTC);
     return new ImmutablePair<>(time.getMonth(), time.getYear());
   }
 
