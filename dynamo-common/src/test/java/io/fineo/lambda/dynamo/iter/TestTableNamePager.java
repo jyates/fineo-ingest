@@ -16,10 +16,12 @@ import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 
+import java.util.List;
 import java.util.UUID;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import static com.google.common.collect.Lists.newArrayList;
 import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.assertEquals;
 
@@ -34,14 +36,14 @@ public class TestTableNamePager {
 
   @Test
   public void testNoTables() throws Exception {
-    assertEquals(Lists.newArrayList(),
+    assertEquals(newArrayList(),
       getTables(tableResource.getAsyncClient(), null, 1).collect(toList()));
   }
 
   @Test
   public void testReadOneTable() throws Exception {
     Table t = createStringKeyTable();
-    assertEquals(Lists.newArrayList(t.getTableName()),
+    assertEquals(newArrayList(t.getTableName()),
       getTables(tableResource.getAsyncClient(), null, 1).collect(toList()));
   }
 
@@ -51,8 +53,23 @@ public class TestTableNamePager {
     String name = "bname";
     createStringKeyTable(name);
 
-    assertEquals(Lists.newArrayList(name),
+    assertEquals(newArrayList(name),
       getTables(tableResource.getAsyncClient(), "b", 1).collect(toList()));
+  }
+
+  @Test
+  public void testReadFromStartKey() throws Exception {
+    createStringKeyTable("name_a");
+    createStringKeyTable("name_b1");
+    createStringKeyTable("name_c");
+    createStringKeyTable("m_name_c");
+
+    PagingRunner<String> runner =
+      new TableNamePager("name", "name_b", tableResource.getAsyncClient(), 1);
+    List<String> names =
+      StreamSupport.stream(new PagingIterator<>(1, new PageManager<>(newArrayList(runner)))
+        .iterable().spliterator(), false).collect(toList());
+    assertEquals(newArrayList("name_b1", "name_c"), names);
   }
 
   private Table createStringKeyTable(String tableName) {
@@ -75,6 +92,6 @@ public class TestTableNamePager {
     pageSize) {
     PagingRunner<String> runner = new TableNamePager(prefix, dynamo, pageSize);
     return StreamSupport.stream(new PagingIterator<>(pageSize, new PageManager<>(
-      Lists.newArrayList(runner))).iterable().spliterator(), false);
+      newArrayList(runner))).iterable().spliterator(), false);
   }
 }

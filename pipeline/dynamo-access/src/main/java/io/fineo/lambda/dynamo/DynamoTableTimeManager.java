@@ -68,12 +68,12 @@ public class DynamoTableTimeManager {
    * @param range
    * @return all table names that are required to cover the time range
    */
-  public List<Pair<String, Range<Instant>>> getCoveringTableNames(Range<Instant> range) {
+  public List<Pair<String, Range<Instant>>> getCoveringTableNames(final Range<Instant> range) {
     List<Pair<String, Range<Instant>>> tables = new ArrayList<>();
-    Instant start = range.getStart();
-    Range<Instant> clientInitialRange = getClientTimestampStartEnd(start);
+    Range<Instant> clientInitialRange = getClientTimestampStartEnd(range.getStart());
     String startKey = TABLE_NAME_PARTS_JOINER
-      .join(prefix, start.toEpochMilli(), clientInitialRange.getEnd().toEpochMilli());
+      .join(prefix, clientInitialRange.getStart().toEpochMilli(),
+        clientInitialRange.getEnd().toEpochMilli());
     TableNamePager pager = new TableNamePager(prefix, startKey, client, 5);
     Iterator<String> names = new PagingIterator<>(5, new PageManager<>(
       Lists.newArrayList(pager)));
@@ -82,14 +82,17 @@ public class DynamoTableTimeManager {
     }
     Instant tableStart;
     Instant tableEnd;
-    do {
+    while (names.hasNext()) {
       String name = names.next();
       String[] parts = name.split(SEPARATOR);
       tableStart = Instant.ofEpochMilli(Long.parseLong(parts[1]));
       tableEnd = Instant.ofEpochMilli(Long.parseLong(parts[2]));
+      if (!overlaps(range, tableStart, tableEnd)) {
+        break;
+      }
       Range tableRange = new Range<>(tableStart, tableEnd);
       tables.add(new ImmutablePair<>(name, tableRange));
-    } while (overlaps(range, tableStart, tableEnd) && names.hasNext());
+    }
 
     return tables;
   }

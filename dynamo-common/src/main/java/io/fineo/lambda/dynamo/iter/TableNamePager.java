@@ -18,29 +18,40 @@ public class TableNamePager extends BasePager<String> {
   private final String prefix;
   private final AmazonDynamoDBAsyncClient dynamo;
   private final int pageSize;
-  private String startName;
-  private String start;
+  private String pageStart;
 
   public TableNamePager(String prefix, AmazonDynamoDBAsyncClient dynamo, int pageSize) {
-    this(prefix, prefix, dynamo, pageSize);
+    this(prefix, null, dynamo, pageSize);
   }
 
-  public TableNamePager(String prefix, String start, AmazonDynamoDBAsyncClient dynamo,
+  /**
+   * @param prefix
+   * @param startKey non-inclusive start key. Must be: (a) at least 3 characters long, and (b)
+   *                 begin with the specified prefix
+   * @param dynamo
+   * @param pageSize
+   */
+  public TableNamePager(String prefix, String startKey, AmazonDynamoDBAsyncClient dynamo,
     int pageSize) {
-    Preconditions.checkArgument(prefix.startsWith(start),
-      "Prefix [%s] does not start with start key [%s]", prefix, start);
-    this.prefix = prefix;
     this.dynamo = dynamo;
-    this.start = start;
     this.pageSize = pageSize;
-    this.startName = prefix;
+    this.prefix = prefix;
+    if (startKey != null) {
+      Preconditions.checkArgument(startKey.startsWith(prefix),
+        "Start key [%s] does not start with prefix [%s]", prefix, startKey);
+      Preconditions
+        .checkArgument(startKey.length() > 3, "Start key must be at least 3 characters long!");
+      this.pageStart = startKey;
+    } else {
+      this.pageStart = prefix;
+    }
   }
 
   @Override
   public void page(Queue<String> queue) {
-    LOG.trace("Paging next batch of tables. Prefix: " + this.prefix + ", start: " + start);
-    ListTablesResult tables = this.startName == null || this.startName.length() < 3 ?
-                              dynamo.listTables(pageSize) : dynamo.listTables(startName, pageSize);
+    LOG.trace("Paging next batch of tables. Prefix: " + this.prefix + ", start: " + pageStart);
+    ListTablesResult tables = this.pageStart == null || this.pageStart.length() < 3 ?
+                              dynamo.listTables(pageSize) : dynamo.listTables(pageStart, pageSize);
     LOG.trace("Got next page: " + tables);
 
     if (prefix == null || prefix.equals("")) {
@@ -64,7 +75,7 @@ public class TableNamePager extends BasePager<String> {
       complete();
       return;
     }
-    startName = tables.getLastEvaluatedTableName();
+    pageStart = tables.getLastEvaluatedTableName();
     batchComplete();
   }
 
