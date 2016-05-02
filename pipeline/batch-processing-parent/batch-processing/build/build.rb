@@ -1,4 +1,5 @@
 #!/usr/bin/env ruby
+# Based on a copy of stream-processing/deploy/build.rb
 
 path = File.expand_path(File.dirname(__FILE__))+"/../"
 confDir = ENV["CONFIG_DIR"] || "#{path}/config"
