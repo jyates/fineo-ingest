@@ -1,0 +1,191 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "version": "2016-04-29T23:24:33Z",
+    "title": "remote-s3-bulk-upload-notification"
+  },
+  "host": "6s6rc7bqxb.execute-api.us-east-1.amazonaws.com",
+  "basePath": "/prod",
+  "schemes": [
+    "https"
+  ],
+  "paths": {
+    "/batch/status/{file}": {
+      "get": {
+        "produces": [
+          "application/json",
+          "application/xml"
+        ],
+        "parameters": [
+          {
+            "name": "file",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "200 response",
+            "schema": {
+              "$ref": "#/definitions/Empty"
+            },
+            "headers": {
+              "Timestamp": {
+                "type": "string"
+              },
+              "Content-Type": {
+                "type": "string"
+              }
+            }
+          },
+          "404": {
+            "description": "404 response"
+          }
+        },
+        "security": [
+          {
+            "sigv4": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "x-postman-meta": {
+          "helperAttributes": {
+            "saveHelper": true,
+            "secretKey": "{{aws_secret_access_key}}",
+            "accessKey": "{{aws_access_key_id}}"
+          },
+          "headers": "Content-Type: application/json\n",
+          "currentHelper": "awsSigV4"
+        }
+      }
+    },
+    "/batch/upload/data/{file}": {
+      "post": {
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "Content-Type",
+            "in": "header",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "file",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "Content-Length",
+            "in": "header",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "Content-MD5",
+            "in": "header",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "200 response",
+            "schema": {
+              "$ref": "#/definitions/Empty"
+            }
+          }
+        },
+        "security": [
+          {
+            "sigv4": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "x-postman-meta": {
+          "helperAttributes": {
+            "saveHelper": true,
+            "secretKey": "{{aws_secret_access_key}}",
+            "accessKey": "{{aws_access_key_id}}"
+          },
+          "headers": "Content-Type: application/json\n",
+          "currentHelper": "awsSigV4"
+        }
+      }
+    },
+    "/batch/upload/file": {
+      "post": {
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "200 response",
+            "schema": {
+              "$ref": "#/definitions/Empty"
+            }
+          }
+        },
+        "security": [
+          {
+            "sigv4": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "x-postman-meta": {
+          "helperAttributes": {
+            "saveHelper": true,
+            "secretKey": "{{aws_secret_access_key}}",
+            "accessKey": "{{aws_access_key_id}}"
+          },
+          "headers": "Content-Type: application/json\n",
+          "currentHelper": "awsSigV4"
+        }
+      }
+    }
+  },
+  "securityDefinitions": {
+    "api_key": {
+      "type": "apiKey",
+      "name": "x-api-key",
+      "in": "header"
+    },
+    "sigv4": {
+      "type": "apiKey",
+      "name": "Authorization",
+      "in": "header",
+      "x-amazon-apigateway-authtype": "awsSigv4"
+    }
+  },
+  "definitions": {
+    "Empty": {
+      "type": "object"
+    }
+  }
+}
