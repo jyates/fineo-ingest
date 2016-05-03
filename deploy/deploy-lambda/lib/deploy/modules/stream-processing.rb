@@ -1,30 +1,22 @@
-class StreamProcessing
+require_relative "modules"
 
-  attr_reader :home_dir, :name
-
-  def initialize()
-    @home_dir = "pipeline/stream-processing"
-    @name = "stream-processing"
+class Streaming
+  def getModules
+    [StreamProcessing.new()]
   end
 
-  def functions
-    [
-      {
-        function_name: "RawToAvro",
-        description: "Convert raw JSON records to avro encoded records",
-        handler: "io.fineo.lambda.handle.raw.RawStageWrapper::handle",
-        role: "arn:aws:iam::766732214526:role/Lambda-Raw-To-Avro-Ingest-Role",
-        timeout: 40, # seconds
-        memory_size: 256 # MB
-      },
-      {
-        function_name: "AvroToStorage",
-        description: "Stores the avro-formated bytes into Dynamo and S3",
-        handler: "io.fineo.lambda.handle.staged.AvroToStorageWrapper::handle",
-        role: "arn:aws:iam::766732214526:role/Lambda-Dynamo-Ingest-Role",
-        timeout: 40, # seconds
-        memory_size: 256 # MB
-      }
-    ]
+  class StreamProcessing < Lambda::Module
+    def initialize()
+      super("pipeline/stream-processing", "stream-processing", "pipeline/lambda-validate")
+
+      raw = Lambda::Func.new("RawToAvro", "Convert raw JSON records to avro encoded records")
+      raw.handler = "io.fineo.lambda.handle.raw.RawStageWrapper::handle"
+      raw.role = "arn:aws:iam::766732214526:role/Lambda-Raw-To-Avro-Ingest-Role"
+
+      storage = Lambda::Func.new("AvroToStorage", "Stores the avro-formated bytes into Dynamo and S3")
+      storage.handler = "io.fineo.lambda.handle.staged.AvroToStorageWrapper::handle"
+      storage.role = "arn:aws:iam::766732214526:role/Lambda-Dynamo-Ingest-Role"
+      addFunctions raw, storage
+    end
   end
 end

@@ -7,6 +7,9 @@ module Files
   end
 
   def print_jar_properties(jar)
+    require 'rubygems'
+    require 'zip'
+
     Zip::File.open(jar) do |zip_file|
       # Find specific entry
       entry = zip_file.glob($PROP_FILE).first
@@ -14,5 +17,17 @@ module Files
       puts "Configuration contents:"
       puts entry.get_input_stream.read
     end
+  end
+
+  def find_jar(lambdas)
+      home = "#{$root}/#{lambdas.home_dir}"
+      jar_dir = "#{home}/target"
+
+      # Check to see if a deployable artifact is present
+      puts "Checking #{jar_dir} for jars..." if @options.verbose
+      jars = Dir["#{jar_dir}/#{lambdas.name}-*.jar"]
+      jar = jars.find{|jar| /#{lambdas.name}-[0-9.]+(-SNAPSHOT)?-aws.jar/=~ jar}
+      raise "No deployable jar found!" if jar.nil?
+      return jar
   end
 end

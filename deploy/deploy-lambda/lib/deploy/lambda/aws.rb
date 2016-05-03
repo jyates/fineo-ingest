@@ -10,7 +10,7 @@ class LambdaAws
     @options = options
   end
 
-  def deploy
+  def deploy(jar, functions)
     begin
       creds = YAML.load(File.read(@options.credentials))
     rescue Exception => e
