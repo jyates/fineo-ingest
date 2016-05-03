@@ -29,8 +29,8 @@ class ArgManager
 
   def getOpts(parser)
      @opts.each{ |opt|
-        key = opt.key.sub(".", "-")
-        parser.on("--#{key} value", "#{opt.desc}. DEFAULT: #{opt.value}") do |name|
+        key = opt.key.gsub(".", "-")
+        parser.on("--#{key} <value>", "#{opt.desc}. DEFAULT: #{opt.value}") do |name|
           @values[opt.key] = name
         end
      }
