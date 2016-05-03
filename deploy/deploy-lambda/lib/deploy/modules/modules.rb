@@ -21,10 +21,6 @@ module Lambda
       @validation_project = validation
     end
 
-    def addFunction(func)
-      addFunctions [func]
-    end
-
     def addFunctions(*funcs)
       funcs.each{|func|
         @functions[func.name] = func

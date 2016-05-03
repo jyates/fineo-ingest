@@ -6,6 +6,7 @@ file = File.basename(__FILE__)
 $root = "#{path}/../../.."
 
 require_relative 'deploy/modules/stream-processing'
+require_relative 'deploy/modules/batch-processing'
 require_relative 'deploy/files'
 require_relative 'deploy/util'
 require_relative 'deploy/lambda_parser'
@@ -20,7 +21,8 @@ parsing.parser.parse!
 puts "[Verbose mode enabled]" if @options.verbose
 
 modules = {
-  "stream-processing" => Streaming.new
+  "stream-processing" => Streaming.new,
+  "batch-processing" => Batches.new
   }
 
 lambdas = modules[ARGV[0]]

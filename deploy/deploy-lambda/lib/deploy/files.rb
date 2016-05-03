@@ -27,7 +27,7 @@ module Files
       puts "Checking #{jar_dir} for jars..." if @options.verbose
       jars = Dir["#{jar_dir}/#{lambdas.name}-*.jar"]
       jar = jars.find{|jar| /#{lambdas.name}-[0-9.]+(-SNAPSHOT)?-aws.jar/=~ jar}
-      raise "No deployable jar found!" if jar.nil?
+      raise "No deployable jar found in '#{jar_dir}'!" if jar.nil?
       return jar
   end
 end

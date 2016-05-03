@@ -19,17 +19,16 @@ class LambdaAws
     end
 
     # Actually create the lambda function
-    client = Aws::Lambda::Client.new(
-      region: @options.region,
-      access_key_id: creds['access_key_id'],
-      secret_access_key: creds['secret_access_key'],
-      validate_params: true
-    )
+    @client ||=  Aws::Lambda::Client.new(
+                    region: @options.region,
+                    access_key_id: creds['access_key_id'],
+                    secret_access_key: creds['secret_access_key'],
+                    validate_params: true)
 
     didUpload = false
     uploaded = client.list_functions({})
     encoded = File.binread(jar)
-    functions.each{|function|
+    functions.each{ |function|
       # filter out functions that don't match the expected name
       if @options.names.empty? || @options.names.include?(function[:function_name])
         upload(uploaded.functions, client, function, encoded)
@@ -41,4 +40,7 @@ class LambdaAws
 
     didUpload
   end
+
+  def getClient
+
 end

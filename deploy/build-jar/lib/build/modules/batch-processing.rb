@@ -6,7 +6,7 @@ require_relative "modules"
 class Batched
   PARENT = "pipeline/batch-processing-parent"
   def getProcessors
-    [ BatchProcessing.new(), SqsHandler.new() ]
+    [ BatchProcessing.new(), SnsHandler.new() ]
   end
 
   class BatchProcessing < ProcessingModules::Module
@@ -16,9 +16,9 @@ class Batched
     end
   end
 
-  class SqsHandler < ProcessingModules::Module
+  class SnsHandler < ProcessingModules::Module
     def initialize()
-      super("#{PARENT}/lambda-prepare/sqs-handler", [Properties::Dynamo.new()])
+      super("#{PARENT}/lambda-prepare/sns-handler", [Properties::Dynamo.new()])
     end
   end
 end

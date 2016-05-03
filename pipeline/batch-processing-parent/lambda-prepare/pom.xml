@@ -14,7 +14,7 @@
   <packaging>pom</packaging>
 
   <modules>
-    <module>sqs-handler</module>
+    <module>sns-handler</module>
     <module>dynamo-manifest</module>
   </modules>
 </project>
