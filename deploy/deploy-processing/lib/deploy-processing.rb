@@ -10,7 +10,7 @@ require_relative 'deploy/modules/batch-processing'
 require_relative 'deploy/files'
 require_relative 'deploy/util'
 require_relative 'deploy/lambda_parser'
-require_relative 'deploy/lambda/aws'
+require_relative 'deploy/aws'
 
 include Files
 
@@ -25,17 +25,17 @@ modules = {
   "batch-processing" => Batches.new
   }
 
-lambdas = modules[ARGV[0]]
-raise "No matching module [#{ARGV[0]}]! Options are: #{modules.keys}" if lambdas.nil?
+components = modules[ARGV[0]]
+raise "No matching module [#{ARGV[0]}]! Options are: #{modules.keys}" if components.nil?
 
-aws = LambdaAws.new(@options)
-lambdas.getModules.each{|lambda|
-  jar = find_jar(lambda)
+include AwsUtil
+components.getModules.each{|component|
+  jar = find_jar(component)
   Util::check_deploy(jar, @options.force)
 
   puts "Attempting to deploy: #{jar}"
   print_jar_properties(jar) if @options.verbose
 
-  did_upload = aws.deploy(jar, lambda.functions)
-  runTest(options, lambda) if didUpload && options.test
+  did_upload = deploy(jar, component)
+  runTest(options, component) if didUpload && options.test
 }

@@ -28,3 +28,17 @@ module Lambda
     end
   end
 end
+
+module EMR
+  class JobJar
+    attr_reader :home_dir, :name, :validation_project
+    attr_accessor :s3_bucket, :s3_location
+
+    def initialize(home, name, validation)
+      @functions = {}
+      @home_dir = home
+      @name = name
+      @validation_project = validation
+    end
+  end
+end

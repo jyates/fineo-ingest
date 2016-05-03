@@ -1,4 +1,4 @@
-require_relative "modules"
+require_relative "../modules"
 
 class Batches
 
@@ -6,7 +6,7 @@ class Batches
   SNS = "#{BATCH_PARENT}/lambda-prepare/sns-handler"
 
   def getModules
-    [SnsRemoteS3.new, SnsLocalS3.new, BatchLauncher.new]
+    [SnsRemoteS3.new, SnsLocalS3.new, BatchLauncher.new, BatchProcessing.new]
   end
 
   class SnsRemoteS3 < Lambda::Module
@@ -31,11 +31,19 @@ class Batches
 
   class BatchLauncher < Lambda::Module
     def initialize()
-      super("#{BATCH_PARENT}/lambda-emr-launch", "batch-processing", nil)
+      super("#{BATCH_PARENT}/lambda-emr-launch", "lambda-emr-launch", nil)
       func = Lambda::Func.new("LaunchBatchProcessing", "Launch the job/cluster to do the batch processing")
       func.handler = "io.fineo.batch.processing.lambda.LaunchBatchClusterWrapper::handle"
       func.role = "arn:aws:iam::766732214526:role/Lambda-Launch-Batch-Processing"
       addFunctions(func)
+    end
+  end
+
+  class BatchProcessing < EMR::JobJar
+    def initialize()
+      super("#{BATCH_PARENT}/batch-processing", "batch-processing", nil)
+      s3_bucket = "batch.fineo.io"
+      s3_location = "emr/deploy"
     end
   end
 end

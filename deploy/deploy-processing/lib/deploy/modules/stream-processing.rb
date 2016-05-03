@@ -1,4 +1,4 @@
-require_relative "modules"
+require_relative "../modules"
 
 class Streaming
   def getModules
