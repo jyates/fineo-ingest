@@ -35,6 +35,12 @@ class BuilderParser
       end
     end
 
-    parser.parse!
+    begin
+      parser.parse!
+    rescue  Exception => e
+      puts "Parsing failed: #{e.message}"
+      puts parser
+      raise e
+    end
   end
 end

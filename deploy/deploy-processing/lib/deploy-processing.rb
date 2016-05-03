@@ -36,6 +36,10 @@ components.getModules.each{|component|
   puts "Attempting to deploy: #{jar}"
   print_jar_properties(jar) if @options.verbose
 
+  puts
+  puts "===== Deploy ======"
   did_upload = deploy(jar, component)
-  runTest(options, component) if didUpload && options.test
+  runTest(options, component) if did_upload && @options.test
 }
+
+puts "==== Done! ===="

@@ -2,7 +2,7 @@ require_relative "../modules"
 
 class Streaming
   def getModules
-    [StreamProcessing.new()]
+    return [StreamProcessing.new()]
   end
 
   class StreamProcessing < Lambda::Module

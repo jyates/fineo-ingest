@@ -3,9 +3,9 @@ require 'pp'
 module Lambda
 
   def update(lambda, function, encoded)
-    puts "Updating #{function[:function_name]}"
+    puts "Updating #{function.name}"
     lambda.update_function_code({
-      function_name: function[:function_name],
+      function_name: function.name,
       zip_file: encoded,
       publish: true
     })
@@ -14,25 +14,26 @@ module Lambda
   def create(lambda, function, encoded)
     puts "Creating function:"
     pp(function)
-    function[:runtime] = "java8"
-    function[:publish] = true
-    function[:code] = { zip_file: encoded }
-    lambda.create_function(function)
+
+    hash = function.to_aws_hash
+    hash[:runtime] = "java8"
+    hash[:publish] = true
+    pp hash
+    hash[:code] = { zip_file: encoded }
+    lambda.create_function(hash)
   end
 
-  def upload(existing, client, toCreate, encoded)
+  def upload(existing, client, function_to_create, encoded)
     # check to see if the function already exists
     updated = false
     existing.each{|func|
-      if func.function_name.eql? toCreate[:function_name]
-        update(client, toCreate, encoded)
+      if func.function_name.eql? function_to_create.name
+        update(client, function_to_create, encoded)
         updated = true
         break
       end
     }
-    if !updated
-      create(client, toCreate, encoded)
-    end
+    create(client, function_to_create, encoded) unless updated
   end
 
 end

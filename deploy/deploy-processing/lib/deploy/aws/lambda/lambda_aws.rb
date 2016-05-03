@@ -11,7 +11,7 @@ class LambdaAws
     @options = options
   end
 
-  def deploy(jar, functions)
+  def deploy(jar, lambda)
     @creds ||= load_creds
 
     # Actually create the lambda function
@@ -24,13 +24,13 @@ class LambdaAws
     didUpload = false
     uploaded = @client.list_functions({})
     encoded = File.binread(jar)
-    functions.each{ |function|
+    lambda.functions.each{ |name, function|
       # filter out functions that don't match the expected name
-      if @options.names.empty? || @options.names.include?(function[:function_name])
+      if @options.names.empty? || @options.names.include?(name)
         upload(uploaded.functions, @client, function, encoded)
         didUpload = true
       elsif @options.verbose
-        puts "Skipping function: #{function[:function_name]}"
+        puts "Skipping function: #{function[name]}"
       end
     }
 

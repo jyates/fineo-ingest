@@ -9,6 +9,17 @@ module Lambda
       @timeout = 40 # seconds
       @memory = 256 # MB
     end
+
+    def to_aws_hash
+      hash = {}
+      hash[:function_name] = @name
+      hash[:role] = @role
+      hash[:description] = @desc
+      hash[:handler] = @handler
+      hash[:timeout] = @timeout
+      hash[:memory_size] = @memory
+      hash
+    end
   end
 
   class Module
