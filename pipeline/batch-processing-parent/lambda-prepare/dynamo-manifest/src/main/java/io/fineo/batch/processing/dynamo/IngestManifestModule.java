@@ -7,13 +7,24 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Provides;
 import com.google.inject.name.Named;
+import io.fineo.lambda.configure.NullableNamedInstanceModule;
 
 public class IngestManifestModule extends AbstractModule {
 
   public static final String INGEST_MANIFEST_OVERRIDE = "ingest.batch.manifest.override";
+  private final DynamoDBMapperConfig.TableNameOverride override;
+
+  public IngestManifestModule(){
+    this(null);
+  }
+
+  public IngestManifestModule(DynamoDBMapperConfig.TableNameOverride override){
+    this.override = override;
+  }
 
   @Override
   protected void configure() {
+    NullableNamedInstanceModule.namedInstance(INGEST_MANIFEST_OVERRIDE, override);
   }
 
   @Provides

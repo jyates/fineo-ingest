@@ -15,11 +15,6 @@ public class StreamLambdaUtils {
   private StreamLambdaUtils() {
   }
 
-  public static void addBasicProperties(List<Module> modules, Properties props) {
-    modules.add(new PropertiesModule(props));
-    modules.add(new DefaultCredentialsModule());
-  }
-
   public static void addDynamo(List<Module> modules){
     modules.add(new DynamoModule());
     modules.add(new AvroToDynamoModule());

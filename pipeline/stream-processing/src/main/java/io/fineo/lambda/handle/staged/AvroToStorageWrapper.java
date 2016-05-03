@@ -30,7 +30,7 @@ public class AvroToStorageWrapper extends LambdaWrapper<KinesisEvent, AvroToStor
   @VisibleForTesting
   public static List<Module> getModules(Properties props) {
     List<Module> modules = new ArrayList<>();
-    StreamLambdaUtils.addBasicProperties(modules, props);
+    addBasicProperties(modules, props);
     StreamLambdaUtils.addDynamo(modules);
 
     //firehose

@@ -39,7 +39,7 @@ public class RawStageWrapper extends LambdaWrapper<KinesisEvent, RawRecordToAvro
   @VisibleForTesting
   public static List<Module> getModules(Properties props) {
     List<Module> modules = new ArrayList<>();
-    StreamLambdaUtils.addBasicProperties(modules, props);
+    addBasicProperties(modules, props);
     modules.add(instanceModule(new JsonParser()));
     // schema store needs dynamo
     modules.add(new SchemaStoreModule());

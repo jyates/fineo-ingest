@@ -26,6 +26,10 @@
       <artifactId>common</artifactId>
     </dependency>
     <dependency>
+      <groupId>io.fineo.etl.pipeline</groupId>
+      <artifactId>lambda-common</artifactId>
+    </dependency>
+    <dependency>
       <groupId>com.google.inject</groupId>
       <artifactId>guice</artifactId>
     </dependency>
