@@ -6,7 +6,7 @@ module AwsUtil
   def deploy(jar, component)
     if (component.is_a? Lambda::Module)
       deploy_lambda(jar, component)
-    elif (component.is_a? EMR::JobJar)
+    elsif (component.is_a? EMR::JobJar)
       deploy_emr_jar(jar, component)
     else
       raise "No known method to handle #{component}!"

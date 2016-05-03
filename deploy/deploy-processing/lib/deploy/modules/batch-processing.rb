@@ -42,8 +42,8 @@ class Batches
   class BatchProcessing < EMR::JobJar
     def initialize()
       super("#{BATCH_PARENT}/batch-processing", "batch-processing", nil)
-      s3_bucket = "batch.fineo.io"
-      s3_location = "emr/deploy"
+      @s3_bucket = "batch.fineo.io"
+      @s3_location = "emr/deploy"
     end
   end
 end

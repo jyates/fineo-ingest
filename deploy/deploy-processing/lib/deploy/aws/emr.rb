@@ -11,11 +11,22 @@ class EmrAws
 
   def deploy(jar, job)
     @creds ||= load_creds
-    @s3 ||= Aws::S3::Client.new(region: @options.region,
+    @s3 ||= Aws::S3::Resource.new(region: @options.region,
                                 access_key_id: @creds['access_key_id'],
                                 secret_access_key: @creds['secret_access_key'],
                                 validate_params: true)
-    file = "#{job.s3_location}/#{jar.name}"
-    @s3.copy_object(job.s3_bucket, file, jar)
+    jarPath = Pathname.new(jar)
+    file = "#{job.s3_location}/#{jarPath.basename}"
+    s3_full_name = #{job.s3_bucket}/#{file}
+    puts "Uploading #{jar} \n\t -> #{s3_full_name}...." if @options.verbose
+
+    obj = @s3.bucket(job.s3_bucket).object(file)
+    # generally this throws exceptions on failure
+    success = obj.upload_file(jarPath)
+    # but catch it just incase there was a failure
+    raise "Failed to upload #{jarPath} to #{s3_full_name}!" unless success
+
+    puts "Uploaded #{jar} to #{file}!"
+    success
   end
 end
