@@ -16,7 +16,7 @@ class ArgManager
 
   def build(test_prefix)
     @opts.each{|opt|
-      if test_prefix.nil?
+      unless test_prefix.nil?
         value = opt.field_rename.call(test_prefix)
       else
         value = opt.value
@@ -24,6 +24,7 @@ class ArgManager
       # set the value, if we don't have one already in our hash
       @values[opt.key] ||= value
     }
+    @values["integration.test.prefix"] = test_prefix unless test_prefix.nil?
     @values
   end
 

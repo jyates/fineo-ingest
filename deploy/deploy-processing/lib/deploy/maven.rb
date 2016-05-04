@@ -1,6 +1,6 @@
-module Maven
+module MavenTest
   def runTest(opts, lambda)
-    validator = ${lambda.validation_project}
+    validator = "#{lambda.validation_project}"
     return if validator.nil?
     dir = "#{$root}/#{validator}"
     logging = opts.test_log ? "-Dtest.output.to.file=false" : ""

@@ -11,6 +11,7 @@ require_relative 'deploy/files'
 require_relative 'deploy/util'
 require_relative 'deploy/lambda_parser'
 require_relative 'deploy/aws'
+require_relative 'deploy/maven'
 
 include Files
 
@@ -29,6 +30,7 @@ components = modules[ARGV[0]]
 raise "No matching module [#{ARGV[0]}]! Options are: #{modules.keys}" if components.nil?
 
 include AwsUtil
+include MavenTest
 components.getModules.each{|component|
   puts
   puts "===== Deploy ======"
@@ -40,7 +42,7 @@ components.getModules.each{|component|
 
   did_upload = deploy(jar, component)
   puts "==== Deployed #{component.class} ===="
-  runTest(options, component) if did_upload && @options.test
+  runTest(@options, component) if did_upload && @options.test
 }
 
 puts "==== Done! ===="
