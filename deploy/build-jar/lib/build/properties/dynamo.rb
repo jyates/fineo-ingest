@@ -16,7 +16,7 @@ class Properties::Dynamo
   end
 
   def withIngest
-    @opts << ArgOpts.simple("customer-ingest", "dynamo.ingest.prefix", 'DynamoDB ingest table name prefix')
+    @opts << ArgOpts.simple("dynamo.ingest.prefix", "customer-ingest", 'DynamoDB ingest table name prefix')
     self
   end
 
