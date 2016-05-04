@@ -24,7 +24,7 @@ public class EndToEndValidator {
     EventFormTracker progress) throws IOException {
     LOG.info("\n -------- Validating Test Run ------- \n");
     for (ValidationStep step : steps) {
-      LOG.info("Running validation " + step.getPhase() + " -> " + step);
+      LOG.info("====> Step validation " + step.getPhase() + " -> " + step);
       step.validate(manager, properties, progress);
     }
     LOG.info("\n -------- Validation SUCCESS ------- \n");

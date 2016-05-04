@@ -8,5 +8,5 @@ KEYS=${AWS_KEYS:-"${DIR}/../../aws-keys"}
   --skip-tests --test $id --dynamo-limit-read 1 --dynamo-limit-write 1
 
 ./deploy-processing//lib/deploy-processing.rb stream-processing \
-  -c ${KEYS}/lambda-upload.credentials -f --test true -v
+  -c ${KEYS}/lambda-upload.credentials -f --test true -v --test-debug
 exit 0

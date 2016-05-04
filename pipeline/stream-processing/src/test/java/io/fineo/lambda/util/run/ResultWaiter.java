@@ -129,7 +129,7 @@ public class ResultWaiter<RESULT> {
       i++;
       Thread.sleep(intervalMs);
     } while (System.currentTimeMillis() < endTime);
-    LOG.warn(String.format("Request [%s] didn't not become complete within %d sec!",
+    LOG.warn(String.format("Request [%s] didn't not become complete within %e sec!",
       description, timeoutMs / 1000.0));
     return false;
   }
