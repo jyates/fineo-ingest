@@ -124,13 +124,13 @@ public class ResultWaiter<RESULT> {
         // ignore
       }
       if ((i % 10) == 0 && i > 0) {
-        LOG.info("(" + (i * intervalMs / 1000) + "s) Awaiting [" + description + "]");
+        LOG.info("(" + (i * intervalMs / 1000.0) + "s) Awaiting [" + description + "]");
       }
       i++;
       Thread.sleep(intervalMs);
     } while (System.currentTimeMillis() < endTime);
     LOG.warn(String.format("Request [%s] didn't not become complete within %d sec!",
-      description, timeoutMs / 1000));
+      description, timeoutMs / 1000.0));
     return false;
   }
 
