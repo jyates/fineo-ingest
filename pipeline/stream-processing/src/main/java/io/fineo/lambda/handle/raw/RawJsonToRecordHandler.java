@@ -32,7 +32,7 @@ public class RawJsonToRecordHandler {
     this.stream = archiveStream;
     this.store = store;
     this.convertedRecords = kinesis;
-    LOG.info("created json record handler");
+    LOG.trace("created json record handler");
   }
 
   public void handle(Map<String, Object> values) throws IOException {
