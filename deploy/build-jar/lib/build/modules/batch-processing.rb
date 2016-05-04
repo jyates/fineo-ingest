@@ -6,13 +6,19 @@ require_relative "modules"
 class Batched
   PARENT = "pipeline/batch-processing-parent"
   def getProcessors
-    [ BatchProcessing.new(), SnsHandler.new() ]
+    [ BatchProcessing.new(), SnsHandler.new(), LaunchBatchProcessing.new() ]
   end
 
   class BatchProcessing < ProcessingModules::Module
     def initialize()
       super("#{PARENT}/batch-processing",
         [Properties::Firehose, Properties::Dynamo.new().withSchemaStore()])
+    end
+  end
+
+  class LaunchBatchProcessing < ProcessingModules::Module
+    def initialize()
+      super("#{PARENT}/lambda-emr-launch", [])
     end
   end
 

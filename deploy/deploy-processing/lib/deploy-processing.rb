@@ -30,15 +30,16 @@ raise "No matching module [#{ARGV[0]}]! Options are: #{modules.keys}" if compone
 
 include AwsUtil
 components.getModules.each{|component|
+  puts
+  puts "===== Deploy ======"
   jar = find_jar(component)
   Util::check_deploy(jar, @options.force)
 
   puts "Attempting to deploy: #{jar}"
   print_jar_properties(jar) if @options.verbose
 
-  puts
-  puts "===== Deploy ======"
   did_upload = deploy(jar, component)
+  puts "==== Deployed #{component.class} ===="
   runTest(options, component) if did_upload && @options.test
 }
 

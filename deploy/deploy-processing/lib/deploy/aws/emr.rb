@@ -17,7 +17,7 @@ class EmrAws
                                 validate_params: true)
     jarPath = Pathname.new(jar)
     file = "#{job.s3_location}/#{jarPath.basename}"
-    s3_full_name = #{job.s3_bucket}/#{file}
+    s3_full_name = "#{job.s3_bucket}/#{file}"
     puts "Uploading #{jar} \n\t -> #{s3_full_name}...." if @options.verbose
 
     obj = @s3.bucket(job.s3_bucket).object(file)

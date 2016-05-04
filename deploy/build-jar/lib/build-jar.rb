@@ -10,6 +10,8 @@ require_relative "build/modules/stream-processing"
 require_relative "build/arg_manager"
 require_relative "build/builder_parser"
 
+require 'ostruct'
+
 def log
   if $config.verbose
     yield
@@ -17,14 +19,27 @@ def log
   return $config.verbose
 end
 
+def log_conf(conf_file)
+  log {
+    puts "Contents of properties file: "
+    File.open(conf_file, "r") do |f|
+      f.each_line do |line|
+        puts line
+      end
+    end
+    puts
+  }
+end
+
 def build_jar(processor)
+  puts "Building Jar for #{processor.class}"
+
   manager = ArgManager.new
   processor.getPropertyModules().each { |props|
      props.addProps(manager)
   }
 
   # Load the configs and parse the state
-  require 'ostruct'
   $config = OpenStruct.new
   $config.skip = ""
   $config.test = nil
@@ -45,17 +60,7 @@ def build_jar(processor)
      file.puts "fineo.#{key}=#{value}"
     }
   end
-
-  # Read back in the file to the console so we know what got written
-  log {
-    puts "Contents of properties file: "
-    File.open(conf_file, "r") do |f|
-      f.each_line do |line|
-        puts line
-      end
-    end
-    puts
-  }
+  log_conf conf_file
 
   # Build the package
   cmd="mvn -f #{home} clean install -Ddeploy #{$config.skip_tests}"
@@ -65,7 +70,7 @@ def build_jar(processor)
     `#{cmd}`
   end
   success = $? == 0
-  puts (success ? "---> [Done - #{processor}]" : "-----> FAILURE - #{processor}!!")
+  puts (success ? "---> [Done - #{processor.class}]" : "-----> FAILURE - #{processor.class}!!")
   success
 end
 
