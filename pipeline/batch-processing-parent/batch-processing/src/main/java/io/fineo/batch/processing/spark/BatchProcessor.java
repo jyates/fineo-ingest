@@ -10,8 +10,6 @@ import io.fineo.etl.spark.fs.RddLoader;
 import io.fineo.lambda.JsonParser;
 import io.fineo.lambda.configure.util.PropertiesLoaderUtil;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaFutureAction;
 import org.apache.spark.api.java.JavaPairRDD;
@@ -19,6 +17,8 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.input.PortableDataStream;
 import org.apache.spark.storage.StorageLevel;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -33,7 +33,7 @@ import java.util.concurrent.ExecutionException;
  */
 public class BatchProcessor {
 
-  private static final Log LOG = LogFactory.getLog(BatchProcessor.class);
+  private static final Logger LOG = LoggerFactory.getLogger(BatchProcessor.class);
   private final BatchOptions opts;
 
   public BatchProcessor(BatchOptions opts) {

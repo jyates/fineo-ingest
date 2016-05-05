@@ -3,12 +3,12 @@ package io.fineo.lambda.firehose;
 import com.amazonaws.services.kinesisfirehose.AmazonKinesisFirehoseClient;
 import com.amazonaws.services.kinesisfirehose.model.DescribeDeliveryStreamRequest;
 import com.amazonaws.services.kinesisfirehose.model.DescribeDeliveryStreamResult;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class FirehoseUtils {
 
-  private static final Log LOG = LogFactory.getLog(FirehoseUtils.class);
+  private static final Logger LOG = LoggerFactory.getLogger(FirehoseUtils.class);
   private static final long FIREHOSE_CREATING_WAIT_MS = 500;
 
   private FirehoseUtils() {

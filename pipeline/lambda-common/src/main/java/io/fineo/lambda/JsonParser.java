@@ -4,8 +4,8 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.AbstractIterator;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -20,7 +20,7 @@ import java.util.Map;
  */
 public class JsonParser implements Serializable{
 
-  private static final Log LOG = LogFactory.getLog(JsonParser.class);
+  private static final Logger LOG = LoggerFactory.getLogger(JsonParser.class);
   private final JsonFactory jsonFactory;
 
   public JsonParser() {

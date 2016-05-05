@@ -2,8 +2,8 @@ package org.apache.avro.file;
 
 import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
@@ -28,7 +28,7 @@ import java.nio.ByteBuffer;
  */
 public class FirehoseRecordWriter {
 
-  private static final Log LOG = LogFactory.getLog(FirehoseRecordWriter.class);
+  private static final Logger LOG = LoggerFactory.getLogger(FirehoseRecordWriter.class);
   private static final byte VERSION = 1;
   public static final byte[] MAGIC = new byte[]{
     (byte) '1', (byte) 'j', (byte) 'k', VERSION

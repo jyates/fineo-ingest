@@ -2,8 +2,8 @@ package io.fineo.lambda.aws;
 
 import com.amazonaws.AmazonWebServiceRequest;
 import com.amazonaws.handlers.AsyncHandler;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -31,7 +31,7 @@ import java.util.concurrent.Phaser;
  */
 public class AwsAsyncSubmitter<S extends AmazonWebServiceRequest, R, B> {
 
-  private static final Log LOG = LogFactory.getLog(AwsAsyncSubmitter.class);
+  private static final Logger LOG = LoggerFactory.getLogger(AwsAsyncSubmitter.class);
 
   private final long retries;
   private final Submitter<S, R> client;

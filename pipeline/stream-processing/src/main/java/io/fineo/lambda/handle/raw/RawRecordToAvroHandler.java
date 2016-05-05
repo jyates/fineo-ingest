@@ -13,6 +13,8 @@ import io.fineo.lambda.handle.KinesisHandler;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Map;
@@ -38,7 +40,7 @@ import static io.fineo.lambda.configure.firehose.FirehoseModule.FIREHOSE_MALFORM
  */
 public class RawRecordToAvroHandler extends KinesisHandler {
 
-  private static final Log LOG = LogFactory.getLog(RawRecordToAvroHandler.class);
+  private static final Logger LOG = LoggerFactory.getLogger(RawRecordToAvroHandler.class);
   private final JsonParser parser;
   private final RawJsonToRecordHandler jsonHandler;
 

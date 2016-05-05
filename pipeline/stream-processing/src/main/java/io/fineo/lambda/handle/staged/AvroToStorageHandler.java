@@ -11,8 +11,8 @@ import io.fineo.lambda.firehose.FirehoseBatchWriter;
 import io.fineo.lambda.handle.KinesisHandler;
 import org.apache.avro.file.FirehoseRecordReader;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -41,7 +41,7 @@ import static io.fineo.lambda.configure.firehose.FirehoseModule.FIREHOSE_MALFORM
  */
 public class AvroToStorageHandler extends KinesisHandler {
 
-  private static final Log LOG = LogFactory.getLog(AvroToStorageHandler.class);
+  private static final Logger LOG = LoggerFactory.getLogger(AvroToStorageHandler.class);
   private final RecordToDynamoHandler handler;
 
   @Inject

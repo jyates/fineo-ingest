@@ -5,10 +5,9 @@ import com.amazonaws.services.kinesisfirehose.model.PutRecordBatchRequest;
 import com.amazonaws.services.kinesisfirehose.model.PutRecordBatchResponseEntry;
 import com.amazonaws.services.kinesisfirehose.model.PutRecordBatchResult;
 import com.amazonaws.services.kinesisfirehose.model.Record;
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -22,7 +21,7 @@ import java.util.function.Function;
  */
 public class FirehoseBatchWriter {
 
-  private static final Log LOG = LogFactory.getLog(FirehoseBatchWriter.class);
+  private static final Logger LOG = LoggerFactory.getLogger(FirehoseBatchWriter.class);
   /**
    * 10 less than the 'max' just to ensure we don't write over
    */

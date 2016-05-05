@@ -1,16 +1,9 @@
 package io.fineo.lambda.dynamo.iter;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
 import java.util.Queue;
 
-/**
- *
- */
 public abstract class BasePager<T> implements PagingRunner<T> {
 
-  private static final Log LOG = LogFactory.getLog(BasePager.class);
   private VoidCallWithArg<PagingRunner<T>> done;
   private Runnable batchComplete;
 
@@ -24,11 +17,20 @@ public abstract class BasePager<T> implements PagingRunner<T> {
 
   protected abstract void page(Queue<T> queue);
 
+  /**
+   * Call this when you have no more results (pages) left. Either this method or {@link
+   * #batchComplete()} should be called, but not both. If both are called, ensure that <b>this
+   * method is called first</b>.
+   */
   protected void complete() {
     this.done.call(this);
     batchComplete();
   }
 
+  /**
+   * Call this when the current batch of lookups (page) is complete. Either this method or {@link
+   * #complete()} should be called, but not both.
+   */
   protected void batchComplete() {
     this.batchComplete.run();
   }

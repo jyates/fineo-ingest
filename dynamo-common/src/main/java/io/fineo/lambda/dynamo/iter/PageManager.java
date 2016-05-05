@@ -1,7 +1,7 @@
 package io.fineo.lambda.dynamo.iter;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -11,7 +11,7 @@ import static com.google.common.collect.Lists.newArrayList;
 import static java.util.stream.Collectors.toList;
 
 public class PageManager<T> {
-  private static final Log LOG = LogFactory.getLog(PageManager.class);
+  private static final Logger LOG = LoggerFactory.getLogger(PageManager.class);
   private List<PageTracker> runners;
   private PagingIterator<T> parent;
 

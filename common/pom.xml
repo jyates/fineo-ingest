@@ -16,6 +16,10 @@
       <groupId>com.amazonaws</groupId>
       <artifactId>aws-java-sdk</artifactId>
     </dependency>
+    <dependency>
+      <groupId>ch.qos.logback</groupId>
+      <artifactId>logback-classic</artifactId>
+    </dependency>
   </dependencies>
 
 </project>

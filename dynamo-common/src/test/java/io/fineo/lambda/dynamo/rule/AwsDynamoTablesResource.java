@@ -13,8 +13,8 @@ import io.fineo.lambda.dynamo.LocalDynamoTestUtil;
 import io.fineo.lambda.dynamo.iter.PageManager;
 import io.fineo.lambda.dynamo.iter.PagingIterator;
 import io.fineo.lambda.dynamo.iter.TableNamePager;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.junit.rules.ExternalResource;
 
 /**
@@ -23,7 +23,7 @@ import org.junit.rules.ExternalResource;
  */
 public class AwsDynamoTablesResource extends ExternalResource {
 
-  private static final Log LOG = LogFactory.getLog(AwsDynamoTablesResource.class);
+  private static final Logger LOG = LoggerFactory.getLogger(AwsDynamoTablesResource.class);
 
   private final AwsDynamoResource dynamoResource;
   private LocalDynamoTestUtil util;

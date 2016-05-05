@@ -9,8 +9,6 @@ import io.fineo.lambda.dynamo.iter.PagingIterator;
 import io.fineo.lambda.dynamo.iter.TableNamePager;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -36,7 +34,6 @@ import static java.time.Instant.now;
  */
 public class DynamoTableTimeManager {
 
-  private static final Log LOG = LogFactory.getLog(DynamoTableTimeManager.class);
   public static final String SEPARATOR = "_";
   static final Joiner TABLE_NAME_PARTS_JOINER = Joiner.on(SEPARATOR);
   private static final Duration TABLE_TIME_LENGTH = Duration.ofDays(7);

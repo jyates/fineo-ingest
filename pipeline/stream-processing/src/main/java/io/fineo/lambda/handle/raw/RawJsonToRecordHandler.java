@@ -8,8 +8,8 @@ import io.fineo.schema.MapRecord;
 import io.fineo.schema.avro.AvroSchemaEncoder;
 import io.fineo.schema.store.SchemaStore;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Map;
@@ -21,7 +21,7 @@ import static io.fineo.etl.FineoProperties.KINESIS_PARSED_RAW_OUT_STREAM_NAME;
  */
 public class RawJsonToRecordHandler {
 
-  private static final Log LOG = LogFactory.getLog(RawJsonToRecordHandler.class);
+  private static final Logger LOG = LoggerFactory.getLogger(RawJsonToRecordHandler.class);
   private final IKinesisProducer convertedRecords;
   private final String stream;
   private final SchemaStore store;

@@ -14,8 +14,8 @@ import io.fineo.lambda.dynamo.DynamoTableCreator;
 import io.fineo.schema.avro.AvroSchemaEncoder;
 import io.fineo.schema.avro.RecordMetadata;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -47,7 +47,7 @@ import java.util.Map;
  * </p>
  */
 public class AvroToDynamoWriter {
-  private static final Log LOG = LogFactory.getLog(AvroToDynamoWriter.class);
+  private static final Logger LOG = LoggerFactory.getLogger(AvroToDynamoWriter.class);
   private static final Joiner COMMAS = Joiner.on(',');
 
   private final DynamoTableCreator tables;

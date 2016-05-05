@@ -17,8 +17,8 @@ import io.fineo.schema.avro.AvroSchemaManager;
 import io.fineo.schema.store.SchemaStore;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -35,7 +35,7 @@ import java.util.stream.StreamSupport;
  */
 public class AvroDynamoReader {
 
-  private static final Log LOG = LogFactory.getLog(AvroDynamoReader.class);
+  private static final Logger LOG = LoggerFactory.getLogger(AvroDynamoReader.class);
   private final AmazonDynamoDBAsyncClient client;
   private final SchemaStore store;
   private final DynamoTableTimeManager tableManager;

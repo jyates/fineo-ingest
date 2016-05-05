@@ -12,9 +12,9 @@ import com.google.inject.name.Named;
 import com.google.inject.name.Names;
 import io.fineo.schema.aws.dynamodb.DynamoDBRepository;
 import io.fineo.schema.store.SchemaStore;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.schemarepo.ValidatorFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Properties;
 
@@ -22,7 +22,7 @@ import static io.fineo.etl.FineoProperties.DYNAMO_SCHEMA_STORE_TABLE;
 import static io.fineo.etl.FineoProperties.DYNAMO_WRITE_LIMIT;
 
 public class LambdaModule extends AbstractModule {
-  private static final Log LOG = LogFactory.getLog(LambdaModule.class);
+  private static final Logger LOG = LoggerFactory.getLogger(LambdaModule.class);
   private final Properties props;
 
   public LambdaModule(Properties props) {

@@ -10,6 +10,8 @@ import io.fineo.lambda.dynamo.avro.Schema;
 import io.fineo.schema.Pair;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
@@ -17,7 +19,7 @@ import java.util.List;
  * Manages creating the actual Dynamo tables, if they don't exist.
  */
 public class DynamoTableCreator {
-  private static final Log LOG = LogFactory.getLog(DynamoTableCreator.class);
+  private static final Logger LOG = LoggerFactory.getLogger(DynamoTableCreator.class);
   private final CreateTableRequest baseRequest;
   private final DynamoTableTimeManager manager;
   private final DynamoDB dynamo;

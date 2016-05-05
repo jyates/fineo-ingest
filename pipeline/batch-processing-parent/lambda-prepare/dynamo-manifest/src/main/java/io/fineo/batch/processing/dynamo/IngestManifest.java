@@ -18,8 +18,8 @@ import io.fineo.lambda.aws.AwsAsyncRequest;
 import io.fineo.lambda.aws.AwsAsyncSubmitter;
 import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.lambda.dynamo.TableUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -36,7 +36,7 @@ import static java.util.Arrays.asList;
  */
 public class IngestManifest {
 
-  private static final Log LOG = LogFactory.getLog(IngestManifest.class);
+  private static final Logger LOG = LoggerFactory.getLogger(IngestManifest.class);
   public static final String READ_LIMIT = "fineo.dynamo.batch-manifest.limit.read";
   public static final String WRITE_LIMIT = "fineo.dynamo.batch-manifest.limit.write";
 

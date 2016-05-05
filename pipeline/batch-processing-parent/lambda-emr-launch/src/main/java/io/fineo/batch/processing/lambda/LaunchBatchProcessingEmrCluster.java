@@ -14,8 +14,8 @@ import com.amazonaws.services.elasticmapreduce.util.StepFactory;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import io.fineo.lambda.handle.LambdaHandler;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -25,7 +25,7 @@ import java.util.UUID;
  */
 public class LaunchBatchProcessingEmrCluster implements LambdaHandler<Object> {
 
-  private static final Log LOG = LogFactory.getLog(LaunchBatchProcessingEmrCluster.class);
+  private static final Logger LOG = LoggerFactory.getLogger(LaunchBatchProcessingEmrCluster.class);
 
   public static final String SOURCE_JAR_LOCATION_KEY = "fineo.deploy.spark.jar-location";
 

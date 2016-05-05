@@ -3,8 +3,8 @@ package io.fineo.lambda.dynamo.iter;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.amazonaws.services.dynamodbv2.model.ListTablesResult;
 import com.google.common.base.Preconditions;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Queue;
 
@@ -13,7 +13,7 @@ import java.util.Queue;
  */
 public class TableNamePager extends BasePager<String> {
 
-  private static final Log LOG = LogFactory.getLog(TableNamePager.class);
+  private static final Logger LOG = LoggerFactory.getLogger(TableNamePager.class);
 
   private final String prefix;
   private final AmazonDynamoDBAsyncClient dynamo;

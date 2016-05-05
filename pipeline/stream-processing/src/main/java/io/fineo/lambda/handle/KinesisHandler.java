@@ -6,8 +6,8 @@ import io.fineo.lambda.FailureHandler;
 import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.lambda.firehose.FirehoseBatchWriter;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -17,7 +17,7 @@ import java.nio.ByteBuffer;
  */
 public abstract class KinesisHandler implements LambdaHandler<KinesisEvent> {
 
-  private static final Log LOG = LogFactory.getLog(KinesisHandler.class);
+  private static final Logger LOG = LoggerFactory.getLogger(KinesisHandler.class);
 
   private final Provider<FirehoseBatchWriter> archive;
   private final Provider<FirehoseBatchWriter> processErrors;

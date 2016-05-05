@@ -7,11 +7,11 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class DynamoModule extends AbstractModule {
-  private static final Log LOG = LogFactory.getLog(DynamoModule.class);
+  private static final Logger LOG = LoggerFactory.getLogger(DynamoModule.class);
 
   @Provides
   @Inject

@@ -2,8 +2,6 @@ package io.fineo.lambda.dynamo.iter;
 
 import com.google.common.collect.AbstractIterator;
 import com.google.common.util.concurrent.ForwardingBlockingQueue;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 
 import java.util.Collection;
 import java.util.concurrent.BlockingQueue;
@@ -30,8 +28,6 @@ import java.util.function.Function;
  * </p>
  */
 public class PagingIterator<T> extends AbstractIterator<T> {
-
-  private static final Log LOG = LogFactory.getLog(PagingIterator.class);
 
   private AtomicBoolean openRequest = new AtomicBoolean(false);
   // TODO support dynamic prefetch for better interaction with dynamodb's variable size paging
