@@ -37,7 +37,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 
 @Category(AwsDependentTests.class)
-public class TestDynamoTableTimeManager {
+public class TestDynamoTableTimeManaging {
 
   private static final ZoneId UTC = ZoneId.of("UTC");
   @ClassRule
