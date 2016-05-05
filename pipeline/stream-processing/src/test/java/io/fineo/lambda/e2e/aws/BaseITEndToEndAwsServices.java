@@ -6,10 +6,10 @@ import com.google.inject.Injector;
 import com.google.inject.Module;
 import io.fineo.aws.rule.AwsCredentialResource;
 import io.fineo.etl.FineoProperties;
-import io.fineo.lambda.configure.legacy.StreamType;
-import io.fineo.lambda.configure.util.SingleInstanceModule;
 import io.fineo.lambda.configure.PropertiesModule;
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
+import io.fineo.lambda.configure.legacy.StreamType;
+import io.fineo.lambda.configure.util.SingleInstanceModule;
 import io.fineo.lambda.e2e.EndToEndTestBuilder;
 import io.fineo.lambda.e2e.EndToEndTestRunner;
 import io.fineo.lambda.e2e.resources.TestProperties;
@@ -17,17 +17,16 @@ import io.fineo.lambda.e2e.resources.aws.firehose.FirehoseStreams;
 import io.fineo.lambda.e2e.resources.aws.lambda.LambdaKinesisConnector;
 import io.fineo.lambda.e2e.resources.aws.manager.AwsResourceManager;
 import io.fineo.test.rule.TestOutput;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.junit.After;
 import org.junit.ClassRule;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
-import static com.google.common.collect.Lists.newArrayList;
 import static io.fineo.lambda.configure.util.SingleInstanceModule.instanceModule;
 import static java.util.Arrays.asList;
 
@@ -36,7 +35,7 @@ import static java.util.Arrays.asList;
  */
 public class BaseITEndToEndAwsServices {
 
-  private static final Log LOG = LogFactory.getLog(BaseITEndToEndAwsServices.class);
+  private static final Logger LOG = LoggerFactory.getLogger(BaseITEndToEndAwsServices.class);
   @ClassRule
   public static AwsCredentialResource awsCredentials = new AwsCredentialResource();
   @ClassRule
@@ -116,7 +115,7 @@ public class BaseITEndToEndAwsServices {
 
   private Properties getProperties(String uuid) throws IOException {
     Properties props = new Properties();
-    props.setProperty("integration.test.prefix", uuid);
+    props.setProperty(FineoProperties.TEST_PREFIX, uuid);
     // fill in test properties
     props.setProperty(FineoProperties.KINESIS_URL, "kinesis.us-east-1.amazonaws.com");
     props.setProperty(FineoProperties.KINESIS_PARSED_RAW_OUT_STREAM_NAME, uuid + "fineo-parsed-records");
@@ -128,7 +127,7 @@ public class BaseITEndToEndAwsServices {
     props.setProperty(StreamType.PROCESSING_ERROR.getPropertyKey(FineoProperties.RAW_PREFIX), uuid + errorFirehose);
     props.setProperty(StreamType.COMMIT_ERROR.getPropertyKey(FineoProperties.RAW_PREFIX), uuid + errorFirehose);
     props.setProperty(StreamType.ARCHIVE.getPropertyKey(FineoProperties.STAGED_PREFIX), uuid + "fineo-staged-archive");
-    props.setProperty(StreamType.PROCESSING_ERROR.getPropertyKey(FineoProperties.RAW_PREFIX), uuid + errorFirehose);
+    props.setProperty(StreamType.PROCESSING_ERROR.getPropertyKey(FineoProperties.STAGED_PREFIX), uuid + errorFirehose);
     props.setProperty(StreamType.COMMIT_ERROR.getPropertyKey(FineoProperties.STAGED_PREFIX), uuid + errorFirehose);
 
     props.setProperty(FineoProperties.DYNAMO_REGION, "us-east-1");

@@ -8,6 +8,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.BlockingQueue;
 
 /**
  * Connect Kinesis streams to Lambda functions
@@ -35,12 +36,8 @@ public abstract class LambdaKinesisConnector<T> implements AwsResource {
     this.kinesis = kinesis;
   }
 
-  public List<ByteBuffer> getWrites(String streamName) {
-    List<ByteBuffer> data = new ArrayList<>();
-    for (List<ByteBuffer> buffs : this.kinesis.getEventQueue(streamName)) {
-      data.addAll(buffs);
-    }
-    return data;
+  public BlockingQueue<List<ByteBuffer>> getWrites(String streamName) {
+    return this.kinesis.getEventQueue(streamName);
   }
 
   public void reset() {

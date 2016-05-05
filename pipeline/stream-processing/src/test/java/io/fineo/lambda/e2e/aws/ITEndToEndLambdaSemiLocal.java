@@ -9,8 +9,6 @@ import io.fineo.lambda.e2e.resources.aws.lambda.LocalLambdaRemoteKinesisConnecto
 import io.fineo.lambda.handle.raw.RawStageWrapper;
 import io.fineo.lambda.handle.staged.AvroToStorageWrapper;
 import io.fineo.lambda.util.LambdaTestUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -27,7 +25,6 @@ import static io.fineo.lambda.handle.util.HandlerUtils.getHandler;
  */
 @Category(AwsDependentTests.class)
 public class ITEndToEndLambdaSemiLocal extends BaseITEndToEndAwsServices {
-  private static final Log LOG = LogFactory.getLog(ITEndToEndLambdaSemiLocal.class);
 
   public ITEndToEndLambdaSemiLocal() {
     super(true);

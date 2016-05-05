@@ -91,11 +91,6 @@
 
   <dependencies>
     <dependency>
-      <groupId>ch.qos.logback</groupId>
-      <artifactId>logback-classic</artifactId>
-      <version>${logback.version}</version>
-    </dependency>
-    <dependency>
       <groupId>io.fineo.etl.pipeline</groupId>
       <artifactId>pipeline-utils</artifactId>
       <classifier>tests</classifier>
@@ -112,10 +107,6 @@
       <artifactId>stream-processing</artifactId>
       <scope>test</scope>
       <exclusions>
-        <exclusion>
-          <groupId>org.slf4j</groupId>
-          <artifactId>slf4j-log4j12</artifactId>
-        </exclusion>
         <exclusion>
           <groupId>com.sun.jersey</groupId>
           <artifactId>jersey-core</artifactId>

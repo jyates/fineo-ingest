@@ -1,8 +1,8 @@
 package io.fineo.lambda.util.run;
 
 import com.google.common.base.Preconditions;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.function.Predicate;
@@ -13,7 +13,8 @@ import java.util.function.Supplier;
  * {@link io.fineo.lambda.util.run.ResultWaiter.ResultWaiterFactory}
  */
 public class ResultWaiter<RESULT> {
-  private static final Log LOG = LogFactory.getLog(ResultWaiter.class);
+  private static final Logger LOG = LoggerFactory.getLogger(ResultWaiter.class);
+
   private long timeoutMs;
   private long intervalMs;
   private String description;

@@ -8,6 +8,7 @@ import io.fineo.schema.store.SchemaStore;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.BlockingQueue;
 
 /**
  *
@@ -21,7 +22,7 @@ public interface ResourceManager {
 
   List<ByteBuffer> getFirehoseWrites(String streamName);
 
-  List<ByteBuffer> getKinesisWrites(String rawToStagedKinesisStreamName);
+  BlockingQueue<List<ByteBuffer>> getKinesisWrites(String rawToStagedKinesisStreamName);
 
   SchemaStore getStore();
 

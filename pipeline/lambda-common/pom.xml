@@ -29,10 +29,6 @@
       <artifactId>jackson-jr-objects</artifactId>
       <version>${jackson-jr.version}</version>
     </dependency>
-    <dependency>
-      <groupId>ch.qos.logback</groupId>
-      <artifactId>logback-classic</artifactId>
-    </dependency>
 
     <!-- AWS -->
     <dependency>

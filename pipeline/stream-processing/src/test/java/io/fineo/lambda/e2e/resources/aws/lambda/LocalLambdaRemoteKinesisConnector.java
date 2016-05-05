@@ -3,8 +3,8 @@ package io.fineo.lambda.e2e.resources.aws.lambda;
 import io.fineo.lambda.e2e.resources.IngestUtil;
 import io.fineo.lambda.e2e.resources.kinesis.IKinesisStreams;
 import io.fineo.lambda.util.run.FutureWaiter;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -22,7 +22,8 @@ import java.util.concurrent.Executors;
  */
 public class LocalLambdaRemoteKinesisConnector extends LambdaKinesisConnector<IngestUtil.Lambda> {
 
-  private static final Log LOG = LogFactory.getLog(LocalLambdaRemoteKinesisConnector.class);
+  private static final Logger LOG =
+    LoggerFactory.getLogger(LocalLambdaRemoteKinesisConnector.class);
   private ExecutorService executor;
   private boolean done;
 

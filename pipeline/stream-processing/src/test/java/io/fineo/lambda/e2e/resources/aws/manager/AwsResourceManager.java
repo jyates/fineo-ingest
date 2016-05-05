@@ -38,6 +38,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
@@ -140,7 +141,7 @@ public class AwsResourceManager extends BaseResourceManager {
   }
 
   @Override
-  public List<ByteBuffer> getKinesisWrites(String stream) {
+  public BlockingQueue<List<ByteBuffer>> getKinesisWrites(String stream) {
     return this.connector.getWrites(stream);
   }
 

@@ -45,7 +45,7 @@ public class IngestManifestModule extends NullableNamedInstanceModule {
       .withConsistentReads(DynamoDBMapperConfig.ConsistentReads.CONSISTENT)
       .withPaginationLoadingStrategy(DynamoDBMapperConfig.PaginationLoadingStrategy.EAGER_LOADING)
       .withSaveBehavior(DynamoDBMapperConfig.SaveBehavior.APPEND_SET)
-      .withTableNameOverride(override.get()).build());
+      .withTableNameOverride(override == null? null: override.get()).build());
   }
 
   @Provides

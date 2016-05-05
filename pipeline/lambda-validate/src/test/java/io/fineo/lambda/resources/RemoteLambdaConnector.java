@@ -9,8 +9,8 @@ import com.amazonaws.services.lambda.model.EventSourcePosition;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import io.fineo.lambda.e2e.resources.TestProperties;
-import io.fineo.lambda.e2e.resources.kinesis.IKinesisStreams;
 import io.fineo.lambda.e2e.resources.aws.lambda.LambdaKinesisConnector;
+import io.fineo.lambda.e2e.resources.kinesis.IKinesisStreams;
 import io.fineo.lambda.util.run.FutureWaiter;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -30,7 +30,6 @@ public class RemoteLambdaConnector extends LambdaKinesisConnector<String> {
 
   private final String region;
   private final AWSCredentialsProvider credentials;
-  private IKinesisStreams kinesis;
   private List<String> kinesisToLambdaUUIDs = new ArrayList<>(1);
   private AWSLambdaClient lambda;
 
@@ -74,15 +73,6 @@ public class RemoteLambdaConnector extends LambdaKinesisConnector<String> {
         LOG.info("Created event mapping: " + result);
       }
     }
-  }
-
-  @Override
-  public List<ByteBuffer> getWrites(String streamName) {
-    List<ByteBuffer> data = new ArrayList<>();
-    for (List<ByteBuffer> buffs : this.kinesis.getEventQueue(streamName)) {
-      data.addAll(buffs);
-    }
-    return data;
   }
 
   @Override

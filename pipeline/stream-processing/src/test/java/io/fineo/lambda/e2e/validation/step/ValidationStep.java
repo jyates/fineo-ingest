@@ -14,7 +14,7 @@ public abstract class ValidationStep {
   }
 
   public abstract void validate(ResourceManager manager, LambdaClientProperties props,
-    EventFormTracker progress) throws IOException;
+    EventFormTracker progress) throws IOException, InterruptedException;
 
   public String getPhase() {
     return phase;

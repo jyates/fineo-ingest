@@ -35,6 +35,8 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.junit.Test;
 import org.schemarepo.InMemoryRepository;
 import org.schemarepo.ValidatorFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -56,6 +58,7 @@ import static io.fineo.lambda.configure.util.SingleInstanceModule.instanceModule
  */
 public class ITEndToEndLambdaLocal {
 
+  private static final Logger LOG = LoggerFactory.getLogger(ITEndToEndLambdaLocal.class);
   private static final String INGEST_CONNECTOR = "kinesis-ingest-records";
   private static final String STAGE_CONNECTOR = "kinesis-parsed-records";
 
@@ -75,6 +78,7 @@ public class ITEndToEndLambdaLocal {
     TestState state = runTest(event);
     state.getRunner().cleanup();
 
+    LOG.info("**** Starting second run ******");
     Map<String, Object> second = new HashMap<>(event);
     second.put("anotherField", 1);
     run(state, second);

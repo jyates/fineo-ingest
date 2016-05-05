@@ -5,9 +5,9 @@ import io.fineo.lambda.dynamo.avro.AvroToDynamoWriter;
 import io.fineo.schema.avro.RecordMetadata;
 import io.fineo.schema.store.SchemaStore;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.mockito.Mockito;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -22,7 +22,7 @@ import static org.junit.Assert.assertEquals;
  */
 public class MockAvroToDynamo {
 
-  private static final Log LOG = LogFactory.getLog(MockAvroToDynamo.class);
+  private static final Logger LOG = LoggerFactory.getLogger(MockAvroToDynamo.class);
   private final AvroToDynamoWriter dynamo;
   private final List<GenericRecord> dynamoWrites = new ArrayList<>();
   private final SchemaStore store;

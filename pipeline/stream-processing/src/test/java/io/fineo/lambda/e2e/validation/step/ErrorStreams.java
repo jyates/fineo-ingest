@@ -7,8 +7,8 @@ import io.fineo.lambda.e2e.validation.util.ValidationUtils;
 import io.fineo.lambda.util.LambdaTestUtils;
 import io.fineo.lambda.util.ResourceManager;
 import io.fineo.lambda.util.SchemaUtil;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -20,7 +20,7 @@ import static io.fineo.lambda.configure.legacy.StreamType.PROCESSING_ERROR;
 
 public class ErrorStreams extends ValidationStep {
 
-  private static final Log LOG = LogFactory.getLog(ErrorStreams.class);
+  private static final Logger LOG = LoggerFactory.getLogger(ErrorStreams.class);
 
   public ErrorStreams(String stage) {
     super(stage);

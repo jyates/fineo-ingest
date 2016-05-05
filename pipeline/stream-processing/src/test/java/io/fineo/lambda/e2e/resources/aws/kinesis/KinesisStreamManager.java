@@ -22,8 +22,8 @@ import io.fineo.lambda.kinesis.IKinesisProducer;
 import io.fineo.lambda.kinesis.KinesisProducer;
 import io.fineo.lambda.util.run.FutureWaiter;
 import io.fineo.lambda.util.run.ResultWaiter;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.util.AbstractQueue;
@@ -39,7 +39,8 @@ import java.util.stream.Collectors;
  * Manage interactions with Kinesis streams
  */
 public class KinesisStreamManager implements AwsResource, IKinesisStreams {
-  private static final Log LOG = LogFactory.getLog(KinesisStreamManager.class);
+
+  private static final Logger LOG = LoggerFactory.getLogger(KinesisStreamManager.class);
   private final List<String> streams = new ArrayList<>();
   private final int kinesisRetries = 3;
 

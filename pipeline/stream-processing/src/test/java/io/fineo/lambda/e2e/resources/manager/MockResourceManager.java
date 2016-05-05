@@ -4,8 +4,8 @@ import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import io.fineo.lambda.configure.legacy.StreamType;
 import io.fineo.lambda.dynamo.avro.AvroToDynamoWriter;
 import io.fineo.lambda.e2e.EndtoEndSuccessStatus;
-import io.fineo.lambda.e2e.resources.dynamo.MockAvroToDynamo;
 import io.fineo.lambda.e2e.resources.aws.lambda.LambdaKinesisConnector;
+import io.fineo.lambda.e2e.resources.dynamo.MockAvroToDynamo;
 import io.fineo.lambda.e2e.resources.firehose.LocalFirehoseStreams;
 import io.fineo.lambda.e2e.resources.kinesis.IKinesisStreams;
 import io.fineo.lambda.firehose.FirehoseBatchWriter;
@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.BlockingQueue;
 
 /**
  * Manage a set of mock resources for the lambda workflow
@@ -54,7 +55,7 @@ public class MockResourceManager extends BaseResourceManager {
   }
 
   @Override
-  public List<ByteBuffer> getKinesisWrites(String streamName) {
+  public BlockingQueue<List<ByteBuffer>> getKinesisWrites(String streamName) {
     return this.connector.getWrites(streamName);
   }
 

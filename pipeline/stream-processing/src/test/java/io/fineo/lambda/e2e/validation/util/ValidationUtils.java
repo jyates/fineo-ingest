@@ -10,13 +10,17 @@ import io.fineo.schema.avro.RecordMetadata;
 import io.fineo.schema.avro.TestRecordMetadata;
 import io.fineo.schema.store.SchemaStore;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
@@ -26,9 +30,9 @@ import static org.junit.Assert.assertNotNull;
 
 public class ValidationUtils {
 
-  private static final Log LOG = LogFactory.getLog(ValidationUtils.class);
+  private static final Logger LOG = LoggerFactory.getLogger(ValidationUtils.class);
 
-  public static ByteBuffer combine(List<ByteBuffer> data) {
+  public static ByteBuffer combine(Collection<ByteBuffer> data) {
     int size = data.stream().mapToInt(bb -> bb.remaining()).sum();
     ByteBuffer combined = ByteBuffer.allocate(size);
     data.forEach(bb -> combined.put(bb));
@@ -73,12 +77,16 @@ public class ValidationUtils {
   }
 
   public static void verifyAvroRecordsFromStream(ResourceManager manager, EventFormTracker progress,
-    String stream, Supplier<List<ByteBuffer>> bytes)
-    throws IOException {
-    List<ByteBuffer> parsedBytes = bytes.get();
+    String stream, Supplier<BlockingQueue<List<ByteBuffer>>> bytes)
+    throws IOException, InterruptedException {
+    BlockingQueue<List<ByteBuffer>> queue = bytes.get();
+    List<ByteBuffer> parsedBytes = new ArrayList<>();
+    List<ByteBuffer> elem;
+    while ((elem = queue.poll(10, TimeUnit.SECONDS)) != null) {
+      parsedBytes.addAll(elem);
+    }
     // read the parsed avro records
-    List<GenericRecord> parsedRecords = LambdaTestUtils.readRecords(
-      combine(parsedBytes));
+    List<GenericRecord> parsedRecords = LambdaTestUtils.readRecords(combine(parsedBytes));
     assertEquals("[" + stream + "] Got unexpected number of records: " + parsedRecords, 1,
       parsedRecords.size());
     GenericRecord record = parsedRecords.get(0);

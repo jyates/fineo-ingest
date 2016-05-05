@@ -9,6 +9,7 @@ import io.fineo.lambda.e2e.EndToEndTestBuilder;
 import io.fineo.lambda.e2e.EventFormTracker;
 import io.fineo.lambda.e2e.aws.BaseITEndToEndAwsServices;
 import io.fineo.lambda.e2e.resources.TestProperties;
+import io.fineo.lambda.e2e.resources.WrappingQueue;
 import io.fineo.lambda.e2e.resources.aws.firehose.FirehoseStreams;
 import io.fineo.lambda.e2e.validation.PhaseValidationBuilder;
 import io.fineo.lambda.e2e.validation.step.ValidationStep;
@@ -62,7 +63,7 @@ public class ITBatchProcessingWithLocalSpark extends BaseITEndToEndAwsServices {
     run(connector, LambdaTestUtils.createRecords(1, 1));
   }
 
-  private LocalMockBatchOptions getOpts(Properties props){
+  private LocalMockBatchOptions getOpts(Properties props) {
     LocalMockBatchOptions opts = new LocalMockBatchOptions();
     opts.setProps(props);
     return opts;
@@ -103,10 +104,10 @@ public class ITBatchProcessingWithLocalSpark extends BaseITEndToEndAwsServices {
 
     @Override
     public void validate(ResourceManager manager, LambdaClientProperties props,
-      EventFormTracker progress) throws IOException {
+      EventFormTracker progress) throws IOException, InterruptedException {
       String stream = props.getFirehoseStreamName(STAGED_PREFIX, ARCHIVE);
       ValidationUtils.verifyAvroRecordsFromStream(manager, progress, stream,
-        () -> manager.getFirehoseWrites(stream));
+        () -> new WrappingQueue<>(asList(manager.getFirehoseWrites(stream)), 0));
     }
   }
 

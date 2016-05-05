@@ -31,6 +31,8 @@ import io.fineo.lambda.util.run.ResultWaiter;
 import io.fineo.schema.Pair;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -52,7 +54,7 @@ import static org.junit.Assert.assertEquals;
  * Manage firehose connection and result lookup
  */
 public class FirehoseResource implements AwsResource {
-  private static final Log LOG = LogFactory.getLog(FirehoseResource.class);
+  private static final Logger LOG = LoggerFactory.getLogger(FirehoseResource.class);
   public static final long READ_S3_INTERVAL = TestProperties.ONE_SECOND * 10;
   private static final String S3_URI_AUTHORITY = "s3";
 
