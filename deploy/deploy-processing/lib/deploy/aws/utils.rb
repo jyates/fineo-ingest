@@ -9,4 +9,11 @@ module InternalUtils
     end
     creds
   end
+
+  def should_deploy?(job)
+    puts "Checking if we should deploy: #{job.name}"
+    ret = @options.names.empty? || @options.names.include?(job.name)
+    puts " ===> Skipping: #{job.name}" unless ret
+    return ret
+  end
 end

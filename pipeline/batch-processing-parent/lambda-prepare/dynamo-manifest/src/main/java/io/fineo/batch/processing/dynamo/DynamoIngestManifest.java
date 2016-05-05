@@ -28,4 +28,12 @@ public class DynamoIngestManifest {
   public void setFiles(Set<String> files) {
     this.files = files;
   }
+
+  @Override
+  public String toString() {
+    return "DynamoIngestManifest{" +
+           "orgID='" + orgID + '\'' +
+           ", files=" + files +
+           '}';
+  }
 }

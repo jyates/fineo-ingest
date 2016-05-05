@@ -1,4 +1,4 @@
-package io.fineo.batch.processing.lambda;
+package io.fineo.batch.processing.lambda.sns.local;
 
 import com.amazonaws.services.lambda.runtime.events.SNSEvent;
 import com.google.inject.Module;

@@ -47,8 +47,7 @@ public class TestLambdaRawToAvroWithDynamoStore extends TestLambdaRawToAvroWithL
     return Guice.createInjector(
       new PropertiesModule(props),
       dynamoResource.getCredentialsModule(),
-      new DynamoModule(),
-      new DynamoTestConfiguratorModule(),
+      tables.getDynamoModule(),
       new SchemaStoreModule()).getProvider(SchemaStore.class);
   }
 }

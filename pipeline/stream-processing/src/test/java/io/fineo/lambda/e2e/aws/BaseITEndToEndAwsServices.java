@@ -6,6 +6,7 @@ import com.google.inject.Injector;
 import com.google.inject.Module;
 import io.fineo.aws.rule.AwsCredentialResource;
 import io.fineo.etl.FineoProperties;
+import io.fineo.lambda.configure.legacy.StreamType;
 import io.fineo.lambda.configure.util.SingleInstanceModule;
 import io.fineo.lambda.configure.PropertiesModule;
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
@@ -117,35 +118,27 @@ public class BaseITEndToEndAwsServices {
     Properties props = new Properties();
     props.setProperty("integration.test.prefix", uuid);
     // fill in test properties
-    props.setProperty("kinesis.url", "kinesis.us-east-1.amazonaws.com");
-    props.setProperty("kinesis.parsed", uuid + "fineo-parsed-records");
-    props.setProperty("kinesis.retries", "3");
+    props.setProperty(FineoProperties.KINESIS_URL, "kinesis.us-east-1.amazonaws.com");
+    props.setProperty(FineoProperties.KINESIS_PARSED_RAW_OUT_STREAM_NAME, uuid + "fineo-parsed-records");
+    props.setProperty(FineoProperties.KINESIS_RETRIES, "3");
 
     String errorFirehose = "failed-records";
-    props.setProperty("firehose.url", "https://firehose.us-east-1.amazonaws.com");
-    props.setProperty("firehose.raw.archive", uuid + "fineo-raw-archive");
-    props.setProperty("firehose.raw.error", uuid + errorFirehose);
-    props.setProperty("firehose.raw.error.commit", uuid + errorFirehose);
-    props.setProperty("firehose.staged.archive", uuid + "fineo-staged-archive");
-    props.setProperty("firehose.staged.error", uuid + errorFirehose);
-    props.setProperty("firehose.staged.error.commit", uuid + errorFirehose);
+    props.setProperty(FineoProperties.FIREHOSE_URL, "https://firehose.us-east-1.amazonaws.com");
+    props.setProperty(StreamType.ARCHIVE.getPropertyKey(FineoProperties.RAW_PREFIX), uuid + "fineo-raw-archive");
+    props.setProperty(StreamType.PROCESSING_ERROR.getPropertyKey(FineoProperties.RAW_PREFIX), uuid + errorFirehose);
+    props.setProperty(StreamType.COMMIT_ERROR.getPropertyKey(FineoProperties.RAW_PREFIX), uuid + errorFirehose);
+    props.setProperty(StreamType.ARCHIVE.getPropertyKey(FineoProperties.STAGED_PREFIX), uuid + "fineo-staged-archive");
+    props.setProperty(StreamType.PROCESSING_ERROR.getPropertyKey(FineoProperties.RAW_PREFIX), uuid + errorFirehose);
+    props.setProperty(StreamType.COMMIT_ERROR.getPropertyKey(FineoProperties.STAGED_PREFIX), uuid + errorFirehose);
 
-    props.setProperty("dynamo.region", "us-east-1");
-    props.setProperty("dynamo.schema-store", uuid + "schema-customer");
-    props.setProperty("dynamo.ingest.prefix", uuid + "customer-ingest");
-    props.setProperty("dynamo.limit.write", "1");
-    props.setProperty("dynamo.limit.read", "1");
-    props.setProperty("dynamo.limit.retries", "3");
+    props.setProperty(FineoProperties.DYNAMO_REGION, "us-east-1");
+    props.setProperty(FineoProperties.DYNAMO_SCHEMA_STORE_TABLE, uuid + "schema-customer");
+    props.setProperty(FineoProperties.DYNAMO_INGEST_TABLE_PREFIX, uuid + "customer-ingest");
+    props.setProperty(FineoProperties.DYNAMO_READ_LIMIT, "1");
+    props.setProperty(FineoProperties.DYNAMO_WRITE_LIMIT, "1");
+    props.setProperty(FineoProperties.DYNAMO_RETRIES, "3");
 
-    props.setProperty("aws.testing.creds", "aws-testing");
-
-    // replace all the properties with one that is prefixed by "fineo"
-    List<String> names = newArrayList(props.stringPropertyNames());
-    for (String name : names) {
-      String value = props.getProperty(name);
-      props.remove(name);
-      props.setProperty("fineo." + name, value);
-    }
+    props.setProperty("fineo.aws.testing.creds", "aws-testing");
 
     if (LOG.isInfoEnabled()) {
       LOG.info("Using properties: ");

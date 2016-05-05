@@ -1,11 +1,13 @@
-package io.fineo.batch.processing.lambda;
+package io.fineo.batch.processing.lambda.sns.local;
 
 import com.amazonaws.services.lambda.runtime.events.SNSEvent;
 import com.google.inject.Inject;
 import io.fineo.batch.processing.dynamo.IngestManifest;
+import io.fineo.batch.processing.lambda.sns.SnsS3FileEventHandler;
 import io.fineo.lambda.JsonParser;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -13,9 +15,12 @@ import java.util.Map;
  */
 public class SnsLocalS3FileEventHandler extends SnsS3FileEventHandler {
 
+  private final JsonParser parser;
+
   @Inject
   public SnsLocalS3FileEventHandler(IngestManifest manifest, JsonParser parser) {
-    super(manifest, parser);
+    super(manifest);
+    this.parser = parser;
   }
 
   @Override
@@ -24,9 +29,8 @@ public class SnsLocalS3FileEventHandler extends SnsS3FileEventHandler {
     RecordUpload pair = getPair();
     String msg = record.getSNS().getMessage();
     Map<String, Object> json = parser.parse(msg).iterator().next();
-
-    String region = (String) json.get("awsRegion");
-    Map<String, Object> s3 = (Map<String, Object>) json.get("s3");
+    List<Map<String, Object>> records = (List<Map<String, Object>>) json.get("Records");
+    Map<String, Object> s3 = (Map<String, Object>) records.get(0).get("s3");
     Map<String, Object> bucket = (Map<String, Object>) s3.get("bucket");
     String bucketName = (String) bucket.get("name");
     Map<String, String> object = (Map<String, String>) s3.get("object");
@@ -36,7 +40,7 @@ public class SnsLocalS3FileEventHandler extends SnsS3FileEventHandler {
     String id = name.split("_")[0];
     pair.setUser(id);
 
-    String s3Location = "s3://" + region + "/" + bucketName + "/" + key;
+    String s3Location = "s3://" + bucketName + "/" + key;
     pair.setLocation(s3Location);
     return pair;
   }

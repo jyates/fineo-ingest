@@ -37,6 +37,8 @@ import static java.util.Arrays.asList;
 public class IngestManifest {
 
   private static final Log LOG = LogFactory.getLog(IngestManifest.class);
+  public static final String READ_LIMIT = "fineo.dynamo.batch-manifest.limit.read";
+  public static final String WRITE_LIMIT = "fineo.dynamo.batch-manifest.limit.write";
 
   private boolean addMode = true;
   private final AmazonDynamoDBClient client;
@@ -96,9 +98,9 @@ public class IngestManifest {
   }
 
   private void updateRequestForMode(UpdateItemRequest request) {
-    if(addMode){
+    if (addMode) {
       request.withUpdateExpression("ADD files :0");
-    }else{
+    } else {
       request.withUpdateExpression("DELETE files :0");
     }
   }
@@ -116,7 +118,7 @@ public class IngestManifest {
 
   public Multimap<String, String> files() {
     Multimap<String, String> files = ArrayListMultimap.create();
-    for(DynamoIngestManifest manifest: manifests.values()){
+    for (DynamoIngestManifest manifest : manifests.values()) {
       files.putAll(manifest.getOrgID(), manifest.getFiles());
     }
     return files;

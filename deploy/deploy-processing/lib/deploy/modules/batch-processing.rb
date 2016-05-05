@@ -13,8 +13,9 @@ class Batches
     def initialize()
       super(SNS, "sns-handler", nil)
       func = Lambda::Func.new("RemoteS3BatchUploadTracker", "Track remote S3 files that are in the next batch upload")
-      func.handler = "io.fineo.batch.processing.lambda.RemoteS3FileForBatch::handle"
+      func.handler = "io.fineo.batch.processing.lambda.sns.remote.RemoteS3BatchUploadTracker::handle"
       func.role = "arn:aws:iam::766732214526:role/Lambda-S3-File-For-Batch"
+      func.memory = 192
       addFunctions(func)
     end
   end
@@ -23,8 +24,9 @@ class Batches
     def initialize()
       super(SNS, "sns-handler", nil)
       func = Lambda::Func.new("LocalS3BatchUploadTracker", "Track local S3 files that are in the next batch upload")
-      func.handler = "io.fineo.batch.processing.lambda.LocalS3FileForBatch::handle"
+      func.handler = "io.fineo.batch.processing.lambda.sns.local.LocalS3BatchUploadTracker::handle"
       func.role = "arn:aws:iam::766732214526:role/Lambda-S3-File-For-Batch"
+      func.memory = 192
       addFunctions(func)
     end
   end

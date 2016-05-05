@@ -4,6 +4,7 @@ import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
+import com.google.inject.Singleton;
 import io.fineo.aws.rule.AwsCredentialResource;
 import io.fineo.lambda.dynamo.LocalDynamoTestUtil;
 import org.junit.rules.ExternalResource;
@@ -77,6 +78,7 @@ public class AwsDynamoResource extends ExternalResource {
       }
 
       @Provides
+      @Singleton
       public AWSCredentialsProvider getCreds() {
         return getCredentials().getFakeProvider();
       }

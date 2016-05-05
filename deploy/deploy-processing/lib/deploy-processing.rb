@@ -34,6 +34,7 @@ include MavenTest
 components.getModules.each{|component|
   puts
   puts "===== Deploy ======"
+  start = Time.now
   jar = find_jar(component)
   Util::check_deploy(jar, @options.force)
 
@@ -41,7 +42,7 @@ components.getModules.each{|component|
   print_jar_properties(jar) if @options.verbose
 
   did_upload = deploy(jar, component)
-  puts "==== Deployed #{component.class} ===="
+  puts "==== Deployed #{component.class} : #{Time.now - start} sec ===="
   runTest(@options, component) if did_upload && @options.test
 }
 

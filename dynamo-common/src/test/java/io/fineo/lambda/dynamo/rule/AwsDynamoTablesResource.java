@@ -8,6 +8,7 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Module;
 import com.google.inject.Provides;
+import com.google.inject.Singleton;
 import io.fineo.lambda.dynamo.LocalDynamoTestUtil;
 import io.fineo.lambda.dynamo.iter.PageManager;
 import io.fineo.lambda.dynamo.iter.PagingIterator;
@@ -15,8 +16,6 @@ import io.fineo.lambda.dynamo.iter.TableNamePager;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.junit.rules.ExternalResource;
-
-import java.util.Iterator;
 
 /**
  * Manage aws tables and getting a connection to them. Generally, this should be used at the
@@ -37,6 +36,9 @@ public class AwsDynamoTablesResource extends ExternalResource {
   @Override
   protected void after() {
     try {
+      if(getAsyncClient().listTables().getTableNames().size() == 0){
+        return;
+      }
       // cleanup anything with the ingest prefix. Ingest prefix is assumed to start after any other
       // table names, for the sake of this test utility, so we just get the last group of tables
       for (String name : new PagingIterator<>(50,
@@ -82,6 +84,7 @@ public class AwsDynamoTablesResource extends ExternalResource {
       }
 
       @Provides
+      @Singleton
       public AmazonDynamoDBAsyncClient getClient() {
         return getAsyncClient();
       }

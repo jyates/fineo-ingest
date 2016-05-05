@@ -1,4 +1,4 @@
-package io.fineo.batch.processing.lambda;
+package io.fineo.batch.processing.lambda.sns.remote;
 
 import com.amazonaws.services.lambda.runtime.events.SNSEvent;
 import com.google.inject.Module;
@@ -17,7 +17,11 @@ public class RemoteS3BatchUploadTracker
   extends LambdaWrapper<SNSEvent, SnsRemoteS3FileEventHandler> {
 
   public RemoteS3BatchUploadTracker() throws IOException {
-    super(SnsRemoteS3FileEventHandler.class, getModules());
+    this(getModules());
+  }
+
+  public RemoteS3BatchUploadTracker(List<Module> modules){
+    super(SnsRemoteS3FileEventHandler.class, modules);
   }
 
   private static List<Module> getModules() throws IOException {

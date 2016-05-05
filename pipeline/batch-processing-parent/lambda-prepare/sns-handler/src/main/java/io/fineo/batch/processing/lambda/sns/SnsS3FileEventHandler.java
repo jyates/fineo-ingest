@@ -1,9 +1,10 @@
-package io.fineo.batch.processing.lambda;
+package io.fineo.batch.processing.lambda.sns;
 
 import com.amazonaws.services.lambda.runtime.events.SNSEvent;
 import io.fineo.batch.processing.dynamo.IngestManifest;
 import io.fineo.lambda.handle.LambdaHandler;
-import io.fineo.lambda.JsonParser;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import java.io.IOException;
 import java.util.List;
@@ -13,23 +14,26 @@ import java.util.List;
  */
 public abstract class SnsS3FileEventHandler implements LambdaHandler<SNSEvent> {
 
+  private static final Log LOG = LogFactory.getLog(SnsS3FileEventHandler.class);
   private final IngestManifest manifest;
-  protected final JsonParser parser;
   private RecordUpload pair;
 
-  public SnsS3FileEventHandler(IngestManifest manifest, JsonParser parser) {
+  public SnsS3FileEventHandler(IngestManifest manifest){
     this.manifest = manifest;
-    this.parser = parser;
   }
 
   @Override
   public void handle(SNSEvent event) throws IOException {
     List<SNSEvent.SNSRecord> records = event.getRecords();
+    boolean addedEvents = false;
     for (SNSEvent.SNSRecord record : records) {
       RecordUpload orgLocation = parseOrgAndS3Location(record);
       manifest.add(orgLocation.getUser(), orgLocation.getLocation());
+      addedEvents = true;
     }
-    manifest.flush();
+    if (addedEvents) {
+      manifest.flush();
+    }
   }
 
   protected abstract RecordUpload parseOrgAndS3Location(SNSEvent.SNSRecord record)
@@ -42,7 +46,7 @@ public abstract class SnsS3FileEventHandler implements LambdaHandler<SNSEvent> {
     return this.pair;
   }
 
-  protected class RecordUpload{
+  protected class RecordUpload {
     private String user;
     private String location;
 
@@ -60,6 +64,14 @@ public abstract class SnsS3FileEventHandler implements LambdaHandler<SNSEvent> {
 
     public String getLocation() {
       return location;
+    }
+
+    @Override
+    public String toString() {
+      return "RecordUpload{" +
+             "user='" + user + '\'' +
+             ", location='" + location + '\'' +
+             '}';
     }
   }
 }

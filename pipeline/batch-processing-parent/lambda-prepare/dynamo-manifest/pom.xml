@@ -50,7 +50,7 @@
       <groupId>io.fineo.etl</groupId>
       <artifactId>dynamo-common</artifactId>
       <classifier>tests</classifier>
-      <scope>test`</scope>
+      <scope>test</scope>
     </dependency>
   </dependencies>
 </project>

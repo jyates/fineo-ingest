@@ -28,7 +28,7 @@ class LambdaParser
       opts.on('-r', '--region REGIONNAME', "Specify the region. Default: #{@options.region}") do |name|
         @options.region = name
       end
-      opts.on('--lambda FUNCTIONS', Array, "Comma-separated names of the lambda function(s) to deploy") do |list|
+      opts.on('--modules MODULES', Array, "Comma-separated names of the modules (lambda, job jar, etc) to deploy") do |list|
         @options.names += list
       end
 

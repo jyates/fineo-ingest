@@ -10,6 +10,8 @@ class EmrAws
   end
 
   def deploy(jar, job)
+    return unless should_deploy?(job)
+
     @creds ||= load_creds
     @s3 ||= Aws::S3::Resource.new(region: @options.region,
                                 access_key_id: @creds['access_key_id'],

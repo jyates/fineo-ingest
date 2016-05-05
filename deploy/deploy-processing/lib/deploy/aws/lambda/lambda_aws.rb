@@ -26,11 +26,9 @@ class LambdaAws
     encoded = File.binread(jar)
     lambda.functions.each{ |name, function|
       # filter out functions that don't match the expected name
-      if @options.names.empty? || @options.names.include?(name)
+      if should_deploy?(function)
         upload(uploaded.functions, @client, function, encoded)
         didUpload = true
-      elsif @options.verbose
-        puts "Skipping function: #{function[name]}"
       end
     }
 

@@ -21,8 +21,14 @@ class Properties::Dynamo
   end
 
   def withCreateTable
-    @opts += [ArgOpts.simple("dynamo.limit.write", "5", 'Max amount of write units to allocate to a single table'),
-             ArgOpts.simple("dynamo.limit.read", "7", 'Max amount of write units to allocate to a single table')]
+    @opts += [ArgOpts.simple("dynamo.ingest.limit.write", "5", 'Max amount of write units to allocate to a single table'),
+             ArgOpts.simple("dynamo.ingest.limit.read", "7", 'Max amount of write units to allocate to a single table')]
+    self
+  end
+
+  def withCreateBatchManifestTable
+    @opts += [ArgOpts.simple("dynamo.batch-manifest.limit.write", "1", 'Max amount of write units to allocate to a single table'),
+              ArgOpts.simple("dynamo.batch-manifest.limit.read", "1", 'Max amount of write units to allocate to a single table')]
     self
   end
 
