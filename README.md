@@ -4,26 +4,28 @@ Pipeline to ingest reads from customers
 
 ### Test Phases
 
-Tests are broken out into five phases, of which only the first three run by default
+Tests are broken out into five phases, of which only the first three run by default:
 
   * local tests
   * local aws tests
   * integration tests
-  --- require special triggers ---
+
+ --- Requires profile switches ---
+  
   * integration tests using real AWS services
   * deployment validation
 
 You can run each phase independently with the proper profile switches:
 
-  * -D localTests
+  * -DlocalTests
     * just run the basic unit tests
-  * -D awsLocalTests
+  * -DawsLocalTests
     * just run the local AWS tests
-  * -D intTests
+  * -DintTests
     * just run the integration tests
-  * -D awsIntegration
+  * -DawsIntegration
     * just run the AWS integration tests
-  * -D validate
+  * -Dvalidate
     * just run the deployment validation. Generally, you should not run this by hand, as it requires deploying code with test versions and linking everything up.
 
 Integration tests are those that start with ```IT```, while unit tests start with ```Test```.
