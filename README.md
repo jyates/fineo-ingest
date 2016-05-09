@@ -32,6 +32,8 @@ Integration tests are those that start with ```IT```, while unit tests start wit
 
 Currently, we don't have support to run Drill and Spark in the same JVM. This precludes easily testing them together for the read/write paths. However, by specifying:
 
-```-Dfineo.spark.dir=<somedir>```
+```
+-Dfineo.spark.dir=<somedir>
+```
 
 when you run the tests, then Spark will write some output data to that directory while Drill will attempt to read records from that directory.
