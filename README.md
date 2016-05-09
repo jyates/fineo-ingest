@@ -26,7 +26,7 @@ You can run each phase independently with the proper profile switches:
   * -D validate
     * just run the deployment validation. Generally, you should not run this by hand, as it requires deploying code with test versions and linking everything up.
 
-Integration tests are those that start with ```IT```, while unit tests start with ``Test```.
+Integration tests are those that start with ```IT```, while unit tests start with ```Test```.
 
 ### Drill/Spark Integration
 
