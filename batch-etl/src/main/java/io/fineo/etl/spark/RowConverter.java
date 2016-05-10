@@ -50,20 +50,23 @@ public class RowConverter implements Function<GenericRecord, Row>, Serializable 
     // populate the other fields, as we have them
     SparkETL.streamSchemaWithoutBaseFields(schema)
             .map(field -> field.name())
-            .forEach(name -> {
-              Object value = record.get(name);
-              // we don't know about that schema type, but maybe the schema has been updated
-              // and have it as an alias
-              if (value == null) {
-                List<String> aliases = this.canonicalNamesToAliases.get(name);
+            .forEach(canonicalName -> {
+              Object fieldRecord = record.get(canonicalName);
+              // unpack the actual value from the record for the field
+              if (fieldRecord != null) {
+                fields.add(((GenericRecord) fieldRecord).get(1));
+              } else {
+                // we don't know about that schema type, but maybe the schema has been updated
+                // and have it as an alias
+                List<String> aliases = this.canonicalNamesToAliases.get(canonicalName);
                 for (String alias : aliases) {
-                  value = base.getUnknownFields().get(alias);
-                  if (value != null) {
+                  fieldRecord = base.getUnknownFields().get(alias);
+                  if (fieldRecord != null) {
+                    fields.add(fieldRecord);  
                     break;
                   }
                 }
               }
-              fields.add(value);
             });
 
     return RowFactory.create(fields.toArray());

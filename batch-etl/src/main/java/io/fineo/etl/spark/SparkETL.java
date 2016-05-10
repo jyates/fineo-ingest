@@ -43,7 +43,10 @@ import java.util.Set;
 import java.util.stream.Stream;
 
 import static com.google.common.collect.Lists.newArrayList;
+import static io.fineo.etl.spark.util.AvroSparkUtils.getSparkType;
 import static java.util.stream.Collectors.toList;
+import static org.apache.spark.sql.types.DataTypes.createStructField;
+import static org.apache.spark.sql.types.DataTypes.createStructType;
 
 public class SparkETL {
 
@@ -131,9 +134,9 @@ public class SparkETL {
 
     List<StructField> fields = new ArrayList<>();
     addBaseFields(fields);
-    fields.add(DataTypes.createStructField(UNKNOWN_FIELDS_KEY,
+    fields.add(createStructField(UNKNOWN_FIELDS_KEY,
       new MapType(DataTypes.StringType, DataTypes.StringType, false), false));
-    StructType type = DataTypes.createStructType(fields);
+    StructType type = createStructType(fields);
     Set<String> dirs = new HashSet<>();
     for (RecordKey key : unknown) {
       JavaRDD<GenericRecord> records = getRddByKey(typeToRecord, key);
@@ -153,18 +156,21 @@ public class SparkETL {
     List<StructField> fields = new ArrayList<>();
     addBaseFields(fields);
     streamSchemaWithoutBaseFields(parsed)
-      .forEach(field -> fields
-        .add(DataTypes.createStructField(field.name(), AvroSparkUtils.getSparkType(field), true)));
-    return DataTypes.createStructType(fields);
+      .forEach(field -> {
+        Schema fieldSchema = field.schema();
+        List<Schema.Field> schemaFields = fieldSchema.getFields();
+        fields.add(createStructField(field.name(), getSparkType(schemaFields.get(1)), true));
+      });
+    return createStructType(fields);
   }
 
   private void addBaseFields(List<StructField> fields) {
     fields.add(
-      DataTypes.createStructField(AvroSchemaEncoder.ORG_ID_KEY, DataTypes.StringType, false));
-    fields.add(DataTypes
-      .createStructField(AvroSchemaEncoder.ORG_METRIC_TYPE_KEY, DataTypes.StringType, false));
+      createStructField(AvroSchemaEncoder.ORG_ID_KEY, DataTypes.StringType, false));
     fields.add(
-      DataTypes.createStructField(AvroSchemaEncoder.TIMESTAMP_KEY, DataTypes.LongType, false));
+      createStructField(AvroSchemaEncoder.ORG_METRIC_TYPE_KEY, DataTypes.StringType, false));
+    fields.add(
+      createStructField(AvroSchemaEncoder.TIMESTAMP_KEY, DataTypes.LongType, false));
   }
 
   private JavaRDD<GenericRecord> getRecords(JavaSparkContext context,

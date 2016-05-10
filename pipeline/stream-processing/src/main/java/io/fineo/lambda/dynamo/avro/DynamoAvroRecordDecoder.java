@@ -133,7 +133,7 @@ public class DynamoAvroRecordDecoder {
       case FLOAT:
         return Float.parseFloat(value.getN());
       case DOUBLE:
-        Double.parseDouble(value.getN());
+        return Double.parseDouble(value.getN());
       case BOOLEAN:
         return value.getBOOL();
       default:
