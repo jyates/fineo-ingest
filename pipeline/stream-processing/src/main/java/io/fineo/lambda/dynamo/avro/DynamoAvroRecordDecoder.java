@@ -14,6 +14,8 @@ import io.fineo.schema.store.SchemaStore;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 
 import java.nio.ByteBuffer;
 import java.util.HashMap;
@@ -24,6 +26,8 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
+import static io.fineo.lambda.dynamo.avro.DynamoAvroRecordEncoder.getKnownFieldName;
+
 /**
  * Decode a Dynamo row into a {@link GenericRecord} that can then be
  * translated into 'customer friendly' alias names via a {@link AvroRecordTranslator}.
@@ -33,10 +37,10 @@ public class DynamoAvroRecordDecoder {
   private final SchemaStore store;
   private final Schema.Parser parser;
 
-  private List<String> skippedFields = Lists.newArrayList(AvroSchemaEncoder
+  private List<String> handledFields = Lists.newArrayList(AvroSchemaEncoder
     .BASE_FIELDS_KEY, io.fineo.lambda.dynamo.avro.Schema.PARTITION_KEY_NAME, io.fineo.lambda
     .dynamo.avro.Schema.SORT_KEY_NAME, io.fineo.lambda.dynamo.avro.Schema.MARKER);
-  private Predicate<Schema.Field> retainedField = field -> !skippedFields.contains(field.name());
+  private Predicate<Schema.Field> retainedField = field -> !handledFields.contains(field.name());
 
   public DynamoAvroRecordDecoder(SchemaStore store) {
     this.store = store;
@@ -57,7 +61,7 @@ public class DynamoAvroRecordDecoder {
       SchemaNameUtils.getCustomerSchemaFullName(orgId, metric.getMetadata().getCanonicalName());
 
     Schema schema = parser.getTypes().get(schemaName);
-    if(schema == null){
+    if (schema == null) {
       schema = parser.parse(metric.getMetricSchema());
     }
     GenericData.Record record = new GenericData.Record(schema);
@@ -70,27 +74,46 @@ public class DynamoAvroRecordDecoder {
 
     Set<String> allFields = new HashSet<>();
     allFields.addAll(row.keySet());
+    Map<String, List<String>> namesToAliases = metric.getMetadata().getCanonicalNamesToAliases();
 
     // set the remaining fields
-    schema.getFields().stream().filter(retainedField).forEach(field -> {
-      String name = field.name();
-      record.put(field.name(), cast(field, row.get(name)));
+    schema.getFields().stream().filter(retainedField).forEach(schemaField -> {
+      String name = schemaField.name();
+      List<String> aliases = namesToAliases.get(name);
+      Pair<String, AttributeValue> value = getValue(row, aliases);
+      GenericData.Record dataRecord = new GenericData.Record(schemaField.schema());
+      dataRecord.put(0, value.getKey());
+      dataRecord.put(1, cast(dataRecord.getSchema().getFields().get(1), value.getValue()));
+      record.put(name, dataRecord);
+      handledFields.add(getKnownFieldName(value.getKey()));
       allFields.remove(name);
     });
 
     // copy any hidden fields
-    int expectedSize = allFields.size() - skippedFields.size();
+    int expectedSize = allFields.size() - handledFields.size();
     Map<String, String> unknownFields = new HashMap<>(expectedSize >= 0 ? expectedSize : 1);
-    for (String name : allFields) {
-      if (skippedFields.contains(name)) {
-        continue;
-      }
-      String value = getFieldAsString(row.get(name));
-      unknownFields.put(name, value);
-    }
+    allFields.stream()
+             .filter(name -> !handledFields.contains(name))
+             .forEach(name -> {
+               String value = getFieldAsString(row.get(name));
+               unknownFields.put(name, value);
+             });
     base.setUnknownFields(unknownFields);
 
     return record;
+  }
+
+  private Pair<String, AttributeValue> getValue(Map<String, AttributeValue> row,
+    List<String> aliasNames) {
+    for (String alias : aliasNames) {
+      String name = getKnownFieldName(alias);
+      AttributeValue value = row.get(name);
+      if (value != null) {
+        return new ImmutablePair<>(alias, value);
+      }
+    }
+    throw new IllegalStateException(
+      "Got a row for which no alias matches! Row: " + row + ", aliases: " + aliasNames);
   }
 
   private Object cast(Schema.Field field, AttributeValue value) {

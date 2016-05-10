@@ -13,7 +13,9 @@ import io.fineo.lambda.dynamo.DynamoExpressionPlaceHolders;
 import io.fineo.lambda.dynamo.DynamoTableCreator;
 import io.fineo.schema.avro.AvroSchemaEncoder;
 import io.fineo.schema.avro.RecordMetadata;
+import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,6 +23,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import static io.fineo.lambda.dynamo.avro.DynamoAvroRecordEncoder.convertField;
+import static io.fineo.lambda.dynamo.avro.DynamoAvroRecordEncoder.getUnknownFieldName;
+
 
 /**
  * Write {@link BaseFields} based avro-records into dynamo.
@@ -100,7 +106,7 @@ public class AvroToDynamoWriter {
     // store the unknown fields from the base fields that we parsed
     Map<String, String> unknown = fields.getUnknownFields();
     unknown.forEach((name, value) -> {
-      setAttribute(name, new AttributeValue(value), expressionBuilder, values);
+      setAttribute(getUnknownFieldName(name), new AttributeValue(value), expressionBuilder, values);
     });
 
     // for each field in the record, add it to the update, skipping the 'base fields' field,
@@ -108,9 +114,9 @@ public class AvroToDynamoWriter {
     record.getSchema().getFields().stream()
           .filter(field -> !field.name().equals(AvroSchemaEncoder.BASE_FIELDS_KEY))
           .forEach(field -> {
-            String name = field.name();
-            setAttribute(name, io.fineo.lambda.dynamo.avro.Schema
-              .convertField(field, record.get(name)), expressionBuilder, values);
+            Pair<String, AttributeValue> attribute =
+              convertField((GenericData.Record) record.get(field.name()));
+            setAttribute(attribute.getKey(), attribute.getValue(),expressionBuilder, values);
           });
 
     // add a default field, just in case there are no fields in the record

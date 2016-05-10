@@ -5,7 +5,10 @@ import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
 import com.amazonaws.services.dynamodbv2.model.KeyType;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
-import io.fineo.schema.Pair;
+import org.apache.avro.generic.GenericData;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.MutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -55,30 +58,11 @@ public class Schema {
       .withAttributeName(SORT_KEY_NAME)
       .withAttributeType(ScalarAttributeType.N));
 
-    SCHEMA = new Pair<>(schema, attributes);
+    SCHEMA = new ImmutablePair<>(schema, attributes);
   }
 
   public static Pair<List<KeySchemaElement>, List<AttributeDefinition>> get() {
     return SCHEMA;
-  }
-
-  static AttributeValue convertField(org.apache.avro.Schema.Field field, Object value) {
-    org.apache.avro.Schema.Type type = field.schema().getType();
-    switch (type) {
-      case STRING:
-        return new AttributeValue(String.valueOf(value));
-      case BYTES:
-        return new AttributeValue().withB(ByteBuffer.wrap((byte[]) value));
-      case INT:
-      case LONG:
-      case FLOAT:
-      case DOUBLE:
-        return new AttributeValue().withN(value.toString());
-      case BOOLEAN:
-        return new AttributeValue().withBOOL(Boolean.valueOf(value.toString()));
-      default:
-        return null;
-    }
   }
 
   static AttributeValue getSortKey(Long ts) {
