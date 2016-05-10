@@ -1,7 +1,6 @@
 package io.fineo.lambda.dynamo;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
-import com.amazonaws.services.dynamodbv2.document.DynamoDB;
 import com.amazonaws.services.dynamodbv2.model.ListTablesResult;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.google.inject.Guice;
@@ -247,5 +246,4 @@ public class TestAvroDynamoIO {
     Stream<GenericRecord> read(AvroDynamoReader reader, String orgId, String orgMetricType,
       Range<Instant> range);
   }
-
 }

@@ -77,14 +77,18 @@ public class DynamoAvroRecordDecoder {
     Map<String, List<String>> namesToAliases = metric.getMetadata().getCanonicalNamesToAliases();
 
     // set the remaining fields
+    final Schema finalSchema = schema;
     schema.getFields().stream().filter(retainedField).forEach(schemaField -> {
       String name = schemaField.name();
       List<String> aliases = namesToAliases.get(name);
       Pair<String, AttributeValue> value = getValue(row, aliases);
-      GenericData.Record dataRecord = new GenericData.Record(schemaField.schema());
-      dataRecord.put(0, value.getKey());
-      dataRecord.put(1, cast(dataRecord.getSchema().getFields().get(1), value.getValue()));
-      record.put(name, dataRecord);
+
+      GenericRecord fieldRecord =
+        AvroSchemaEncoder.asTypedRecord(finalSchema, name, value.getKey(),
+          // its unfortunate that we do it this way - I'd love to not expose the internals of the
+          // record, but eh, what can you do? #startup
+          cast(schemaField.schema().getFields().get(1), value.getValue()));
+      record.put(name, fieldRecord);
       handledFields.add(getKnownFieldName(value.getKey()));
       allFields.remove(name);
     });
