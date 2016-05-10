@@ -9,6 +9,7 @@ import io.fineo.schema.avro.AvroSchemaEncoder;
 import io.fineo.schema.avro.RecordMetadata;
 import io.fineo.schema.avro.TestRecordMetadata;
 import io.fineo.schema.store.SchemaStore;
+import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -69,8 +70,11 @@ public class ValidationUtils {
       } else {
         // ensure the value matches
         assertNotNull("Didn't find a matching canonical name for " + aliasName, cname);
-        assertEquals("JSON: " + json + "\nRecord: " + record,
-          entry.getValue(), record.get(cname));
+        String eventString = "JSON: " + json + "\nRecord: " + record;
+        assertEquals("Wrong data! " + eventString,
+          entry.getValue(), ((GenericData.Record) record.get(cname)).get(1));
+        assertEquals("Wrong alias name! " + eventString, entry.getKey(),
+          ((GenericData.Record) record.get(cname)).get(0));
       }
     });
     LOG.info("Record matches JSON!");
