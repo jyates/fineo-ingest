@@ -61,7 +61,7 @@ public class LocalDynamoTestUtil {
   }
 
   public void setConnectionProperties(Properties props) {
-    props.setProperty(FineoProperties.DYNAMO_URL_FOR_TESTING, url);
+    props.setProperty(FineoProperties.DYNAMO_URL_FOR_TESTING, getUrl());
     props.setProperty(FineoProperties.DYNAMO_SCHEMA_STORE_TABLE, randomTableName);
     String prefix = (String) props.get(FineoProperties.DYNAMO_INGEST_TABLE_PREFIX);
     props.setProperty(FineoProperties.DYNAMO_INGEST_TABLE_PREFIX,
@@ -115,5 +115,9 @@ public class LocalDynamoTestUtil {
   private <T extends AmazonWebServiceClient> T withProvider(T client) {
     client.setEndpoint("http://localhost:" + port);
     return client;
+  }
+
+  public String getUrl(){
+    return this.url;
   }
 }
