@@ -1,7 +1,7 @@
 {
   "swagger": "2.0",
   "info": {
-    "version": "2016-05-03T21:39:34Z",
+    "version": "2016-05-23T19:06:05Z",
     "title": "stream-ingest"
   },
   "host": "1e0ky4v8f1.execute-api.us-east-1.amazonaws.com",
@@ -24,6 +24,14 @@
             "in": "header",
             "required": false,
             "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "SingleStreamEvent",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/SingleStreamEvent"
+            }
           }
         ],
         "responses": {
@@ -66,10 +74,10 @@
           },
           "passthroughBehavior": "when_no_match",
           "httpMethod": "POST",
+          "uri": "arn:aws:apigateway:us-east-1:kinesis:action/PutRecord",
           "requestTemplates": {
             "application/json": "##  See http://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-mapping-template-reference.html\n#set($allParams = $input.params())\n#set($orgID = $context.identity.apiKey)\n#set ($bodyJson = $util.parseJson($input.body))\n#set ($bodyJson.companykey = $orgID)\n#set ($data = $util.base64Encode($bodyJson))\n{\n    \"Data\" : \"$data\",\n    \"StreamName\": \"fineo-customer-ingest\",\n    \"PartitionKey\": \"$orgID\"\n}"
           },
-          "uri": "arn:aws:apigateway:us-east-1:kinesis:action/PutRecord",
           "type": "aws"
         }
       }
@@ -89,6 +97,32 @@
     }
   },
   "definitions": {
+    "SingleStreamEvent": {
+      "type": "object",
+      "required": [
+        "metrictype",
+        "timestamp"
+      ],
+      "properties": {
+        "timestamp": {
+          "type": "number",
+          "minimum": 0
+        },
+        "metrictype": {
+          "type": "string"
+        },
+        "additionalProperties": {
+          "type": "object",
+          "properties": {
+            "value": null,
+            "key": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "description": "Single event to stream upload. Max size: 1MB"
+    },
     "Error": {
       "type": "object",
       "properties": {

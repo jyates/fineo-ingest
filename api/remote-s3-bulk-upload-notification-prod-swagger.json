@@ -1,7 +1,7 @@
 {
   "swagger": "2.0",
   "info": {
-    "version": "2016-04-22T22:24:47Z",
+    "version": "2016-05-23T19:07:03Z",
     "title": "remote-s3-bulk-upload-notification"
   },
   "host": "6s6rc7bqxb.execute-api.us-east-1.amazonaws.com",
@@ -55,6 +55,9 @@
     },
     "/batch/upload/data/{file}": {
       "post": {
+        "consumes": [
+          "application/json"
+        ],
         "produces": [
           "application/json"
         ],
@@ -82,6 +85,14 @@
             "in": "header",
             "required": false,
             "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "BatchUploadContent",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/BatchUploadContent"
+            }
           }
         ],
         "responses": {
@@ -109,6 +120,45 @@
         ],
         "produces": [
           "application/json"
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "batchUploadRemoteS3File",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/batchUploadRemoteS3File"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "200 response",
+            "schema": {
+              "$ref": "#/definitions/Empty"
+            }
+          }
+        },
+        "security": [
+          {
+            "sigv4": []
+          },
+          {
+            "api_key": []
+          }
+        ]
+      },
+      "put": {
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "FilePath",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
         ],
         "responses": {
           "200": {
@@ -143,8 +193,41 @@
     }
   },
   "definitions": {
+    "batchUploadRemoteS3File": {
+      "type": "object",
+      "properties": {
+        "FilePath": {
+          "type": "string"
+        }
+      }
+    },
     "Empty": {
       "type": "object"
+    },
+    "MultiEvent": {
+      "type": "array",
+      "description": "JSON blob of multiple event to batch upload. Max size: 10MB",
+      "items": {
+        "type": "object",
+        "properties": {
+          "metrictype": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "value": null,
+              "key": {
+                "type": "string"
+              }
+            }
+          },
+          "timestamp": {
+            "type": "number",
+            "minimum": 0
+          }
+        }
+      }
     }
   }
 }
