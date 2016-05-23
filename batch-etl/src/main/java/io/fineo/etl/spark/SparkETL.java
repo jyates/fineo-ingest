@@ -80,7 +80,6 @@ public class SparkETL {
 
     // store the files by partition
     SQLContext sql = new SQLContext(context);
-    FileCleaner cleaner = new FileCleaner(loader.getFs());
     Set<String> dirs = new HashSet<>();
     for (Tuple3<JavaRDD<Row>, StructType, Date> tuple : schemas) {
       String dir = opts.archive() + "/" + FORMAT + "/" + tuple._3().toString();
@@ -93,6 +92,7 @@ public class SparkETL {
 //      .partitionBy(AvroSchemaEncoder.ORG_ID_KEY, AvroSchemaEncoder.ORG_METRIC_TYPE_KEY, DATE_KEY)
         .save(dir);
     }
+    FileCleaner cleaner = new FileCleaner(loader.getFs());
     cleaner.clean(dirs, FileCleaner.PARQUET_MIN_SIZE);
 
     List<RecordKey> unknown = types.stream().filter(key -> key.isUnknown()).collect(toList());

@@ -32,7 +32,7 @@ public class SchemaStoreModule extends AbstractModule implements Serializable {
   public SchemaStore getSchemaStore(CreateTableRequest create, AmazonDynamoDBAsyncClient dynamo) {
     LOG.debug("Creating schema repository");
     DynamoDBRepository repo =
-      new DynamoDBRepository(new ValidatorFactory.Builder().build(), dynamo, create);
+      new DynamoDBRepository(ValidatorFactory.EMPTY, dynamo, create);
     LOG.debug("created schema repository");
     return new SchemaStore(repo);
   }
