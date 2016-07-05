@@ -95,6 +95,9 @@ public class ITEndToEndLambdaLocal {
   }
 
   public static TestState prepareTest() throws Exception {
+    return prepareTest(new SchemaStore(new InMemoryRepository(ValidatorFactory.EMPTY)));
+  }
+    public static TestState prepareTest(SchemaStore store) throws Exception {
     Properties props = new Properties();
     // firehose outputs
     props
@@ -103,11 +106,10 @@ public class ITEndToEndLambdaLocal {
       "staged-archive");
 
     // between stage stream
-    props.setProperty(KINESIS_PARSED_RAW_OUT_STREAM_NAME,
-      STAGE_CONNECTOR);
+    props.setProperty(KINESIS_PARSED_RAW_OUT_STREAM_NAME, STAGE_CONNECTOR);
 
     LambdaKinesisConnector connector = new LocalLambdaLocalKinesisConnector();
-    SchemaStore store = new SchemaStore(new InMemoryRepository(ValidatorFactory.EMPTY));
+
     MockKinesisStreams streams = new MockKinesisStreams();
     MockResourceManager manager = new MockResourceManager(connector, store, streams);
     LambdaWrapper<KinesisEvent, RawRecordToAvroHandler> start = ingestStage(props, store, manager);
@@ -125,8 +127,7 @@ public class ITEndToEndLambdaLocal {
   }
 
   private static LambdaWrapper<KinesisEvent, RawRecordToAvroHandler> ingestStage(Properties
-    props,
-    SchemaStore store, MockResourceManager manager) throws IOException {
+    props, SchemaStore store, MockResourceManager manager) throws IOException {
     NamedProvider module = new NamedProvider();
     module.add(FirehoseModule.FIREHOSE_ARCHIVE_STREAM, FirehoseBatchWriter.class,
       () -> manager.getWriter(RAW_PREFIX, StreamType.ARCHIVE));

@@ -21,6 +21,7 @@
     <module>batch-processing-parent</module>
     <module>lambda-chores</module>
     <module>dynamo-access</module>
+    <module>stream-processing-e2e</module>
   </modules>
 
   <profiles>

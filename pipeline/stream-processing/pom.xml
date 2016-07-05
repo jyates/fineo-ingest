@@ -30,7 +30,7 @@
     <!-- Handle logging warning for local logs -->
     <dependency>
       <groupId>io.fineo.schema</groupId>
-      <artifactId>schema-mgmt</artifactId>
+      <artifactId>schema-core</artifactId>
     </dependency>
     <dependency>
       <groupId>com.google.inject</groupId>
@@ -60,7 +60,7 @@
     </dependency>
     <dependency>
       <groupId>io.fineo.schema</groupId>
-      <artifactId>schema-mgmt</artifactId>
+      <artifactId>schema-core</artifactId>
       <scope>test</scope>
       <classifier>tests</classifier>
     </dependency>
@@ -81,7 +81,6 @@
     </dependency>
   </dependencies>
 
-  <!-- Build the output jar -->
   <build>
     <pluginManagement>
       <plugins>
@@ -162,7 +161,7 @@
                       <exclude>org.mockito:mockito-all</exclude>
                       <exclude>com.amazonaws:DynamoDBLocal</exclude>
                       <exclude>io.fineo.aws:aws-common</exclude>
-                      <exclude>io.fineo.schema:schema-mgmt:tests</exclude>
+                      <exclude>io.fineo.schema:schema-core:tests</exclude>
                       <exclude>io.fineo.etl.pipeline:pipeline-utils</exclude>
                     </excludes>
                   </artifactSet>

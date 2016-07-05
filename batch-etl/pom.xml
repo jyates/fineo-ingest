@@ -23,7 +23,7 @@
   <dependencies>
     <dependency>
       <groupId>io.fineo.schema</groupId>
-      <artifactId>schema-mgmt</artifactId>
+      <artifactId>schema-core</artifactId>
     </dependency>
     <dependency>
       <groupId>io.fineo.etl.pipeline</groupId>
@@ -68,7 +68,7 @@
     </dependency>
     <dependency>
       <groupId>io.fineo.schema</groupId>
-      <artifactId>schema-mgmt</artifactId>
+      <artifactId>schema-core</artifactId>
       <classifier>tests</classifier>
     </dependency>
     <dependency>

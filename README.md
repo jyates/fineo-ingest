@@ -26,12 +26,6 @@ Pipeline to ingest reads from customers
 |lambda-chores|Time-based (e.g. chron) lambda chores|
 |stream-processing|Lambda functions to do the ingest processing in a 'streaming' style|
 
-
-
- 
-
-
-
 ## Testing
 
 Tests are broken out into five phases, of which only the first three run by default:
