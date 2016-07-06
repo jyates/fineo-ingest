@@ -2,7 +2,7 @@ package io.fineo.lambda.handle.raw;
 
 import io.fineo.internal.customer.Malformed;
 import io.fineo.lambda.configure.firehose.FirehoseFunctions;
-import org.apache.avro.file.FirehoseRecordWriter;
+import io.fineo.lambda.avro.FirehoseRecordWriter;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;

@@ -62,7 +62,7 @@ public class SparkETL {
 
   public void run(JavaSparkContext context, SchemaStore store) throws URISyntaxException, IOException {
     this.store = store;
-    RddLoader loader = new RddLoader(context, newArrayList(opts.root()));
+    RddLoader loader = new RddLoader(context, newArrayList(opts.source()));
     loader.load();
     JavaPairRDD<String, PortableDataStream>[] stringRdds = loader.getRdds();
     JavaRDD<GenericRecord> records = getRecords(context, stringRdds);

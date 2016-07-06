@@ -4,7 +4,6 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import io.fineo.etl.spark.SparkETL;
 import io.fineo.etl.spark.options.ETLOptions;
-import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import io.fineo.schema.store.SchemaStore;
 import io.fineo.spark.rule.LocalSpark;
 
@@ -14,7 +13,7 @@ import java.io.File;
             commandDescription = "Run the Spark processing from a local Spark cluster")
 public class LocalSparkCommand extends SparkCommand {
 
-  @Parameter(names = "--input-file", description = "Avro encoded file to process")
+  @Parameter(names = "--input", description = "Avro encoded file to process")
   public String input;
 
   @Parameter(names = "--output", description = "Directory where the processed files should be"
@@ -37,13 +36,14 @@ public class LocalSparkCommand extends SparkCommand {
 
   private ETLOptions getOpts() {
     ETLOptions opts = new ETLOptions();
-    File archiveOut = new File(archive);
-    File completed = new File(outputDir);
     String base = "file://";
-    opts.archive(base + archiveOut.getAbsolutePath());
-    opts.root(base + input);
-    opts.setCompletedDir(base + completed.getAbsolutePath());
-    opts.setProps(new LambdaClientProperties());
+    opts.source(base + new File(input).getAbsolutePath());
+
+    File output = new File(outputDir);
+    opts.completed(base + output.getAbsolutePath());
+
+    File archiveDir = new File(archive);
+    opts.archive(base + archiveDir.getAbsolutePath());
     return opts;
   }
 }

@@ -1,7 +1,7 @@
 package io.fineo.etl.spark;
 
 import com.google.common.collect.AbstractIterator;
-import org.apache.avro.file.FirehoseRecordReader;
+import io.fineo.lambda.avro.FirehoseRecordReader;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.hadoop.fs.AvroFSInput;
 import org.apache.hadoop.fs.FSDataInputStream;

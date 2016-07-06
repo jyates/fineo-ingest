@@ -3,7 +3,7 @@ package io.fineo.lambda;
 import com.google.common.base.Preconditions;
 import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.lambda.firehose.FirehoseBatchWriter;
-import org.apache.avro.file.FirehoseRecordWriter;
+import io.fineo.lambda.avro.FirehoseRecordWriter;
 import org.apache.avro.generic.GenericRecord;
 
 import java.io.IOException;

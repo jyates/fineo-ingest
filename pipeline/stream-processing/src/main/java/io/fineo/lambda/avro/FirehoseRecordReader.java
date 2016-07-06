@@ -1,6 +1,10 @@
-package org.apache.avro.file;
+package io.fineo.lambda.avro;
 
 import com.google.common.base.Preconditions;
+import org.apache.avro.file.DataFileReader;
+import org.apache.avro.file.SeekableByteBufferInput;
+import org.apache.avro.file.SeekableInput;
+import org.apache.avro.file.TranslatedSeekableInput;
 import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericRecord;
 
@@ -55,7 +59,7 @@ public class FirehoseRecordReader<D> {
       } else {
         DeflatorFactory factory =
           DeflatorFactory.DeflatorFactoryEnum.values()[deflator].getFactory();
-        DataFileReader.SeekableInputStream in = new DataFileReader.SeekableInputStream(translated);
+        SeekableInputStream in = new SeekableInputStream(translated);
         InputStream stream = factory.inflate(in);
         // wrap that stream into a seekableinput
         currentInput = new SeekableBufferedStream(new BufferedInputStream(stream));

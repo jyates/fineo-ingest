@@ -1,6 +1,8 @@
-package org.apache.avro.file;
+package io.fineo.lambda.avro;
 
 import io.fineo.schema.avro.SchemaTestUtils;
+import org.apache.avro.file.CodecFactory;
+import org.apache.avro.file.SeekableByteArrayInput;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;

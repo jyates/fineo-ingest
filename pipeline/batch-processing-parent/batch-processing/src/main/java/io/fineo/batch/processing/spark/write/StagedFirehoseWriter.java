@@ -9,7 +9,7 @@ import io.fineo.lambda.configure.firehose.FirehoseFunctions;
 import io.fineo.lambda.configure.firehose.FirehoseModule;
 import io.fineo.lambda.firehose.FirehoseBatchWriter;
 import io.fineo.lambda.handle.staged.FirehosePropertyBridge;
-import org.apache.avro.file.FirehoseRecordWriter;
+import io.fineo.lambda.avro.FirehoseRecordWriter;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.spark.api.java.function.VoidFunction;
 

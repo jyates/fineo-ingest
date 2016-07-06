@@ -1,7 +1,6 @@
 package io.fineo.lambda;
 
 import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
-import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.Futures;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provider;
@@ -23,8 +22,8 @@ import io.fineo.lambda.util.LambdaTestUtils;
 import io.fineo.schema.avro.AvroSchemaEncoder;
 import io.fineo.schema.avro.TestRecordMetadata;
 import io.fineo.schema.store.SchemaStore;
-import org.apache.avro.file.FirehoseRecordReader;
-import org.apache.avro.file.FirehoseRecordWriter;
+import io.fineo.lambda.avro.FirehoseRecordReader;
+import io.fineo.lambda.avro.FirehoseRecordWriter;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;

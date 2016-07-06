@@ -5,7 +5,7 @@ import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
 import com.fasterxml.jackson.jr.ob.JSON;
 import com.google.common.collect.Lists;
 import io.fineo.schema.avro.SchemaTestUtils;
-import org.apache.avro.file.FirehoseRecordReader;
+import io.fineo.lambda.avro.FirehoseRecordReader;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;

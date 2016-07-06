@@ -22,10 +22,6 @@ import org.apache.commons.cli.GnuParser;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.schemarepo.Repository;
-
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  *
@@ -35,19 +31,11 @@ public class ETLOptionBuilder {
   public static final String HELP_ARG = "h";
   private static final String LOCATION_ARG = "r";
   private static final String DIR_ARG = "s";
-  private static final String SCHEMA_PROVIDER_ARG = "p";
   private static final String OUTPUT_DIR_ARG = "o";
   private static final String SCHEMA_DIR_ARG = "c";
   private static final String ERROR_DIR_ARG = "e";
   private static final String ARCHIVE_DIR_ARG = "a";
   private Options opts;
-
-  private static Map<String, Repository> shortNameRepository = new HashMap<>();
-
-  // setup the short name for easy access to the schema provider
-  static {
-
-  }
 
   public static ETLOptions build(String[] args) {
     CommandLineParser parser = new GnuParser();
@@ -75,13 +63,11 @@ public class ETLOptionBuilder {
     Options opts = new Options();
     opts.addOption(HELP_ARG, "help", false, "Show this help");
     addRequired(opts, new Option(LOCATION_ARG, "rootdir", true,
-      "Root directory where the ingest files are stored, e.g hdfs://the/root/dir or "
+      "Root directory where the ingest files are stored, e.g hdfs://the/source/dir or "
       + "s3://bucket/dir/key"));
     opts.addOption(DIR_ARG, "staging-directory", true,
       "Staging directory for ingest files. All files under this directory will be "
       + "included under for processing. Repeatable argument");
-    addRequired(opts, new Option(SCHEMA_PROVIDER_ARG, "schema-provider", true,
-      "Class name or short name of the current schema provider "));
 
     // output to be uploaded
     addRequired(opts, new Option(OUTPUT_DIR_ARG, "output-directory", true,
@@ -114,7 +100,7 @@ public class ETLOptionBuilder {
       return opts.withHelp();
     }
 
-    opts.root(line.getOptionValue(LOCATION_ARG));
+    opts.source(line.getOptionValue(LOCATION_ARG));
 
     if (line.hasOption(DIR_ARG)) {
       String[] dirs = line.getOptionValues(DIR_ARG);
@@ -124,10 +110,6 @@ public class ETLOptionBuilder {
       }
       opts.directories(dirs);
     }
-
-    String schemaRepo = line.getOptionValue(SCHEMA_PROVIDER_ARG);
-    Repository repo = shortNameRepository.get(schemaRepo);
-    opts.schema(repo);
 
     opts.archive(line.getOptionValue(ARCHIVE_DIR_ARG));
     return opts;

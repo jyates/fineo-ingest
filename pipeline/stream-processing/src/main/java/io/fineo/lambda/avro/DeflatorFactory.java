@@ -1,4 +1,4 @@
-package org.apache.avro.file;
+package io.fineo.lambda.avro;
 
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream;
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorOutputStream;
@@ -16,7 +16,7 @@ import java.util.zip.DeflaterOutputStream;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
-import static org.apache.avro.file.DeflatorConstants.*;
+import static io.fineo.lambda.avro.DeflatorConstants.*;
 
 /**
  * Factory for a deflator stream around the usual output stream

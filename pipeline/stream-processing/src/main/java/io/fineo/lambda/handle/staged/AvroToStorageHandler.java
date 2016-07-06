@@ -9,7 +9,7 @@ import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.lambda.dynamo.avro.AvroToDynamoWriter;
 import io.fineo.lambda.firehose.FirehoseBatchWriter;
 import io.fineo.lambda.handle.KinesisHandler;
-import org.apache.avro.file.FirehoseRecordReader;
+import io.fineo.lambda.avro.FirehoseRecordReader;
 import org.apache.avro.generic.GenericRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -21,7 +21,6 @@ import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.schemarepo.Repository;
 
 /**
  * Bean for storing the current options and helper methods for things like printing the help.
@@ -33,7 +32,6 @@ public class ETLOptions {
   private String[] directories;
   private String root;
   private String archive;
-  private Repository repo;
   private LambdaClientProperties props;
   private String completedDir;
 
@@ -73,7 +71,7 @@ public class ETLOptions {
     this.directories = directories;
   }
 
-  public void root(String root) {
+  public void source(String root) {
     this.root = root;
   }
 
@@ -81,7 +79,7 @@ public class ETLOptions {
     return this.directories;
   }
 
-  public String root() {
+  public String source() {
     return this.root;
   }
 
@@ -91,10 +89,6 @@ public class ETLOptions {
 
   public void archive(String archiveUri) {
     this.archive = archiveUri;
-  }
-
-  public void schema(Repository repo) {
-    this.repo = repo;
   }
 
   public LambdaClientProperties props() {
@@ -109,7 +103,7 @@ public class ETLOptions {
     return this.completedDir;
   }
 
-  public void setCompletedDir(String completedDir) {
+  public void completed(String completedDir) {
     this.completedDir = completedDir;
   }
 }

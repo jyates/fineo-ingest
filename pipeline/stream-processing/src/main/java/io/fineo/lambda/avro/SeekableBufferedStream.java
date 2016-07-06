@@ -1,4 +1,4 @@
-package org.apache.avro.file;
+package io.fineo.lambda.avro;
 
 import org.apache.avro.file.SeekableInput;
 

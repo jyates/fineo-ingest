@@ -5,7 +5,7 @@ import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.lambda.e2e.resources.WrappingQueue;
 import io.fineo.lambda.kinesis.IKinesisProducer;
 import io.fineo.lambda.kinesis.KinesisProducer;
-import org.apache.avro.file.FirehoseRecordWriter;
+import io.fineo.lambda.avro.FirehoseRecordWriter;
 import org.apache.avro.generic.GenericRecord;
 import org.mockito.Mockito;
 

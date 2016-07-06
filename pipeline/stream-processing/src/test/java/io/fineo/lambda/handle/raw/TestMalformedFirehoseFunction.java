@@ -6,7 +6,7 @@ import com.google.inject.Key;
 import com.google.inject.TypeLiteral;
 import com.google.inject.name.Names;
 import io.fineo.lambda.configure.firehose.FirehoseModule;
-import org.apache.avro.file.FirehoseRecordReader;
+import io.fineo.lambda.avro.FirehoseRecordReader;
 import org.apache.avro.generic.GenericRecord;
 import org.junit.Test;
 

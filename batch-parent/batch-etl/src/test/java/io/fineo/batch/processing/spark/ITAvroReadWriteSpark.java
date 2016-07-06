@@ -245,10 +245,10 @@ public class ITAvroReadWriteSpark {
       completed = new File(folder.getRoot(), "completed");
     }
     String base = "file://";
+    opts.source(base + lambdaOutput.getAbsolutePath());
     opts.archive(base + archiveOut.getAbsolutePath());
-    opts.root(base + lambdaOutput.getAbsolutePath());
-    opts.setCompletedDir(base + completed.getAbsolutePath());
-    LOG.info("Lambda output: " + opts.root());
+    opts.completed(base + completed.getAbsolutePath());
+    LOG.info("Lambda output: " + opts.source());
     LOG.info("Spark output: " + opts.archive());
     LOG.info("Completed files: " + opts.completed());
 

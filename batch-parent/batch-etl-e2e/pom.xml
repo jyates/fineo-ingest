@@ -36,6 +36,18 @@
       <classifier>tests</classifier>
       <scope>compile</scope>
     </dependency>
+    <dependency>
+      <groupId>io.fineo.etl.pipeline</groupId>
+      <artifactId>stream-processing</artifactId>
+      <classifier>tests</classifier>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.fineo.etl</groupId>
+      <artifactId>spark-common</artifactId>
+      <classifier>tests</classifier>
+      <scope>compile</scope>
+    </dependency>
   </dependencies>
 
   <profiles>
@@ -69,6 +81,7 @@
                       <include>com.beust:jcommander</include>
                       <include>io.fineo.e2e:e2e-parsing</include>
                       <include>io.fineo.etl.pipeline:stream-processing:tests</include>
+                      <include>io.fineo.etl:spark-common:tests</include>
                     </includes>
                   </artifactSet>
                   <filters>
