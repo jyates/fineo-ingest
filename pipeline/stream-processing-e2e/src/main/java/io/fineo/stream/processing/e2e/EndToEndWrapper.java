@@ -8,8 +8,9 @@ import io.fineo.lambda.configure.SchemaStoreModule;
 import io.fineo.lambda.configure.dynamo.DynamoModule;
 import io.fineo.lambda.dynamo.DynamoTestConfiguratorModule;
 import io.fineo.stream.processing.e2e.command.BaseCommand;
-import io.fineo.stream.processing.e2e.command.LocalExecCommand;
+import io.fineo.stream.processing.e2e.command.InMemoryExecCommand;
 import io.fineo.stream.processing.e2e.module.FakeAwsCredentialsModule;
+import io.fineo.stream.processing.e2e.options.FirehoseOutput;
 import io.fineo.stream.processing.e2e.options.JsonArgument;
 import io.fineo.stream.processing.e2e.options.LocalOptions;
 
@@ -23,8 +24,9 @@ public class EndToEndWrapper {
   public static void main(String[] args) throws Exception {
     JsonArgument json = new JsonArgument();
     LocalOptions local = new LocalOptions();
-    JCommander jc = new JCommander(new Object[]{local, json});
-    jc.addCommand("local", new LocalExecCommand());
+    FirehoseOutput output = new FirehoseOutput();
+    JCommander jc = new JCommander(new Object[]{local, json, output});
+    jc.addCommand("local", new InMemoryExecCommand(output));
 
     jc.parse(args);
 

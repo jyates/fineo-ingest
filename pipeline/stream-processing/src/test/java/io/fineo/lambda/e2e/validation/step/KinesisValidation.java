@@ -9,8 +9,11 @@ import java.io.IOException;
 
 public class KinesisValidation extends ValidationStep {
 
-  public KinesisValidation(String phase) {
+  private final int timeout;
+
+  public KinesisValidation(String phase, int timeoutSeconds) {
     super(phase);
+    this.timeout = timeoutSeconds;
   }
 
   @Override
@@ -18,6 +21,6 @@ public class KinesisValidation extends ValidationStep {
     EventFormTracker progress) throws IOException, InterruptedException {
     String stream = props.getRawToStagedKinesisStreamName();
     ValidationUtils.verifyAvroRecordsFromStream(manager, progress, stream,
-      () -> manager.getKinesisWrites(stream));
+      () -> manager.getKinesisWrites(stream), timeout);
   }
 }

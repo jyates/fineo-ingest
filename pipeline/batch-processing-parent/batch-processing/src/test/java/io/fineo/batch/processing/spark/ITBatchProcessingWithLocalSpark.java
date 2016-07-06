@@ -107,7 +107,7 @@ public class ITBatchProcessingWithLocalSpark extends BaseITEndToEndAwsServices {
       EventFormTracker progress) throws IOException, InterruptedException {
       String stream = props.getFirehoseStreamName(STAGED_PREFIX, ARCHIVE);
       ValidationUtils.verifyAvroRecordsFromStream(manager, progress, stream,
-        () -> new WrappingQueue<>(asList(manager.getFirehoseWrites(stream)), 0));
+        () -> new WrappingQueue<>(asList(manager.getFirehoseWrites(stream)), 0), 10);
     }
   }
 

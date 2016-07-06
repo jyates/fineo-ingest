@@ -10,8 +10,11 @@ import static io.fineo.etl.FineoProperties.RAW_PREFIX;
  */
 public class RawPhaseValidation extends PhaseValidationBuilder<RawPhaseValidation> {
 
-  public RawPhaseValidation(EndToEndTestBuilder builder) {
+  private final int timeout;
+
+  public RawPhaseValidation(EndToEndTestBuilder builder, int timeoutSeconds) {
     super(builder, RAW_PREFIX, (m, p, progress) -> progress.getSent());
+    this.timeout = timeoutSeconds;
   }
 
   public EndToEndTestBuilder all() {
@@ -19,7 +22,7 @@ public class RawPhaseValidation extends PhaseValidationBuilder<RawPhaseValidatio
   }
 
   private RawPhaseValidation kinesis() {
-    KinesisValidation validation = new KinesisValidation(phase);
+    KinesisValidation validation = new KinesisValidation(phase, timeout);
     steps.add(validation);
     return this;
   }

@@ -81,18 +81,18 @@ public class ValidationUtils {
   }
 
   public static void verifyAvroRecordsFromStream(ResourceManager manager, EventFormTracker progress,
-    String stream, Supplier<BlockingQueue<List<ByteBuffer>>> bytes)
+    String stream, Supplier<BlockingQueue<List<ByteBuffer>>> bytes, int timeout)
     throws IOException, InterruptedException {
     BlockingQueue<List<ByteBuffer>> queue = bytes.get();
     List<ByteBuffer> parsedBytes = new ArrayList<>();
     List<ByteBuffer> elem;
-    while ((elem = queue.poll(10, TimeUnit.SECONDS)) != null) {
+    while ((elem = queue.poll(timeout, TimeUnit.SECONDS)) != null) {
       parsedBytes.addAll(elem);
     }
     // read the parsed avro records
     List<GenericRecord> parsedRecords = LambdaTestUtils.readRecords(combine(parsedBytes));
-    assertEquals("[" + stream + "] Got unexpected number of records: " + parsedRecords, 1,
-      parsedRecords.size());
+    assertEquals("[" + stream + "] Got unexpected number of records: " +
+                 (parsedRecords.isEmpty() ? "<empty>": parsedRecords), 1, parsedRecords.size());
     GenericRecord record = parsedRecords.get(0);
 
     // org/schema naming

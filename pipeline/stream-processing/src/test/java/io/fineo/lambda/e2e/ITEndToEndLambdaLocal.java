@@ -28,7 +28,6 @@ import io.fineo.lambda.handle.staged.AvroToStorageWrapper;
 import io.fineo.lambda.handle.util.HandlerUtils;
 import io.fineo.lambda.kinesis.IKinesisProducer;
 import io.fineo.lambda.util.LambdaTestUtils;
-import io.fineo.lambda.util.ResourceManager;
 import io.fineo.schema.store.SchemaStore;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
@@ -59,8 +58,8 @@ import static io.fineo.lambda.configure.util.SingleInstanceModule.instanceModule
 public class ITEndToEndLambdaLocal {
 
   private static final Logger LOG = LoggerFactory.getLogger(ITEndToEndLambdaLocal.class);
-  private static final String INGEST_CONNECTOR = "kinesis-ingest-records";
-  private static final String STAGE_CONNECTOR = "kinesis-parsed-records";
+  public static final String INGEST_CONNECTOR = "kinesis-ingest-records";
+  public static final String STAGE_CONNECTOR = "kinesis-parsed-records";
 
   /**
    * Path where there are no issues with records.
@@ -75,7 +74,7 @@ public class ITEndToEndLambdaLocal {
   @Test
   public void testChangingSchemaForSecondEvent() throws Exception {
     Map<String, Object> event = LambdaTestUtils.createRecords(1, 1)[0];
-    TestState state = runTest(event);
+    E2ETestState state = runTest(event);
     state.getRunner().cleanup();
 
     LOG.info("**** Starting second run ******");
@@ -84,20 +83,21 @@ public class ITEndToEndLambdaLocal {
     run(state, second);
   }
 
-  public static TestState runTest() throws Exception {
+  public static E2ETestState runTest() throws Exception {
     return runTest(LambdaTestUtils.createRecords(1, 1)[0]);
   }
 
-  public static TestState runTest(Map<String, Object> json) throws Exception {
-    TestState state = prepareTest();
+  public static E2ETestState runTest(Map<String, Object> json) throws Exception {
+    E2ETestState state = prepareTest();
     run(state, json);
     return state;
   }
 
-  public static TestState prepareTest() throws Exception {
+  public static E2ETestState prepareTest() throws Exception {
     return prepareTest(new SchemaStore(new InMemoryRepository(ValidatorFactory.EMPTY)));
   }
-    public static TestState prepareTest(SchemaStore store) throws Exception {
+
+  public static E2ETestState prepareTest(SchemaStore store) throws Exception {
     Properties props = new Properties();
     // firehose outputs
     props
@@ -123,10 +123,10 @@ public class ITEndToEndLambdaLocal {
     connector.configure(stageMap, INGEST_CONNECTOR);
 
     EndToEndTestRunner runner = new EndToEndTestBuilder(manager, props).validateAll().build();
-    return new TestState(stageMap, runner, manager);
+    return new E2ETestState(runner, manager);
   }
 
-  private static LambdaWrapper<KinesisEvent, RawRecordToAvroHandler> ingestStage(Properties
+  public static LambdaWrapper<KinesisEvent, RawRecordToAvroHandler> ingestStage(Properties
     props, SchemaStore store, MockResourceManager manager) throws IOException {
     NamedProvider module = new NamedProvider();
     module.add(FirehoseModule.FIREHOSE_ARCHIVE_STREAM, FirehoseBatchWriter.class,
@@ -140,7 +140,7 @@ public class ITEndToEndLambdaLocal {
     return new RawStageWrapper(modules);
   }
 
-  private static LambdaWrapper<KinesisEvent, AvroToStorageHandler> storageStage(Properties
+  public static LambdaWrapper<KinesisEvent, AvroToStorageHandler> storageStage(Properties
     props, SchemaStore store, MockResourceManager manager) throws IOException {
     NamedProvider module = new NamedProvider();
     module.add(FirehoseModule.FIREHOSE_ARCHIVE_STREAM, FirehoseBatchWriter.class,
@@ -199,36 +199,10 @@ public class ITEndToEndLambdaLocal {
     }
   }
 
-
-  public static void run(TestState state, Map<String, Object> json) throws Exception {
+  public static void run(E2ETestState state, Map<String, Object> json) throws Exception {
     EndToEndTestRunner runner = state.getRunner();
     runner.setup();
     runner.run(json);
     runner.validate();
-  }
-
-  public static class TestState {
-    private Map<String, List<IngestUtil.Lambda>> stageMap;
-    private EndToEndTestRunner runner;
-    private ResourceManager resources;
-
-    public TestState(Map<String, List<IngestUtil.Lambda>> stageMap, EndToEndTestRunner runner,
-      ResourceManager resources) {
-      this.stageMap = stageMap;
-      this.runner = runner;
-      this.resources = resources;
-    }
-
-    public Map<String, List<IngestUtil.Lambda>> getStageMap() {
-      return stageMap;
-    }
-
-    public EndToEndTestRunner getRunner() {
-      return runner;
-    }
-
-    public ResourceManager getResources() {
-      return resources;
-    }
   }
 }

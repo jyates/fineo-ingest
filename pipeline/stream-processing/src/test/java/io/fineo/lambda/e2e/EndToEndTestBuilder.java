@@ -38,7 +38,11 @@ public class EndToEndTestBuilder {
   }
 
   public RawPhaseValidation validateRawPhase() {
-    RawPhaseValidation phase = new RawPhaseValidation(this);
+    return validateRawPhase(10);
+  }
+
+  public RawPhaseValidation validateRawPhase(int timeoutSeconds) {
+    RawPhaseValidation phase = new RawPhaseValidation(this, timeoutSeconds);
     this.validations.add(phase);
     return phase;
   }

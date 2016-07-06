@@ -1,5 +1,6 @@
 package io.fineo.lambda.e2e.resources.aws.lambda;
 
+import com.google.common.util.concurrent.MoreExecutors;
 import io.fineo.lambda.e2e.resources.IngestUtil;
 import io.fineo.lambda.e2e.resources.kinesis.IKinesisStreams;
 import io.fineo.lambda.util.run.FutureWaiter;
@@ -15,7 +16,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Connect lambda to a remote kinesis streams
@@ -25,7 +28,7 @@ public class LocalLambdaRemoteKinesisConnector extends LambdaKinesisConnector<In
   private static final Logger LOG =
     LoggerFactory.getLogger(LocalLambdaRemoteKinesisConnector.class);
   private ExecutorService executor;
-  private boolean done;
+  protected boolean done;
 
   @Override
   public void connect(IKinesisStreams kinesisConnection) throws IOException {
@@ -37,7 +40,12 @@ public class LocalLambdaRemoteKinesisConnector extends LambdaKinesisConnector<In
    * Connect existing streams to the local lambda functions
    */
   protected void connectStreams() {
-    this.executor = Executors.newSingleThreadExecutor();
+    this.executor = MoreExecutors.getExitingExecutorService(
+      // Same as Executors#newSingleThreadExecutor, but we need a threadpoolexecutor, so copy/paste
+      new ThreadPoolExecutor(1, 1,
+      0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>()),
+      // add timeouts for the thread to complete
+      120, TimeUnit.SECONDS);
 
     // create each stream
     for (String stream : this.mapping.keySet()) {
@@ -57,7 +65,7 @@ public class LocalLambdaRemoteKinesisConnector extends LambdaKinesisConnector<In
           BlockingQueue<List<ByteBuffer>> queue = streams.get(streamName);
           List<ByteBuffer> data = queue.poll();
           // while there is more data to read from the queue, read it
-          while (data != null) {
+          while (data != null && !done) {
             for (IngestUtil.Lambda method : stream.getValue()) {
               LOG.info("--- Starting Method Call ---");
               Instant start = Instant.now();
