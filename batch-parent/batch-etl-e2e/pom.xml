@@ -67,6 +67,8 @@
                     <includes>
                       <include>io.fineo.etl.batch:batch-etl:aws</include>
                       <include>com.beust:jcommander</include>
+                      <include>io.fineo.e2e:e2e-parsing</include>
+                      <include>io.fineo.etl.pipeline:stream-processing:tests</include>
                     </includes>
                   </artifactSet>
                   <filters>

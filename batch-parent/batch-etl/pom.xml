@@ -47,10 +47,6 @@
       <artifactId>spark-sql_${scala.base.version}</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.apache.spark</groupId>
-      <artifactId>spark-hive_${scala.base.version}</artifactId>
-    </dependency>
-    <dependency>
       <groupId>com.twitter</groupId>
       <artifactId>chill-avro_${scala.base.version}</artifactId>
     </dependency>
@@ -114,8 +110,73 @@
                   <artifactSet>
                     <excludes>
                       <!-- Spark/Scala that is present on the cluster -->
-                      <exlude>org.scala-lang:scala-library</exlude>
+                      <exclude>org.scala-lang:scala-library</exclude>
+                      <exclude>org.scala-lang:scala-reflect</exclude>
                       <exclude>org.apache.spark:*</exclude>
+                      <exclude>org.spark-project.spark:*</exclude>
+
+                      <!-- Unusued AWS services -->
+                      <exclude>com.amazonaws:aws-java-sdk-simpledb</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-simpleworkflow</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-storagegateway</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-route53</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-importexport</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-sts</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-sqs</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-rds</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-redshift</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-elasticbeanstalk</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-glacier</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-iam</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-datapipeline</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-elasticloadbalancing</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-emr</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-elasticache</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-elastictranscoder</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-ec2</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-sns</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-cloudtrail</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-cloudwatch</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-logs</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-cognitoidentity</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-cognitosync</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-directconnect</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-cloudformation</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-cloudfront</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-opsworks</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-ses</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-autoscaling</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-cloudsearch</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-cloudwatchmetrics</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-swf-libraries</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-codedeploy</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-codepipeline</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-kms</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-config</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-ecs</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-ecr</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-cloudhsm</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-ssm</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-workspaces</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-machinelearning</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-directory</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-codecommit</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-devicefarm</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-elasticsearch</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-waf</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-iot</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-marketplacecommerceanalytics</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-inspector</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-api-gateway</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-acm</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-gamelift</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-dms</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-marketplacemeteringservice</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-cognitoidp</exclude>
+
+                      <!-- Unused deps -->
+                      <exclude>org.apache.avro:avro-ipc</exclude>
+                      <exclude>org.tachyonproject:*</exclude>
 
                       <!-- Test jars -->
                       <exclude>junit:junit</exclude>
