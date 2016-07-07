@@ -16,41 +16,24 @@
  */
 package io.fineo.etl.spark.options;
 
-import io.fineo.etl.spark.SparkETL;
-import io.fineo.lambda.configure.legacy.LambdaClientProperties;
-import org.apache.commons.cli.HelpFormatter;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
+import com.beust.jcommander.Parameter;
 
 /**
  * Bean for storing the current options and helper methods for things like printing the help.
  */
 public class ETLOptions {
+
+  @Parameter(names = "--help", help = true)
   private boolean help;
-  private Options opts;
-  private String error;
-  private String[] directories;
+  @Parameter(names = "--source", description = "Directory where the input files are stored")
   private String root;
+  @Parameter(names = "--completed", description = "Base directory to write the processed files")
+  private String completed;
+  @Parameter(names = "--archive", description = "Directory in which to archiveDir the input files")
   private String archive;
-  private LambdaClientProperties props;
-  private String completedDir;
-
-  public ETLOptions(Options opts) {
-    this.opts = opts;
-  }
-
-  // For programmatic use
-  public ETLOptions(){
-  }
 
   public boolean help() {
     return this.help;
-  }
-
-  public void printHelp() {
-    HelpFormatter formatter = new HelpFormatter();
-    formatter.printHelp("$SPARK_HOME/bin/spark-submit --class " + SparkETL.class.getName() + " "
-                        + "[jar] [args]", opts);
   }
 
   public ETLOptions withHelp() {
@@ -58,52 +41,27 @@ public class ETLOptions {
     return this;
   }
 
-  public ETLOptions error(ParseException e) {
-    this.error = e.getMessage();
-    return this;
-  }
-
-  public boolean error() {
-    return this.error != null;
-  }
-
-  public void directories(String[] directories) {
-    this.directories = directories;
-  }
-
   public void source(String root) {
     this.root = root;
-  }
-
-  public String[] directories() {
-    return this.directories;
   }
 
   public String source() {
     return this.root;
   }
 
-  public String archive() {
+  public String completed() {
+    return this.completed;
+  }
+
+  public void completed(String archiveUri) {
+    this.completed = archiveUri;
+  }
+
+  public String archiveDir() {
     return this.archive;
   }
 
-  public void archive(String archiveUri) {
-    this.archive = archiveUri;
-  }
-
-  public LambdaClientProperties props() {
-    return this.props;
-  }
-
-  public void setProps(LambdaClientProperties props) {
-    this.props = props;
-  }
-
-  public String completed() {
-    return this.completedDir;
-  }
-
-  public void completed(String completedDir) {
-    this.completedDir = completedDir;
+  public void archiveDir(String completedDir) {
+    this.archive = completedDir;
   }
 }

@@ -50,10 +50,6 @@
       <groupId>com.twitter</groupId>
       <artifactId>chill-avro_${scala.base.version}</artifactId>
     </dependency>
-    <dependency>
-      <groupId>commons-cli</groupId>
-      <artifactId>commons-cli</artifactId>
-    </dependency>
 
     <!-- Test Dependencies -->
     <dependency>
@@ -78,6 +74,11 @@
       <artifactId>pipeline-utils</artifactId>
       <classifier>tests</classifier>
       <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.beust</groupId>
+      <artifactId>jcommander</artifactId>
+      <version>1.48</version>
     </dependency>
   </dependencies>
 
@@ -118,21 +119,18 @@
                     <include>org.schemarepo:*</include>
                     <include>com.google.code.gson:*</include>
                     <include>com.sun.jersey:jersey-client</include>
-                    <include>com.amazonaws:aws-java-sdk-dynamodb</include>
-                    <include>com.amazonaws:aws-java-sdk-s3</include>
                     <include>com.fasterxml.jackson.dataformat:jackson-dataformat-cbor</include>
                     <include>com.google.guava:guava</include>
 
                     <include>io.fineo.etl.pipeline:*</include>
                     <include>io.fineo.etl:*</include>
                     <include>com.fasterxml.jackson.jr:jackson-jr-objects</include>
-                    <include>com.amazonaws:aws-lambda-java-core</include>
-                    <include>com.amazonaws:aws-lambda-java-events</include>
-                    <include>com.amazonaws:amazon-kinesis-producer</include>
                     <include>com.google.inject:guice</include>
                     <include>javax.inject:javax.inject</include>
                     <include>aopalliance:aopalliance</include>
                     <include>io.fineo.etl:spark-common</include>
+
+                    <include>com.beust:jcommander</include>
 
                     <!-- Chill Serialization -->
                     <include>com.twitter:chill-avro_${scala.base.version}</include>
@@ -144,10 +142,6 @@
                     <include>org.objenesis:objenesis</include>
                     <include>com.twitter:bijection-avro_${scala.base.version}</include>
                     <include>com.twitter:bijection-core_${scala.base.version}</include>
-
-                    <!-- Non-obvious dependencies -->
-                    <include>com.amazonaws:aws-java-sdk-core</include>
-                    <include>io.fineo.etl.pipeline:stream-processing:tests</include>
                   </includes>
                   </artifactSet>
                   <filters>
@@ -158,8 +152,6 @@
                         <exclude>META-INF/*.DSA</exclude>
                         <exclude>META-INF/*.RSA</exclude>
                         <exclude>.gitkeep</exclude>
-                        <!-- Executable producer - huge!... not needed since we use the java api -->
-                        <exclude>amazon-kinesis-producer-native-binaries/**</exclude>
                       </excludes>
                     </filter>
                   </filters>

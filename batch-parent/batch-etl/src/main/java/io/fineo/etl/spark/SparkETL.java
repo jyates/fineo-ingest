@@ -1,16 +1,18 @@
 package io.fineo.etl.spark;
 
 import com.google.inject.Guice;
+import io.fineo.etl.AvroKyroRegistrator;
 import io.fineo.etl.spark.fs.FileCleaner;
 import io.fineo.etl.spark.fs.RddLoader;
-import io.fineo.etl.spark.options.ETLOptionBuilder;
 import io.fineo.etl.spark.options.ETLOptions;
+import io.fineo.etl.spark.options.OptionsHandler;
 import io.fineo.etl.spark.util.AvroSparkUtils;
 import io.fineo.internal.customer.Metric;
 import io.fineo.lambda.configure.PropertiesModule;
 import io.fineo.lambda.configure.SchemaStoreModule;
 import io.fineo.lambda.configure.dynamo.DynamoModule;
 import io.fineo.lambda.configure.dynamo.DynamoRegionConfigurator;
+import io.fineo.lambda.configure.util.PropertiesLoaderUtil;
 import io.fineo.schema.avro.AvroSchemaEncoder;
 import io.fineo.schema.avro.RecordMetadata;
 import io.fineo.schema.store.SchemaStore;
@@ -21,6 +23,7 @@ import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.input.PortableDataStream;
+import org.apache.spark.serializer.KryoSerializer;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.RowFactory;
 import org.apache.spark.sql.SQLContext;
@@ -39,6 +42,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 import java.util.stream.Stream;
 
@@ -60,7 +64,8 @@ public class SparkETL {
     this.opts = opts;
   }
 
-  public void run(JavaSparkContext context, SchemaStore store) throws URISyntaxException, IOException {
+  public void run(JavaSparkContext context, SchemaStore store)
+    throws URISyntaxException, IOException {
     this.store = store;
     RddLoader loader = new RddLoader(context, newArrayList(opts.source()));
     loader.load();
@@ -82,15 +87,15 @@ public class SparkETL {
     SQLContext sql = new SQLContext(context);
     Set<String> dirs = new HashSet<>();
     for (Tuple3<JavaRDD<Row>, StructType, Date> tuple : schemas) {
-      String dir = opts.archive() + "/" + FORMAT + "/" + tuple._3().toString();
+      String dir = opts.completed() + "/" + FORMAT + "/" + tuple._3().toString();
       dirs.add(dir);
       sql.createDataFrame(tuple._1(), tuple._2())
          .write()
          .format(FORMAT)
-        .mode(SaveMode.Append)
-          // partitioning doesn't work well with drill reads, so we manually partition by date
+         .mode(SaveMode.Append)
+         // partitioning doesn't work well with drill reads, so we manually partition by date
 //      .partitionBy(AvroSchemaEncoder.ORG_ID_KEY, AvroSchemaEncoder.ORG_METRIC_TYPE_KEY, DATE_KEY)
-        .save(dir);
+         .save(dir);
     }
     FileCleaner cleaner = new FileCleaner(loader.getFs());
     cleaner.clean(dirs, FileCleaner.PARQUET_MIN_SIZE);
@@ -98,7 +103,7 @@ public class SparkETL {
     List<RecordKey> unknown = types.stream().filter(key -> key.isUnknown()).collect(toList());
     cleaner.clean(handleUnknownFields(unknown, typeToRecord, sql), FileCleaner.ZERO_LENGTH_FILES);
 
-    loader.archive(opts.completed());
+    loader.archive(opts.archiveDir());
   }
 
   private List<Tuple3<JavaRDD<Row>, StructType, Date>> mapRecordsToTypesAndDay(
@@ -145,7 +150,7 @@ public class SparkETL {
         return RowFactory.create(metadata.getOrgID(), metadata.getMetricCanonicalType(),
           metadata.getBaseFields().getTimestamp(), metadata.getBaseFields().getUnknownFields());
       });
-      String dir = opts.archive() + "/" + UNKNOWN_DATA_FORMAT + "/" + key.getDate();
+      String dir = opts.completed() + "/" + UNKNOWN_DATA_FORMAT + "/" + key.getDate();
       dirs.add(dir);
       sql.createDataFrame(rows, type).write().format("json").mode(SaveMode.Append).save(dir);
     }
@@ -198,21 +203,25 @@ public class SparkETL {
 
   public static void main(String[] args) throws URISyntaxException, IOException {
     // parse arguments
-    ETLOptions opts = ETLOptionBuilder.build(args);
-    if (opts.help() || opts.error()) {
-      opts.printHelp();
-      System.exit(opts.error() ? 1 : 0);
-    }
+    ETLOptions opts = OptionsHandler.handle(args);
+    Properties props = PropertiesLoaderUtil.load();
 
     SchemaStore store = Guice.createInjector(
-      new PropertiesModule(),
+      new PropertiesModule(props),
       new DynamoModule(),
       new DynamoRegionConfigurator(),
       new SchemaStoreModule()
     ).getInstance(SchemaStore.class);
 
+    run(opts, store);
+  }
+
+  public static void run(ETLOptions opts, SchemaStore store)
+    throws IOException, URISyntaxException {
     SparkETL etl = new SparkETL(opts);
     SparkConf conf = new SparkConf().setAppName(SparkETL.class.getName());
+    conf.set("spark.serializer", KryoSerializer.class.getName());
+    conf.set("spark.kryo.registrator", AvroKyroRegistrator.class.getName());
     final JavaSparkContext context = new JavaSparkContext(conf);
     etl.run(context, store);
   }

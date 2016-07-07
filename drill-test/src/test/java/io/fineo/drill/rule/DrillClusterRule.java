@@ -1,6 +1,7 @@
 package io.fineo.drill.rule;
 
 import com.google.common.collect.ImmutableList;
+import io.fineo.drill.LocalDrillCluster;
 import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.server.Drillbit;
 import org.apache.commons.logging.Log;
@@ -19,67 +20,29 @@ import java.util.Properties;
 import static java.lang.String.format;
 
 /**
- * Create and destory a drill cluster
+ * Create and destroy a drill cluster as a junit rule
  */
 public class DrillClusterRule extends ExternalResource {
 
   private static final Log LOG = LogFactory.getLog(DrillClusterRule.class);
-  private final int serverCount;
-  private final ZookeeperClusterRule zk = new ZookeeperClusterRule();
-  private final SingleConnectionCachingFactory factory;
-  private final Properties props = new Properties();
-  private List<Drillbit> servers;
-
-  {
-    props.put(ExecConstants.SYS_STORE_PROVIDER_LOCAL_ENABLE_WRITE, "false");
-    props.put(ExecConstants.HTTP_ENABLE, "false");
-  }
+  private final LocalDrillCluster drill;
 
   public DrillClusterRule(int serverCount) {
-    this.serverCount = serverCount;
-    this.factory =  new SingleConnectionCachingFactory(new ConnectionFactory() {
-      @Override
-      public Connection getConnection(ConnectionInfo info) throws Exception {
-        Class.forName("org.apache.drill.jdbc.Driver");
-        return DriverManager.getConnection(info.getUrl(), info.getParamsAsProperties());
-      }
-    });
+    drill = new LocalDrillCluster(serverCount);
   }
 
   @Override
   protected void before() throws Throwable {
-    zk.before();
-
-    // turn off the HTTP server to avoid port conflicts between the drill bits
-    System.setProperty(ExecConstants.HTTP_ENABLE, "false");
-    ImmutableList.Builder<Drillbit> servers = ImmutableList.builder();
-    for (int i = 0; i < serverCount; i++) {
-      servers.add(Drillbit.start(zk.getConfig()));
-    }
-    this.servers = servers.build();
+    drill.setup();
   }
 
 
   @Override
   protected void after() {
-    DrillMetrics.resetMetrics();
-
-    if (servers != null) {
-      for (Drillbit server : servers) {
-        try {
-          server.close();
-        } catch (Exception e) {
-          LOG.error("Error shutting down Drillbit", e);
-        }
-      }
-    }
-
-    zk.after();
+    drill.shutdown();
   }
 
   public Connection getConnection() throws Exception {
-    String zkConnection = zk.getConfig().getString("drill.exec.zk.connect");
-    String url = format("jdbc:drill:zk=%s", zkConnection);
-    return factory.getConnection(new ConnectionInfo(url, new Properties()));
+    return drill.getConnection();
   }
 }

@@ -77,7 +77,7 @@ public class ITAvroReadWriteSpark {
   @Test
   public void testSingleRecord() throws Exception {
     File ingest = folder.newFolder("ingest");
-    File archive = folder.newFolder("archive");
+    File archive = folder.newFolder("completed");
     Pair<E2ETestState, ETLOptions> ran = run(ingest, archive, null);
     verifyETLOutput(ran, ran.getLeft().getRunner().getProgress().getJson());
   }
@@ -120,8 +120,7 @@ public class ITAvroReadWriteSpark {
       runWithRecordsAndWriteToFile(lambdaOutput, records[0]);
     runIngest(state, lambdaOutput, records[1]);
 
-    LambdaClientProperties props = state.getRunner().getProps();
-    ETLOptions opts = getOpts(lambdaOutput, sparkOutput, props);
+    ETLOptions opts = getOpts(lambdaOutput, sparkOutput);
     SchemaStore store = state.getResources().getStore();
     runJob(opts, store);
 
@@ -161,14 +160,13 @@ public class ITAvroReadWriteSpark {
     copyLamdaOutputToSparkInput(state, lambdaOutput);
     state.getRunner().cleanup();
 
-    LambdaClientProperties props = state.getRunner().getProps();
     SchemaStore store = state.getResources().getStore();
-    ETLOptions opts = getOpts(lambdaOutput, sparkOutput, props);
+    ETLOptions opts = getOpts(lambdaOutput, sparkOutput);
     runJob(opts, store);
     Map<String, Object> translated = translate(json, store);
     // verify that we wrote the rest of the field correctly
     DataFrameLoader loader = new DataFrameLoader(spark.jsc());
-    DataFrame frame = loader.loadFrameForKnownSchema(opts.archive());
+    DataFrame frame = loader.loadFrameForKnownSchema(opts.completed());
     for (Map.Entry<String, Object> entry : translated.entrySet()) {
       if (entry.getKey().equals(unknownFieldName)) {
         continue;
@@ -181,7 +179,7 @@ public class ITAvroReadWriteSpark {
     verifyMappedEvents(rows, translated);
 
     // verify that we can read the hidden field correctly
-    frame = loader.loadFrameForUnknownSchema(opts.archive());
+    frame = loader.loadFrameForUnknownSchema(opts.completed());
     String fieldKey = SparkETL.UNKNOWN_FIELDS_KEY + "." + unknownFieldName;
     // casting the unknown field to a an integer as well as reading it
     frame = frame.select(new Column(ORG_ID_KEY), new Column(ORG_METRIC_TYPE_KEY),
@@ -194,8 +192,8 @@ public class ITAvroReadWriteSpark {
     verifyMappedEvents(rows, expected);
 
     // verify that we can read both the known and unknown together
-    DataFrame known = loader.loadFrameForKnownSchema(opts.archive());
-    DataFrame unknown = loader.loadFrameForUnknownSchema(opts.archive());
+    DataFrame known = loader.loadFrameForKnownSchema(opts.completed());
+    DataFrame unknown = loader.loadFrameForUnknownSchema(opts.completed());
     DataFrame both = known.join(unknown,
       JavaConversions.asScalaBuffer(newArrayList(ORG_ID_KEY, ORG_METRIC_TYPE_KEY, TIMESTAMP_KEY)));
     String canonicalField =
@@ -212,7 +210,7 @@ public class ITAvroReadWriteSpark {
     Map<String, Object> json) throws Exception {
     // run the basic ingest job
     E2ETestState state = runWithRecordsAndWriteToFile(ingest, json);
-    ETLOptions opts = getOpts(ingest, archive, state.getRunner().getProps());
+    ETLOptions opts = getOpts(ingest, archive);
     SchemaStore store = state.getResources().getStore();
     runJob(opts, store);
     return new ImmutablePair<>(state, opts);
@@ -234,25 +232,22 @@ public class ITAvroReadWriteSpark {
     state.getRunner().cleanup();
   }
 
-  private ETLOptions getOpts(File lambdaOutput, File sparkOutput,
-    LambdaClientProperties props) throws IOException {
+  private ETLOptions getOpts(File lambdaOutput, File sparkOutput) throws IOException {
     ETLOptions opts = new ETLOptions();
     File archiveOut = new File(sparkOutput, "output");
     File completed;
     try {
-      completed = folder.newFolder("completed");
+      completed = folder.newFolder("archiveDir");
     } catch (IOException e) {
-      completed = new File(folder.getRoot(), "completed");
+      completed = new File(folder.getRoot(), "archiveDir");
     }
     String base = "file://";
     opts.source(base + lambdaOutput.getAbsolutePath());
-    opts.archive(base + archiveOut.getAbsolutePath());
-    opts.completed(base + completed.getAbsolutePath());
+    opts.completed(base + archiveOut.getAbsolutePath());
+    opts.archiveDir(base + completed.getAbsolutePath());
     LOG.info("Lambda output: " + opts.source());
-    LOG.info("Spark output: " + opts.archive());
-    LOG.info("Completed files: " + opts.completed());
-
-    opts.setProps(props);
+    LOG.info("Spark output: " + opts.completed());
+    LOG.info("Completed files: " + opts.archiveDir());
     return opts;
   }
 
@@ -266,7 +261,7 @@ public class ITAvroReadWriteSpark {
 
     for (Map<String, Object> event : events) {
       Map<String, Object> mapped = translate(event, store);
-      List<DataFrame> frames = getFrames(opts.archive());
+      List<DataFrame> frames = getFrames(opts.completed());
       List<Row> rows = new ArrayList<>();
       for (DataFrame frame : frames) {
         frame = select(frame, mapped.keySet());
@@ -279,7 +274,7 @@ public class ITAvroReadWriteSpark {
       verifyMappedEvents(rows, mapped);
     }
 
-    List<Row> rows = readAllRows(opts.archive());
+    List<Row> rows = readAllRows(opts.completed());
     assertRowsEqualsRawEvents(rows, store, events);
     cleanupMetastore();
   }
