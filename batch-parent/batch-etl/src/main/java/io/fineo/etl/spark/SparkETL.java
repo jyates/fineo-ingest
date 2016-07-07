@@ -66,25 +66,42 @@ public class SparkETL {
 
   public void run(JavaSparkContext context, SchemaStore store)
     throws URISyntaxException, IOException {
+    // Read in all the raw json records
     this.store = store;
     RddLoader loader = new RddLoader(context, newArrayList(opts.source()));
     loader.load();
     JavaPairRDD<String, PortableDataStream>[] stringRdds = loader.getRdds();
     JavaRDD<GenericRecord> records = getRecords(context, stringRdds);
 
-    // convert them into (org, metricId, date) -> records
+    // Convert them into (org, metricId, date) -> records
     JavaPairRDD<RecordKey, Iterable<GenericRecord>> typeToRecord =
       records.flatMapToPair(new RecordToKeyMapper()).groupByKey();
 
-    // collect all the keys on THIS MACHINE. Its not completely scalable, but works enough #startup
+    // Collect all the keys (org, metric, date) on THIS MACHINE. Its not completely scalable, but
+    // works enough #startup
     List<RecordKey> types = typeToRecord.keys().collect();
 
+    SQLContext sql = new SQLContext(context);
     List<RecordKey> known = types.stream().filter(key -> !key.isUnknown()).collect(toList());
+    Set<String> dirs = handleKnownFields(known, typeToRecord, sql);
+    // sometimes we get empty files from the write, so remove those so drill is happy
+    FileCleaner cleaner = new FileCleaner(loader.getFs());
+    cleaner.clean(dirs, FileCleaner.PARQUET_MIN_SIZE);
+
+    // Handle the unknown fields as simple json
+    List<RecordKey> unknown = types.stream().filter(key -> key.isUnknown()).collect(toList());
+    cleaner.clean(handleUnknownFields(unknown, typeToRecord, sql), FileCleaner.ZERO_LENGTH_FILES);
+
+    loader.archive(opts.archiveDir());
+  }
+
+  private Set<String> handleKnownFields(List<RecordKey> known,
+    JavaPairRDD<RecordKey, Iterable<GenericRecord>> typeToRecord, SQLContext sql){
+    // Remap the record by their type and into their appropriate partition
     List<Tuple3<JavaRDD<Row>, StructType, Date>> schemas =
-      mapRecordsToTypesAndDay(known, typeToRecord);
+      mapTypesAndGroupByPartition(known, typeToRecord);
 
     // store the files by partition
-    SQLContext sql = new SQLContext(context);
     Set<String> dirs = new HashSet<>();
     for (Tuple3<JavaRDD<Row>, StructType, Date> tuple : schemas) {
       String dir = opts.completed() + "/" + FORMAT + "/" + tuple._3().toString();
@@ -93,20 +110,15 @@ public class SparkETL {
          .write()
          .format(FORMAT)
          .mode(SaveMode.Append)
-         // partitioning doesn't work well with drill reads, so we manually partition by date
-//      .partitionBy(AvroSchemaEncoder.ORG_ID_KEY, AvroSchemaEncoder.ORG_METRIC_TYPE_KEY, DATE_KEY)
+         // partitioning doesn't work with drill reads (yet see DRILL-4615), so we manually
+         // partition the rows (above)
+         // .partitionBy(AvroSchemaEncoder.ORG_ID_KEY, AvroSchemaEncoder.ORG_METRIC_TYPE_KEY, DATE_KEY)
          .save(dir);
     }
-    FileCleaner cleaner = new FileCleaner(loader.getFs());
-    cleaner.clean(dirs, FileCleaner.PARQUET_MIN_SIZE);
-
-    List<RecordKey> unknown = types.stream().filter(key -> key.isUnknown()).collect(toList());
-    cleaner.clean(handleUnknownFields(unknown, typeToRecord, sql), FileCleaner.ZERO_LENGTH_FILES);
-
-    loader.archive(opts.archiveDir());
+    return dirs;
   }
 
-  private List<Tuple3<JavaRDD<Row>, StructType, Date>> mapRecordsToTypesAndDay(
+  private List<Tuple3<JavaRDD<Row>, StructType, Date>> mapTypesAndGroupByPartition(
     List<RecordKey> types,
     JavaPairRDD<RecordKey, Iterable<GenericRecord>> typeToRecord) {
     // get the schemas for each type
@@ -117,7 +129,8 @@ public class SparkETL {
       String metricId = type.getMetricId();
       Metric metric = store.getMetricMetadata(org, metricId);
       String schemaString = metric.getMetricSchema();
-      // parser keeps state and we redefine stuff, so we need to create a new one each time
+      // parser keeps state and we redefine the logical name, so we need to create a new Parser
+      // each time
       Schema.Parser parser = new Schema.Parser();
       Schema parsed = parser.parse(schemaString);
       Map<String, List<String>> canonicalToAliases = AvroSparkUtils
@@ -152,7 +165,11 @@ public class SparkETL {
       });
       String dir = opts.completed() + "/" + UNKNOWN_DATA_FORMAT + "/" + key.getDate();
       dirs.add(dir);
-      sql.createDataFrame(rows, type).write().format("json").mode(SaveMode.Append).save(dir);
+      sql.createDataFrame(rows, type)
+         .write()
+         .format(UNKNOWN_DATA_FORMAT)
+         .mode(SaveMode.Append)
+         .save(dir);
     }
     return dirs;
   }
