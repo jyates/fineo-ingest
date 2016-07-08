@@ -14,7 +14,6 @@ import io.fineo.lambda.configure.SchemaStoreModule;
 import io.fineo.lambda.configure.dynamo.DynamoModule;
 import io.fineo.lambda.configure.dynamo.DynamoRegionConfigurator;
 import io.fineo.lambda.configure.util.PropertiesLoaderUtil;
-import io.fineo.schema.avro.AvroSchemaEncoder;
 import io.fineo.schema.avro.RecordMetadata;
 import io.fineo.schema.store.SchemaStore;
 import org.apache.avro.Schema;
@@ -48,6 +47,10 @@ import java.util.stream.Stream;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static io.fineo.etl.spark.util.AvroSparkUtils.getSparkType;
+import static io.fineo.schema.avro.AvroSchemaEncoder.BASE_FIELDS_KEY;
+import static io.fineo.schema.avro.AvroSchemaEncoder.ORG_ID_KEY;
+import static io.fineo.schema.avro.AvroSchemaEncoder.ORG_METRIC_TYPE_KEY;
+import static io.fineo.schema.avro.AvroSchemaEncoder.TIMESTAMP_KEY;
 import static java.util.stream.Collectors.toList;
 import static org.apache.spark.sql.types.DataTypes.createStructField;
 import static org.apache.spark.sql.types.DataTypes.createStructType;
@@ -123,7 +126,7 @@ public class SparkETL {
     return dirs;
   }
 
-  private String getOutputDir(RecordKey partitions, String format){
+  private String getOutputDir(RecordKey partitions, String format) {
     return PATH_PARTS.join(opts.completed(), format,
       partitions.getOrgId(), partitions.getMetricId(), partitions.getDate());
   }
@@ -178,8 +181,8 @@ public class SparkETL {
       JavaRDD<GenericRecord> records = getRddByKey(typeToRecord, key);
       JavaRDD<Row> rows = records.map(record -> {
         RecordMetadata metadata = RecordMetadata.get(record);
-        return RowFactory.create(metadata.getBaseFields().getTimestamp(),
-          metadata.getBaseFields().getUnknownFields());
+        return RowFactory.create(metadata.getOrgID(), metadata.getMetricCanonicalType(),
+          metadata.getBaseFields().getTimestamp(), metadata.getBaseFields().getUnknownFields());
       });
       String dir = getOutputDir(key, UNKNOWN_DATA_FORMAT);
       dirs.add(dir);
@@ -205,8 +208,10 @@ public class SparkETL {
   }
 
   private void addBaseFields(List<StructField> fields) {
-    // we only include the timestamp since that is _different_ (more specific) than the date range
-    fields.add(createStructField(AvroSchemaEncoder.TIMESTAMP_KEY, DataTypes.LongType, false));
+    fields.add(createStructField(ORG_ID_KEY, DataTypes.StringType, false));
+    fields.add(createStructField(ORG_METRIC_TYPE_KEY, DataTypes.StringType, false));
+    // need to include timestamp since that is _different_ (more specific) than the date range
+    fields.add(createStructField(TIMESTAMP_KEY, DataTypes.LongType, false));
   }
 
   private JavaRDD<GenericRecord> getRecords(JavaSparkContext context,
@@ -225,7 +230,7 @@ public class SparkETL {
   static Stream<Schema.Field> streamSchemaWithoutBaseFields(Schema schema) {
     return schema.getFields()
                  .stream().sequential()
-                 .filter(field -> !field.name().equals(AvroSchemaEncoder.BASE_FIELDS_KEY));
+                 .filter(field -> !field.name().equals(BASE_FIELDS_KEY));
   }
 
   private <A, B> JavaRDD getRddByKey(JavaPairRDD<A, Iterable<B>> pairRDD, A key) {

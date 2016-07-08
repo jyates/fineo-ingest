@@ -42,6 +42,8 @@ public class RowConverter implements Function<GenericRecord, Row>, Serializable 
     RecordMetadata metadata = RecordMetadata.get(record);
     BaseFields base = metadata.getBaseFields();
     List<Object> fields = new ArrayList<>();
+    fields.add(orgId);
+    fields.add(metricName);
     fields.add(base.getTimestamp());
 
     // populate the other fields, as we have them

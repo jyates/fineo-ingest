@@ -192,7 +192,8 @@ public class ITAvroReadWriteSpark {
     frame = pair.getRight();
     String fieldKey = SparkETL.UNKNOWN_FIELDS_KEY + "." + unknownFieldName;
     // casting the unknown field to a an integer as well as reading it
-    frame = frame.select(new Column(fieldKey).cast(DataTypes.IntegerType));
+    frame = frame.select(new Column(ORG_ID_KEY), new Column(ORG_METRIC_TYPE_KEY),
+      new Column(fieldKey).cast(DataTypes.IntegerType));
     rows = frame.collectAsList();
     Map<String, Object> expected = new HashMap<>();
     expected.put(ORG_ID_KEY, translated.get(ORG_ID_KEY));
@@ -207,11 +208,11 @@ public class ITAvroReadWriteSpark {
       loader.loadFrameForUnknownSchema(opts.completed()).get(0);
     DataFrame unknown = unknownPair.getRight();
     DataFrame both = known.join(unknown,
-      JavaConversions.asScalaBuffer(newArrayList(TIMESTAMP_KEY)));
+      JavaConversions.asScalaBuffer(newArrayList(ORG_ID_KEY, ORG_METRIC_TYPE_KEY, TIMESTAMP_KEY)));
     String canonicalField =
       translated.keySet().stream().filter(IS_BASE_FIELD.negate()).findFirst()
                 .get();
-    rows = select(both, TIMESTAMP_KEY, fieldKey, canonicalField)
+    rows = select(both, ORG_ID_KEY, ORG_METRIC_TYPE_KEY, TIMESTAMP_KEY, fieldKey, canonicalField)
       .collectAsList();
     expected.put(unknownFieldName, "1");
     expected.put(canonicalField, translated.get(canonicalField));
@@ -313,10 +314,7 @@ public class ITAvroReadWriteSpark {
   }
 
   private DataFrame where(DataFrame frame, Map.Entry<String, Object> entry) {
-    // check the non-partition keys
-    return ORG_OR_METRIC_KEY.test(entry.getKey()) ?
-           frame :
-           frame.where(new Column(entry.getKey()).equalTo(entry.getValue()));
+    return frame.where(new Column(entry.getKey()).equalTo(entry.getValue()));
   }
 
   private void logEvents(SchemaStore store, Map<String, Object>... events) {
@@ -380,9 +378,8 @@ public class ITAvroReadWriteSpark {
   }
 
   private DataFrame select(DataFrame records, Collection<String> fields) {
-    LOG.info("Current frame schema: \n"+records.schema()+"\nRequesting fields: "+fields);
+    LOG.info("Current frame schema: \n" + records.schema() + "\nRequesting fields: " + fields);
     return records.select(fields.stream()
-                                .filter(ORG_OR_METRIC_KEY.negate())
                                 .map(field -> new Column(field))
                                 .collect(Collectors.toList())
                                 .toArray(new Column[0]));
@@ -416,7 +413,7 @@ public class ITAvroReadWriteSpark {
             Row r2 = p2.getRight();
             int i1 = (Integer) r1.schema().getFieldIndex(TIMESTAMP_KEY).get();
             int i2 = (Integer) r2.schema().getFieldIndex(TIMESTAMP_KEY).get();
-            return - Long.compare(r1.getLong(i1), r2.getLong(i2));
+            return -Long.compare(r1.getLong(i1), r2.getLong(i2));
           })
           .collect(Collectors.toList());
     assertEquals("Got unexpected number of rows: " + rows, mappedEvents.length, flatRows.size());
@@ -430,18 +427,12 @@ public class ITAvroReadWriteSpark {
       assertEquals("Got mismatch for metric type!", fields.get(ORG_METRIC_TYPE_KEY),
         partition.getMetricId());
 
-      // check the rest of the fields
-      List<String> nonPartitionFields =
-        fields.keySet().stream()
-              .filter(ORG_OR_METRIC_KEY.negate())
-              .collect(Collectors.toList());
-
       Row row = pair.getRight();
       scala.collection.Map<String, Object> rowFields =
-        row.getValuesMap(JavaConversions.asScalaBuffer(nonPartitionFields));
+        row.getValuesMap(JavaConversions.asScalaBuffer(newArrayList(fields.keySet())));
       // number of fields - partition fields
-      assertEquals(fields.size() - 2, rowFields.size());
-      for (String field : nonPartitionFields) {
+      assertEquals(fields.size(), rowFields.size());
+      for (String field : fields.keySet()) {
         Object value = fields.get(field);
         assertEquals("Mismatch for " + field + ". \nEvent: " + fields + "\nRow: " + row,
           value,
