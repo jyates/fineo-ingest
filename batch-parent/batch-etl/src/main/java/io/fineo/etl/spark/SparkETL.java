@@ -1,5 +1,6 @@
 package io.fineo.etl.spark;
 
+import com.google.common.base.Joiner;
 import com.google.inject.Guice;
 import io.fineo.etl.AvroKyroRegistrator;
 import io.fineo.etl.spark.fs.FileCleaner;
@@ -32,11 +33,10 @@ import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.sql.types.MapType;
 import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
-import scala.Tuple3;
+import scala.Tuple2;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.sql.Date;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -59,6 +59,8 @@ public class SparkETL {
   private final ETLOptions opts;
   public static String UNKNOWN_FIELDS_KEY = "unknown";
   private SchemaStore store;
+
+  private static final Joiner PATH_PARTS = Joiner.on("/");
 
   public SparkETL(ETLOptions opts) {
     this.opts = opts;
@@ -96,35 +98,51 @@ public class SparkETL {
   }
 
   private Set<String> handleKnownFields(List<RecordKey> known,
-    JavaPairRDD<RecordKey, Iterable<GenericRecord>> typeToRecord, SQLContext sql){
+    JavaPairRDD<RecordKey, Iterable<GenericRecord>> typeToRecord, SQLContext sql) {
     // Remap the record by their type and into their appropriate partition
-    List<Tuple3<JavaRDD<Row>, StructType, Date>> schemas =
+    List<Tuple2<RecordKey, Tuple2<JavaRDD<Row>, StructType>>> schemas =
       mapTypesAndGroupByPartition(known, typeToRecord);
 
     // store the files by partition
     Set<String> dirs = new HashSet<>();
-    for (Tuple3<JavaRDD<Row>, StructType, Date> tuple : schemas) {
-      String dir = opts.completed() + "/" + FORMAT + "/" + tuple._3().toString();
+    for (Tuple2<RecordKey, Tuple2<JavaRDD<Row>, StructType>> tuple : schemas) {
+      RecordKey partitions = tuple._1();
+      Tuple2<JavaRDD<Row>, StructType> rows = tuple._2();
+      String dir = getOutputDir(partitions, FORMAT);
       dirs.add(dir);
-      sql.createDataFrame(tuple._1(), tuple._2())
+      sql.createDataFrame(rows._1(), rows._2())
          .write()
          .format(FORMAT)
          .mode(SaveMode.Append)
          // partitioning doesn't work with drill reads (yet see DRILL-4615), so we manually
-         // partition the rows (above)
-         // .partitionBy(AvroSchemaEncoder.ORG_ID_KEY, AvroSchemaEncoder.ORG_METRIC_TYPE_KEY, DATE_KEY)
+         // partition on org, metric and date (above)
+         // .partitionBy(AvroSchemaEncoder.ORG_ID_KEY, AvroSchemaEncoder.ORG_METRIC_TYPE_KEY,
+         // DATE_KEY)
          .save(dir);
     }
     return dirs;
   }
 
-  private List<Tuple3<JavaRDD<Row>, StructType, Date>> mapTypesAndGroupByPartition(
-    List<RecordKey> types,
-    JavaPairRDD<RecordKey, Iterable<GenericRecord>> typeToRecord) {
+  private String getOutputDir(RecordKey partitions, String format){
+    return PATH_PARTS.join(opts.completed(), format,
+      partitions.getOrgId(), partitions.getMetricId(), partitions.getDate());
+  }
+
+  /**
+   * Take the possible RecordKeys (org, metric, date) and map the incoming pairRDD to a RDD[Row]
+   * with a single type. Only known fields are included so we can conform to a fixed schema
+   *
+   * @param keys
+   * @param keyToRecord
+   * @return
+   */
+  private List<Tuple2<RecordKey, Tuple2<JavaRDD<Row>, StructType>>> mapTypesAndGroupByPartition(
+    List<RecordKey> keys,
+    JavaPairRDD<RecordKey, Iterable<GenericRecord>> keyToRecord) {
     // get the schemas for each type
-    List<Tuple3<JavaRDD<Row>, StructType, Date>> schemas = new ArrayList<>();
-    for (RecordKey type : types) {
-      JavaRDD<GenericRecord> grouped = getRddByKey(typeToRecord, type);
+    List<Tuple2<RecordKey, Tuple2<JavaRDD<Row>, StructType>>> schemas = new ArrayList<>();
+    for (RecordKey type : keys) {
+      JavaRDD<GenericRecord> grouped = getRddByKey(keyToRecord, type);
       String org = type.getOrgId();
       String metricId = type.getMetricId();
       Metric metric = store.getMetricMetadata(org, metricId);
@@ -138,7 +156,7 @@ public class SparkETL {
           metric.getMetadata().getCanonicalNamesToAliases());
       JavaRDD<Row> rows =
         grouped.map(new RowConverter(schemaString, canonicalToAliases, org, metricId));
-      schemas.add(new Tuple3<>(rows, mapSchemaToStruct(parsed), type.getDate()));
+      schemas.add(new Tuple2<>(type, new Tuple2<>(rows, mapSchemaToStruct(parsed))));
     }
     return schemas;
   }
@@ -160,10 +178,10 @@ public class SparkETL {
       JavaRDD<GenericRecord> records = getRddByKey(typeToRecord, key);
       JavaRDD<Row> rows = records.map(record -> {
         RecordMetadata metadata = RecordMetadata.get(record);
-        return RowFactory.create(metadata.getOrgID(), metadata.getMetricCanonicalType(),
-          metadata.getBaseFields().getTimestamp(), metadata.getBaseFields().getUnknownFields());
+        return RowFactory.create(metadata.getBaseFields().getTimestamp(),
+          metadata.getBaseFields().getUnknownFields());
       });
-      String dir = opts.completed() + "/" + UNKNOWN_DATA_FORMAT + "/" + key.getDate();
+      String dir = getOutputDir(key, UNKNOWN_DATA_FORMAT);
       dirs.add(dir);
       sql.createDataFrame(rows, type)
          .write()
@@ -187,12 +205,8 @@ public class SparkETL {
   }
 
   private void addBaseFields(List<StructField> fields) {
-    fields.add(
-      createStructField(AvroSchemaEncoder.ORG_ID_KEY, DataTypes.StringType, false));
-    fields.add(
-      createStructField(AvroSchemaEncoder.ORG_METRIC_TYPE_KEY, DataTypes.StringType, false));
-    fields.add(
-      createStructField(AvroSchemaEncoder.TIMESTAMP_KEY, DataTypes.LongType, false));
+    // we only include the timestamp since that is _different_ (more specific) than the date range
+    fields.add(createStructField(AvroSchemaEncoder.TIMESTAMP_KEY, DataTypes.LongType, false));
   }
 
   private JavaRDD<GenericRecord> getRecords(JavaSparkContext context,

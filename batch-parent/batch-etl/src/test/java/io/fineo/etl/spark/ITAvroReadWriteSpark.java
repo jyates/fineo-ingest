@@ -1,19 +1,18 @@
-package io.fineo.batch.processing.spark;
+package io.fineo.etl.spark;
 
 import com.fasterxml.jackson.jr.ob.JSON;
-import io.fineo.etl.spark.SparkETL;
 import io.fineo.etl.spark.options.ETLOptions;
 import io.fineo.etl.spark.read.DataFrameLoader;
+import io.fineo.etl.spark.read.PartitionKey;
 import io.fineo.etl.spark.util.FieldTranslatorFactory;
 import io.fineo.internal.customer.Metadata;
 import io.fineo.internal.customer.Metric;
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
+import io.fineo.lambda.e2e.E2ETestState;
 import io.fineo.lambda.e2e.EndToEndTestRunner;
 import io.fineo.lambda.e2e.ITEndToEndLambdaLocal;
-import io.fineo.lambda.e2e.E2ETestState;
 import io.fineo.lambda.util.LambdaTestUtils;
 import io.fineo.lambda.util.ResourceManager;
-import io.fineo.schema.avro.AvroSchemaEncoder;
 import io.fineo.schema.store.SchemaStore;
 import io.fineo.spark.rule.LocalSparkRule;
 import io.fineo.test.rule.TestOutput;
@@ -40,15 +39,19 @@ import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static io.fineo.etl.FineoProperties.STAGED_PREFIX;
 import static io.fineo.lambda.configure.legacy.StreamType.ARCHIVE;
+import static io.fineo.schema.avro.AvroSchemaEncoder.IS_BASE_FIELD;
 import static io.fineo.schema.avro.AvroSchemaEncoder.ORG_ID_KEY;
 import static io.fineo.schema.avro.AvroSchemaEncoder.ORG_METRIC_TYPE_KEY;
 import static io.fineo.schema.avro.AvroSchemaEncoder.TIMESTAMP_KEY;
@@ -61,6 +64,11 @@ public class ITAvroReadWriteSpark {
 
   private static final Log LOG = LogFactory.getLog(ITAvroReadWriteSpark.class);
   private static final String DIR_PROPERTY = "fineo.spark.dir";
+  private static final Comparator<Map<String, Object>> EVENT_SORTER = (m1, m2) -> -(
+    (Long) m1.get(TIMESTAMP_KEY)).compareTo((Long) m2.get(TIMESTAMP_KEY));
+  private static final Predicate<String> ORG_OR_METRIC_KEY = fieldName ->
+    fieldName.equals(ORG_ID_KEY) ||
+    fieldName.equals(ORG_METRIC_TYPE_KEY);
 
   @ClassRule
   public static LocalSparkRule spark = new LocalSparkRule();
@@ -89,22 +97,22 @@ public class ITAvroReadWriteSpark {
     // run the basic test for the single record
     Map<String, Object> json = LambdaTestUtils.createRecords(1, 1)[0];
     Pair<E2ETestState, ETLOptions> ran = run(lambdaOutput, sparkOutput, json);
-    verifyETLOutput(ran, json);
+//    verifyETLOutput(ran, json);
 
     ETLOptions opts = ran.getRight();
     E2ETestState state = ran.getLeft();
 
-    // add a field to the record, run it again
+    // add a field to the record, run the ingest again
     Map<String, Object> second = new HashMap<>(json);
-    second.put(AvroSchemaEncoder.TIMESTAMP_KEY, System.currentTimeMillis());
+    second.put(TIMESTAMP_KEY, System.currentTimeMillis() + 1);
     second.put("anotherField", 1);
-
-    // run again
     runIngest(state, lambdaOutput, second);
 
     // run ETL job
     SchemaStore store = state.getResources().getStore();
     runJob(opts, store);
+
+    // make sure we can read both events
     verifyETLOutput(ran, json, second);
   }
 
@@ -166,7 +174,8 @@ public class ITAvroReadWriteSpark {
     Map<String, Object> translated = translate(json, store);
     // verify that we wrote the rest of the field correctly
     DataFrameLoader loader = new DataFrameLoader(spark.jsc());
-    DataFrame frame = loader.loadFrameForKnownSchema(opts.completed());
+    Pair<PartitionKey, DataFrame> pair = loader.loadFrameForKnownSchema(opts.completed()).get(0);
+    DataFrame frame = pair.getRight();
     for (Map.Entry<String, Object> entry : translated.entrySet()) {
       if (entry.getKey().equals(unknownFieldName)) {
         continue;
@@ -176,34 +185,42 @@ public class ITAvroReadWriteSpark {
 
     frame = select(frame, translated.keySet());
     List<Row> rows = frame.collectAsList();
-    verifyMappedEvents(rows, translated);
+    verifyMappedEvents(asRows(rows, pair), translated);
 
     // verify that we can read the hidden field correctly
-    frame = loader.loadFrameForUnknownSchema(opts.completed());
+    pair = loader.loadFrameForUnknownSchema(opts.completed()).get(0);
+    frame = pair.getRight();
     String fieldKey = SparkETL.UNKNOWN_FIELDS_KEY + "." + unknownFieldName;
     // casting the unknown field to a an integer as well as reading it
-    frame = frame.select(new Column(ORG_ID_KEY), new Column(ORG_METRIC_TYPE_KEY),
-      new Column(fieldKey).cast(DataTypes.IntegerType));
+    frame = frame.select(new Column(fieldKey).cast(DataTypes.IntegerType));
     rows = frame.collectAsList();
     Map<String, Object> expected = new HashMap<>();
     expected.put(ORG_ID_KEY, translated.get(ORG_ID_KEY));
     expected.put(ORG_METRIC_TYPE_KEY, translated.get(ORG_METRIC_TYPE_KEY));
     expected.put(unknownFieldName, 1);
-    verifyMappedEvents(rows, expected);
+    verifyMappedEvents(asRows(rows, pair), expected);
 
     // verify that we can read both the known and unknown together
-    DataFrame known = loader.loadFrameForKnownSchema(opts.completed());
-    DataFrame unknown = loader.loadFrameForUnknownSchema(opts.completed());
+    pair = loader.loadFrameForKnownSchema(opts.completed()).get(0);
+    DataFrame known = pair.getRight();
+    Pair<PartitionKey, DataFrame> unknownPair =
+      loader.loadFrameForUnknownSchema(opts.completed()).get(0);
+    DataFrame unknown = unknownPair.getRight();
     DataFrame both = known.join(unknown,
-      JavaConversions.asScalaBuffer(newArrayList(ORG_ID_KEY, ORG_METRIC_TYPE_KEY, TIMESTAMP_KEY)));
+      JavaConversions.asScalaBuffer(newArrayList(TIMESTAMP_KEY)));
     String canonicalField =
-      translated.keySet().stream().filter(AvroSchemaEncoder.IS_BASE_FIELD.negate()).findFirst()
+      translated.keySet().stream().filter(IS_BASE_FIELD.negate()).findFirst()
                 .get();
-    rows = select(both, ORG_ID_KEY, ORG_METRIC_TYPE_KEY, TIMESTAMP_KEY, fieldKey, canonicalField)
+    rows = select(both, TIMESTAMP_KEY, fieldKey, canonicalField)
       .collectAsList();
     expected.put(unknownFieldName, "1");
     expected.put(canonicalField, translated.get(canonicalField));
-    verifyMappedEvents(rows, expected);
+    verifyMappedEvents(asRows(rows, pair), expected);
+  }
+
+  private List<Pair<PartitionKey, List<Row>>> asRows(List<Row> rows,
+    Pair<PartitionKey, DataFrame> pair) {
+    return newArrayList(new ImmutablePair<>(pair.getKey(), rows));
   }
 
   private Pair<E2ETestState, ETLOptions> run(File ingest, File archive,
@@ -259,28 +276,47 @@ public class ITAvroReadWriteSpark {
     SchemaStore store = state.getResources().getStore();
     logEvents(store, events);
 
-    for (Map<String, Object> event : events) {
+    // sort the events by timestamp to match how we read (sorted) which corresponds to creation
+    // order
+    List<Map<String, Object>> eventList = newArrayList(events);
+    Collections.sort(eventList, EVENT_SORTER);
+
+    events_loop:
+    for (Map<String, Object> event : eventList) {
       Map<String, Object> mapped = translate(event, store);
-      List<DataFrame> frames = getFrames(opts.completed());
-      List<Row> rows = new ArrayList<>();
-      for (DataFrame frame : frames) {
+      List<Pair<PartitionKey, DataFrame>> frames = getFrames(opts.completed());
+      List<Pair<PartitionKey, List<Row>>> rows = new ArrayList<>();
+      frame_loop:
+      for (Pair<PartitionKey, DataFrame> pair : frames) {
+        // skip this frame if we know it won't match the org and metric
+        if (!(
+          mapped.get(ORG_ID_KEY).equals(pair.getKey().getOrg()) && mapped.get
+            (ORG_METRIC_TYPE_KEY).equals(pair.getKey().getMetricId()))) {
+          continue;
+        }
+
+        DataFrame frame = pair.getRight();
         frame = select(frame, mapped.keySet());
         // map the fields to get exact matches for each row
+        event_entry_loop:
         for (Map.Entry<String, Object> entry : mapped.entrySet()) {
           frame = where(frame, entry);
         }
-        rows.addAll(frame.collectAsList());
+        rows.add(new ImmutablePair<>(pair.getKey(), frame.collectAsList()));
       }
       verifyMappedEvents(rows, mapped);
     }
 
-    List<Row> rows = readAllRows(opts.completed());
-    assertRowsEqualsRawEvents(rows, store, events);
+    List<Pair<PartitionKey, List<Row>>> rows = readAllRows(opts.completed());
+    assertRowsEqualsRawEvents(rows, store, eventList.toArray(new Map[0]));
     cleanupMetastore();
   }
 
   private DataFrame where(DataFrame frame, Map.Entry<String, Object> entry) {
-    return frame.where(new Column(entry.getKey()).equalTo(entry.getValue()));
+    // check the non-partition keys
+    return ORG_OR_METRIC_KEY.test(entry.getKey()) ?
+           frame :
+           frame.where(new Column(entry.getKey()).equalTo(entry.getValue()));
   }
 
   private void logEvents(SchemaStore store, Map<String, Object>... events) {
@@ -289,10 +325,10 @@ public class ITAvroReadWriteSpark {
       LOG.info(i + " =>");
       Map<String, Object> event = events[i];
       LOG.info("\t Raw => " + event);
-      String orgID = (String) event.get(AvroSchemaEncoder.ORG_ID_KEY);
+      String orgID = (String) event.get(ORG_ID_KEY);
       Metadata orgMeta = store.getOrgMetadata(orgID);
       Metric metric = store.getMetricMetadataFromAlias(orgMeta,
-        (String) event.get(AvroSchemaEncoder.ORG_METRIC_TYPE_KEY));
+        (String) event.get(ORG_METRIC_TYPE_KEY));
       LOG.info("\t Org => " + orgMeta);
       LOG.info("\t Metric => " + metric);
     }
@@ -316,23 +352,25 @@ public class ITAvroReadWriteSpark {
     return factory.translate(orgId, metricAlias);
   }
 
-  private List<Row> readAllRows(String fileDir) throws Exception {
+  private List<Pair<PartitionKey, List<Row>>> readAllRows(String fileDir) throws Exception {
     return readAllRows(fileDir, "*");
   }
 
-  private List<Row> readAllRows(String fileDir, String... fields) throws IOException {
+  private List<Pair<PartitionKey, List<Row>>> readAllRows(String fileDir, String... fields)
+    throws IOException {
     // allow merging schema for parquet
-    List<Row> rows = new ArrayList<>();
-    List<DataFrame> frames = getFrames(fileDir);
+    List<Pair<PartitionKey, List<Row>>> rows = new ArrayList<>();
+    List<Pair<PartitionKey, DataFrame>> frames = getFrames(fileDir);
     for (int i = 0; i < frames.size(); i++) {
       String tableName = "table" + i;
-      DataFrame records = frames.get(i);
+      Pair<PartitionKey, DataFrame> pair = frames.get(i);
+      DataFrame records = pair.getRight();
       records.registerTempTable(tableName);
       if (!fields[0].equals("*")) {
         records = select(records, fields);
       }
-      records = records.sort(new Column(TIMESTAMP_KEY).asc());
-      rows.addAll(records.collectAsList());
+      records = records.sort(new Column(TIMESTAMP_KEY).desc());
+      rows.add(new ImmutablePair<>(pair.getLeft(), records.collectAsList()));
     }
     return rows;
   }
@@ -342,39 +380,72 @@ public class ITAvroReadWriteSpark {
   }
 
   private DataFrame select(DataFrame records, Collection<String> fields) {
+    LOG.info("Current frame schema: \n"+records.schema()+"\nRequesting fields: "+fields);
     return records.select(fields.stream()
+                                .filter(ORG_OR_METRIC_KEY.negate())
                                 .map(field -> new Column(field))
                                 .collect(Collectors.toList())
                                 .toArray(new Column[0]));
   }
 
-  private List<DataFrame> getFrames(String fileDir) throws IOException {
+  private List<Pair<PartitionKey, DataFrame>> getFrames(String fileDir) throws IOException {
     DataFrameLoader loader = new DataFrameLoader(spark.jsc());
-    return Arrays.asList(loader.loadFrameForKnownSchema(fileDir));
+    return loader.loadFrameForKnownSchema(fileDir);
   }
 
-  private void assertRowsEqualsRawEvents(List<Row> rows, SchemaStore store,
+  private void assertRowsEqualsRawEvents(List<Pair<PartitionKey, List<Row>>> rows,
+    SchemaStore store,
     Map<String, Object>... json) {
     verifyMappedEvents(rows,
       Arrays.asList(json)
             .stream()
             .map(event -> translate(event, store))
+            .sorted(EVENT_SORTER)
             .collect(Collectors.toList())
             .toArray(new HashMap[0]));
   }
 
-  private void verifyMappedEvents(List<Row> rows, Map<String, Object>... mappedEvents) {
-    assertEquals("Got unexpected number of rows: " + rows, mappedEvents.length, rows.size());
+  private void verifyMappedEvents(List<Pair<PartitionKey, List<Row>>> rows, Map<String, Object>...
+    mappedEvents) {
+    List<Pair<PartitionKey, Row>> flatRows =
+      rows.stream()
+          .flatMap(pair -> pair.getRight().stream()
+                               .map(row -> new ImmutablePair<>(pair.getLeft(), row)))
+          .sorted((p1, p2) -> {
+            Row r1 = p1.getRight();
+            Row r2 = p2.getRight();
+            int i1 = (Integer) r1.schema().getFieldIndex(TIMESTAMP_KEY).get();
+            int i2 = (Integer) r2.schema().getFieldIndex(TIMESTAMP_KEY).get();
+            return - Long.compare(r1.getLong(i1), r2.getLong(i2));
+          })
+          .collect(Collectors.toList());
+    assertEquals("Got unexpected number of rows: " + rows, mappedEvents.length, flatRows.size());
     for (int i = 0; i < mappedEvents.length; i++) {
       Map<String, Object> fields = mappedEvents[i];
-      Row row = rows.get(i);
+
+      Pair<PartitionKey, Row> pair = flatRows.get(i);
+      PartitionKey partition = pair.getKey();
+      // check the org/metric
+      assertEquals("Got mismatch for org id!", fields.get(ORG_ID_KEY), partition.getOrg());
+      assertEquals("Got mismatch for metric type!", fields.get(ORG_METRIC_TYPE_KEY),
+        partition.getMetricId());
+
+      // check the rest of the fields
+      List<String> nonPartitionFields =
+        fields.keySet().stream()
+              .filter(ORG_OR_METRIC_KEY.negate())
+              .collect(Collectors.toList());
+
+      Row row = pair.getRight();
       scala.collection.Map<String, Object> rowFields =
-        row.getValuesMap(JavaConversions.asScalaBuffer(newArrayList(fields.keySet())));
-      assertEquals(fields.size(), rowFields.size());
-      for (Map.Entry<String, Object> field : fields.entrySet()) {
-        assertEquals("Mismatch for " + field.getKey() + ". \nEvent: " + fields + "\nRow: " + row,
-          field.getValue(),
-          rowFields.get(field.getKey()).get());
+        row.getValuesMap(JavaConversions.asScalaBuffer(nonPartitionFields));
+      // number of fields - partition fields
+      assertEquals(fields.size() - 2, rowFields.size());
+      for (String field : nonPartitionFields) {
+        Object value = fields.get(field);
+        assertEquals("Mismatch for " + field + ". \nEvent: " + fields + "\nRow: " + row,
+          value,
+          rowFields.get(field).get());
       }
     }
   }
