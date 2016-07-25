@@ -14,7 +14,7 @@ import io.fineo.lambda.dynamo.Range;
 import io.fineo.lambda.dynamo.ResultOrException;
 import io.fineo.lambda.dynamo.TableUtils;
 import io.fineo.lambda.dynamo.avro.AvroDynamoReader;
-import io.fineo.lambda.dynamo.avro.Schema;
+import io.fineo.lambda.dynamo.Schema;
 import io.fineo.lambda.dynamo.iter.PageManager;
 import io.fineo.lambda.dynamo.iter.PagingIterator;
 import io.fineo.lambda.dynamo.iter.ScanPager;

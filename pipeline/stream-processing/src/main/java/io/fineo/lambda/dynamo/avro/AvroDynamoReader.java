@@ -10,6 +10,7 @@ import io.fineo.internal.customer.Metric;
 import io.fineo.lambda.dynamo.DynamoTableTimeManager;
 import io.fineo.lambda.dynamo.Range;
 import io.fineo.lambda.dynamo.ResultOrException;
+import io.fineo.lambda.dynamo.Schema;
 import io.fineo.lambda.dynamo.iter.PageManager;
 import io.fineo.lambda.dynamo.iter.PagingIterator;
 import io.fineo.lambda.dynamo.iter.ScanPager;

@@ -1,16 +1,13 @@
-package io.fineo.lambda.dynamo.avro;
+package io.fineo.lambda.dynamo;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
 import com.amazonaws.services.dynamodbv2.model.KeyType;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
-import org.apache.avro.generic.GenericData;
 import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -37,7 +34,7 @@ public class Schema {
   public static final String SORT_KEY_NAME = "ts";
   private static final Pair<List<KeySchemaElement>, List<AttributeDefinition>> SCHEMA;
   // TODO replace with a schema ID so we can lookup the schema on read, if necessary
-  static final String MARKER = "marker";
+  public static final String MARKER = "marker";
 
   static {
     List<KeySchemaElement> schema = new ArrayList<>();
@@ -65,11 +62,11 @@ public class Schema {
     return SCHEMA;
   }
 
-  static AttributeValue getSortKey(Long ts) {
+  public static AttributeValue getSortKey(Long ts) {
     return new AttributeValue().withN(ts.toString());
   }
 
-  static AttributeValue getPartitionKey(String orgID, String metricCanonicalName) {
+  public static AttributeValue getPartitionKey(String orgID, String metricCanonicalName) {
     return new AttributeValue(orgID + metricCanonicalName);
   }
 }

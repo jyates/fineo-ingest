@@ -14,7 +14,7 @@ import io.fineo.lambda.configure.SchemaStoreModule;
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import io.fineo.lambda.dynamo.DynamoTableCreator;
 import io.fineo.lambda.dynamo.DynamoTableTimeManager;
-import io.fineo.lambda.dynamo.avro.Schema;
+import io.fineo.lambda.dynamo.Schema;
 import io.fineo.lambda.dynamo.rule.AwsDynamoResource;
 import io.fineo.lambda.dynamo.rule.AwsDynamoSchemaTablesResource;
 import io.fineo.lambda.util.run.FutureWaiter;

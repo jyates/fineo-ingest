@@ -165,6 +165,22 @@ public class TestDynamoTableTimeManaging {
       getTableNames(manager.getCoveringTableNames(new Range<>(start, end))));
   }
 
+  @Test
+  public void testParseTableParts() throws Exception {
+    Instant fwt = inst(LocalDateTime.of(2015, 11, 1, 1, 1));
+    AmazonDynamoDBAsyncClient client = Mockito.mock(AmazonDynamoDBAsyncClient.class);
+    DynamoTableTimeManager manager = new DynamoTableTimeManager(client, prefix);
+    long epoch = inst(LocalDateTime.of(2015, 11, 2, 1, 1)).toEpochMilli();
+    String name = manager.getTableName(fwt, epoch);
+    DynamoTableNameParts parts = new DynamoTableNameParts(prefix, 1446076800000l, 1446681600000l,
+      11, 2015);
+    assertEquals(parts, DynamoTableNameParts.parse(name));
+
+    // try another table that _should_ end up with the same table
+    name = manager.getTableName(fwt, inst(LocalDateTime.of(2015, 11, 4, 1, 1)).toEpochMilli());
+    assertEquals(parts, DynamoTableNameParts.parse(name));
+  }
+
   private List<String> getTableNames(Multimap<Instant, String> tableMap, Instant... times) {
     List<String> names = new ArrayList<>();
     for (Instant time : times) {

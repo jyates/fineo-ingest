@@ -11,6 +11,7 @@ import io.fineo.lambda.aws.AwsAsyncSubmitter;
 import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.lambda.dynamo.DynamoExpressionPlaceHolders;
 import io.fineo.lambda.dynamo.DynamoTableCreator;
+import io.fineo.lambda.dynamo.Schema;
 import io.fineo.schema.avro.AvroSchemaEncoder;
 import io.fineo.schema.avro.RecordMetadata;
 import org.apache.avro.generic.GenericData;

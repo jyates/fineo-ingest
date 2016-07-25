@@ -38,8 +38,8 @@ public class DynamoAvroRecordDecoder {
   private final Schema.Parser parser;
 
   private List<String> handledFields = Lists.newArrayList(AvroSchemaEncoder
-    .BASE_FIELDS_KEY, io.fineo.lambda.dynamo.avro.Schema.PARTITION_KEY_NAME, io.fineo.lambda
-    .dynamo.avro.Schema.SORT_KEY_NAME, io.fineo.lambda.dynamo.avro.Schema.MARKER);
+    .BASE_FIELDS_KEY, io.fineo.lambda.dynamo.Schema.PARTITION_KEY_NAME, io.fineo.lambda.dynamo
+    .Schema.SORT_KEY_NAME, io.fineo.lambda.dynamo.Schema.MARKER);
   private Predicate<Schema.Field> retainedField = field -> !handledFields.contains(field.name());
 
   public DynamoAvroRecordDecoder(SchemaStore store) {
@@ -49,7 +49,7 @@ public class DynamoAvroRecordDecoder {
 
   public GenericRecord decode(String orgId, Map<String, AttributeValue> row) {
     Metadata org = store.getOrgMetadata(orgId);
-    String partitionKey = row.get(io.fineo.lambda.dynamo.avro.Schema.PARTITION_KEY_NAME).getS();
+    String partitionKey = row.get(io.fineo.lambda.dynamo.Schema.PARTITION_KEY_NAME).getS();
     // skip past the org in the key
     String metricID = partitionKey.substring(orgId.length());
     Metric metric = store.getMetricMetadataFromAlias(org, metricID);
@@ -67,7 +67,7 @@ public class DynamoAvroRecordDecoder {
     GenericData.Record record = new GenericData.Record(schema);
 
     // extract the base fields
-    long ts = Long.valueOf(row.get(io.fineo.lambda.dynamo.avro.Schema.SORT_KEY_NAME).getN());
+    long ts = Long.valueOf(row.get(io.fineo.lambda.dynamo.Schema.SORT_KEY_NAME).getN());
     BaseFields base = new BaseFields();
     base.setTimestamp(ts);
     record.put(AvroSchemaEncoder.BASE_FIELDS_KEY, base);

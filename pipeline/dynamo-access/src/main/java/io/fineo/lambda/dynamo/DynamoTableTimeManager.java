@@ -30,7 +30,9 @@ import static java.time.Instant.now;
  * <li>Fineo Write Time (FWT): time we are making the write (generally, "now")</li>
  * <li>Client Write Time (CWT): timestamp of the write itself</li>
  * </ol>
- * The current, hardcoded, implementation (#startup) groups FWT by month and CWT by week.
+ * The current, hardcoded, implementation (#startup) groups FWT by month and CWT by week, with
+ * the generic name appearing as:
+ * <tt>[prefix]_[start_millis]_[end_millis]_[write_month]_[write_year]</tt>
  */
 public class DynamoTableTimeManager {
 
@@ -49,12 +51,12 @@ public class DynamoTableTimeManager {
   }
 
   /**
-   * Split the full name into its prefix and start time, essentially the non-inlcusive prefix of
+   * Split the full name into its prefix and start time, essentially the non-inclusive prefix of
    * the table.
    *
    * @param fullTableName full name of the table, in the format described in the
    *                      {@link DynamoTableTimeManager}
-   * @return the non-inlcusive prefix of the table table to search in AWS
+   * @return the non-inclusive prefix of the table for table name AWS table name scanning
    */
   @VisibleForTesting
   static String getPrefixAndStart(String fullTableName) {
@@ -106,12 +108,7 @@ public class DynamoTableTimeManager {
 
   public String getTableName(Instant writeTime, long dataTimestamp) {
     TableTimeInfo info = getTableInfo(writeTime, dataTimestamp);
-    long writeMonth = info.writeTimeRange.getKey().getValue();
-    long writeYear = info.writeTimeRange.getValue();
-    long start = info.dataTimeRange.getStart().toEpochMilli();
-    long end = info.dataTimeRange.getEnd().toEpochMilli();
-    // build the table name
-    return TABLE_NAME_PARTS_JOINER.join(prefix, start, end, writeMonth, writeYear);
+    return DynamoTableNameParts.create(prefix, info).getName();
   }
 
   private TableTimeInfo getTableInfo(Instant writeTime, long dataTimestamp) {
@@ -143,7 +140,7 @@ public class DynamoTableTimeManager {
   }
 
   public class TableTimeInfo {
-    private Pair<Month, Integer> writeTimeRange;
-    private Range<Instant> dataTimeRange;
+    Pair<Month, Integer> writeTimeRange;
+    Range<Instant> dataTimeRange;
   }
 }
