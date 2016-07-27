@@ -20,6 +20,7 @@ import org.junit.experimental.categories.Category;
 
 import java.nio.ByteBuffer;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Executors;
@@ -69,10 +70,12 @@ public class ITKinesisProducerAws {
     assertFalse("Some actions failed: " + failures.getActions(), failures.any());
 
     // verify that the data we wrote is what we read back in
-    List<ByteBuffer> writes = Lists.newArrayList(manager.getEventQueue(streamName))
-                                   .stream()
-                                   .flatMap(list -> list.stream())
-                                   .collect(Collectors.toList());
+    List<ByteBuffer> writes = new ArrayList<>();
+    for(List<ByteBuffer> bbs: manager.getEventQueue(streamName)){
+      for(ByteBuffer bb: bbs){
+        writes.add(bb);
+      }
+    }
     assertEquals(1, writes.size());
 
     // verify the data actually matches the record
