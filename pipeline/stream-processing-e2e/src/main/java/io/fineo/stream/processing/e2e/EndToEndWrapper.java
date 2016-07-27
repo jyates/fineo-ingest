@@ -48,7 +48,7 @@ public class EndToEndWrapper {
 
     // properties to support the build
     Properties props = new Properties();
-    props.setProperty(DynamoTestConfiguratorModule.DYNAMO_URL_FOR_TESTING,
+    props.setProperty(FineoProperties.DYNAMO_URL_FOR_TESTING,
       "http://" + store.host + ":" + store.port);
     props.setProperty(FineoProperties.DYNAMO_INGEST_TABLE_PREFIX, store.ingestTablePrefix);
     props.setProperty(FineoProperties.DYNAMO_SCHEMA_STORE_TABLE, store.schemaTable);
