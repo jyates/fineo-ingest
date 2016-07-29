@@ -1,8 +1,8 @@
 package io.fineo.lambda.e2e.validation;
 
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
-import io.fineo.lambda.e2e.EndToEndTestBuilder;
-import io.fineo.lambda.e2e.EventFormTracker;
+import io.fineo.lambda.e2e.state.EndToEndTestBuilder;
+import io.fineo.lambda.e2e.state.EventFormTracker;
 import io.fineo.lambda.e2e.validation.step.ArchiveValidation;
 import io.fineo.lambda.e2e.validation.step.ErrorStreams;
 import io.fineo.lambda.e2e.validation.step.ValidationStep;

@@ -1,7 +1,7 @@
 package io.fineo.lambda.kinesis;
 
 import com.google.common.util.concurrent.MoreExecutors;
-import io.fineo.lambda.e2e.resources.aws.kinesis.KinesisStreamManager;
+import io.fineo.lambda.e2e.aws.kinesis.KinesisStreamManager;
 import com.google.common.collect.Lists;
 import io.fineo.aws.AwsDependentTests;
 import io.fineo.aws.rule.AwsCredentialResource;
@@ -24,7 +24,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Executors;
-import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;

@@ -10,17 +10,15 @@ import io.fineo.lambda.configure.PropertiesModule;
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import io.fineo.lambda.configure.legacy.StreamType;
 import io.fineo.lambda.configure.util.SingleInstanceModule;
-import io.fineo.lambda.e2e.EndToEndTestBuilder;
-import io.fineo.lambda.e2e.EndToEndTestRunner;
-import io.fineo.lambda.e2e.resources.TestProperties;
-import io.fineo.lambda.e2e.resources.aws.dynamo.DelegateAwsDynamoResource;
-import io.fineo.lambda.e2e.resources.aws.firehose.DelegateFirehoseResource;
-import io.fineo.lambda.e2e.resources.aws.firehose.FirehoseStreams;
-import io.fineo.lambda.e2e.resources.aws.kinesis.KinesisStreamManager;
-import io.fineo.lambda.e2e.resources.aws.lambda.LambdaKinesisConnector;
-import io.fineo.lambda.e2e.resources.aws.manager.AwsResourceManager;
-import io.fineo.lambda.e2e.resources.manager.collector.FileCollector;
-import io.fineo.lambda.e2e.resources.manager.ManagerBuilder;
+import io.fineo.lambda.e2e.state.EndToEndTestBuilder;
+import io.fineo.lambda.e2e.state.EndToEndTestRunner;
+import io.fineo.lambda.e2e.aws.dynamo.DelegateAwsDynamoResource;
+import io.fineo.lambda.e2e.aws.firehose.DelegateFirehoseResource;
+import io.fineo.lambda.e2e.aws.kinesis.KinesisStreamManager;
+import io.fineo.lambda.e2e.aws.lambda.LambdaKinesisConnector;
+import io.fineo.lambda.e2e.aws.manager.AwsResourceManager;
+import io.fineo.lambda.e2e.manager.collector.FileCollector;
+import io.fineo.lambda.e2e.manager.ManagerBuilder;
 import io.fineo.lambda.util.IResourceManager;
 import io.fineo.test.rule.TestOutput;
 import org.junit.After;
@@ -33,7 +31,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
-import static io.fineo.lambda.configure.util.SingleInstanceModule.instanceModule;
 import static java.util.Arrays.asList;
 
 /**
@@ -81,7 +78,7 @@ public class BaseITEndToEndAwsServices {
     managerBuilder.withConnector(connector);
     managerBuilder.withCollector(new FileCollector(output));
     DelegateAwsDynamoResource.addAwsDynamo(managerBuilder);
-    DelegateFirehoseResource.add(managerBuilder);
+    DelegateFirehoseResource.addFirehose(managerBuilder);
     KinesisStreamManager.addKinesis(managerBuilder);
     managerBuilder.withAdditionalModules(getAdditionalModules());
     managerBuilder.withCleanup(cleanup);
@@ -104,9 +101,7 @@ public class BaseITEndToEndAwsServices {
   }
 
   protected List<Module> getAdditionalModules() {
-    return asList(instanceModule(
-      new FirehoseStreams(2 * TestProperties.ONE_MINUTE, "s3",
-        TestProperties.Firehose.S3_BUCKET_NAME)));
+    return asList();
   }
 
   protected Properties setProperties(String uuid) throws IOException {

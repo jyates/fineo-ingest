@@ -15,7 +15,7 @@
   </appender>
   <logger name="io.fineo.lambda" level="TRACE"/>
   <logger name="io.fineo.lambda.e2e.resources.lambda" level="INFO"/>
-  <logger name="io.fineo.lambda.e2e.resources.aws.lambda.LocalLambdaRemoteKinesisConnector"
+  <logger name="io.fineo.lambda.e2e.aws.lambda.LocalLambdaRemoteKinesisConnector"
           level="INFO"/>
   <logger name="org.apache.hadoop.hive.metastore" level="WARN"/>
   <logger name="org.apache.http" level="INFO"/>

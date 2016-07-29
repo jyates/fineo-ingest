@@ -1,7 +1,7 @@
 package io.fineo.lambda.e2e.validation.util;
 
 import com.google.common.collect.Lists;
-import io.fineo.lambda.e2e.EventFormTracker;
+import io.fineo.lambda.e2e.state.EventFormTracker;
 import io.fineo.lambda.util.LambdaTestUtils;
 import io.fineo.lambda.util.IResourceManager;
 import io.fineo.lambda.util.SchemaUtil;

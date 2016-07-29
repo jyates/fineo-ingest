@@ -8,8 +8,8 @@ import io.fineo.etl.spark.util.FieldTranslatorFactory;
 import io.fineo.internal.customer.Metadata;
 import io.fineo.internal.customer.Metric;
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
-import io.fineo.lambda.e2e.E2ETestState;
-import io.fineo.lambda.e2e.EndToEndTestRunner;
+import io.fineo.lambda.e2e.state.E2ETestState;
+import io.fineo.lambda.e2e.state.EndToEndTestRunner;
 import io.fineo.lambda.e2e.ITEndToEndLambdaLocal;
 import io.fineo.lambda.util.LambdaTestUtils;
 import io.fineo.lambda.util.IResourceManager;
@@ -102,7 +102,7 @@ public class ITAvroReadWriteSpark {
     ETLOptions opts = ran.getRight();
     E2ETestState state = ran.getLeft();
 
-    // add a field to the record, run the ingest again
+    // addFirehose a field to the record, run the ingest again
     Map<String, Object> second = new HashMap<>(json);
     second.put(TIMESTAMP_KEY, System.currentTimeMillis() + 1);
     second.put("anotherField", 1);

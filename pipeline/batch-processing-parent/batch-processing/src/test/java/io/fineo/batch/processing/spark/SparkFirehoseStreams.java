@@ -1,6 +1,6 @@
 package io.fineo.batch.processing.spark;
 
-import io.fineo.lambda.e2e.resources.aws.firehose.FirehoseStreams;
+import io.fineo.lambda.e2e.aws.firehose.FirehoseStreams;
 
 import java.util.Map;
 

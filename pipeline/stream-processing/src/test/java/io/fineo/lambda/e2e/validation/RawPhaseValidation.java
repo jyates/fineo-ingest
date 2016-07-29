@@ -1,6 +1,6 @@
 package io.fineo.lambda.e2e.validation;
 
-import io.fineo.lambda.e2e.EndToEndTestBuilder;
+import io.fineo.lambda.e2e.state.EndToEndTestBuilder;
 import io.fineo.lambda.e2e.validation.step.KinesisValidation;
 
 import static io.fineo.etl.FineoProperties.RAW_PREFIX;

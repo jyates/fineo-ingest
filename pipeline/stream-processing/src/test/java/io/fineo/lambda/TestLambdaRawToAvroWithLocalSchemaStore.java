@@ -11,7 +11,7 @@ import io.fineo.lambda.configure.MockOnNullInstanceModule;
 import io.fineo.lambda.configure.NullableNamedInstanceModule;
 import io.fineo.lambda.configure.PropertiesModule;
 import io.fineo.lambda.configure.firehose.FirehoseModule;
-import io.fineo.lambda.e2e.EndToEndTestRunner;
+import io.fineo.lambda.e2e.state.EndToEndTestRunner;
 import io.fineo.lambda.firehose.FirehoseBatchWriter;
 import io.fineo.lambda.handle.LambdaWrapper;
 import io.fineo.lambda.handle.raw.RawRecordToAvroHandler;
@@ -124,7 +124,7 @@ public class TestLambdaRawToAvroWithLocalSchemaStore {
 
   private KinesisEvent createStoreAndSingleEvent(Map<String, Object>[] records)
     throws Exception {
-    // add multiple records to the same event
+    // addFirehose multiple records to the same event
     KinesisEvent event = null;
     for (Map<String, Object> fields : records) {
       if (event == null) {

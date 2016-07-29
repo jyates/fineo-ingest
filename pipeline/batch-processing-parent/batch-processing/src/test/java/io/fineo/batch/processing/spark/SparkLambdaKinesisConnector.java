@@ -1,6 +1,6 @@
 package io.fineo.batch.processing.spark;
 
-import io.fineo.lambda.e2e.resources.aws.lambda.LambdaKinesisConnector;
+import io.fineo.lambda.e2e.aws.lambda.LambdaKinesisConnector;
 import io.fineo.test.rule.TestOutput;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
