@@ -32,8 +32,10 @@ public class DelegateAwsDynamoResource implements IDynamoResource {
 
   @Override
   public void init(Injector injector) {
-    this.dynamo = injector.getInstance(DynamoResource.class);
     this.injector = injector;
+    this.dynamo = injector.getInstance(DynamoResource.class);
+    FutureWaiter waiter = injector.getInstance(FutureWaiter.class);
+    dynamo.setup(waiter);
   }
 
   @Override

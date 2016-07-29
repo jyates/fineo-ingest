@@ -23,7 +23,12 @@ public class DelegateFirehoseResource implements IFirehoseResource {
 
   @Override
   public void init(Injector injector) {
+    FutureWaiter future = injector.getInstance(FutureWaiter.class);
     this.firehose = injector.getInstance(FirehoseResource.class);
+    // setup the firehose connections
+    for (String stage : TestProperties.Lambda.STAGES) {
+      firehose.createFirehoses(stage, future);
+    }
   }
 
   @Override

@@ -7,6 +7,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 
+import static org.junit.Assert.assertTrue;
+
 public class FileCollector implements OutputCollector {
 
   private final File dir;
@@ -26,9 +28,12 @@ public class FileCollector implements OutputCollector {
 
   @Override
   public OutputStream get(String name) throws IOException {
+    if(!dir.exists()){
+      assertTrue("Could not make output directory: "+dir, dir.mkdirs());
+    }
     File file = new File(dir, name);
     while(file.exists()){
-      file = new File(file.getParent(), file.getName()+"1");
+      file = new File(dir, file.getName()+"_1");
     }
     return new FileOutputStream(file);
   }

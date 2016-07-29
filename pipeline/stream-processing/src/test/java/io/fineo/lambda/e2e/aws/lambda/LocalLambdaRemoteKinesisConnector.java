@@ -1,5 +1,6 @@
 package io.fineo.lambda.e2e.aws.lambda;
 
+import com.amazonaws.AbortedException;
 import com.google.common.util.concurrent.MoreExecutors;
 import io.fineo.lambda.e2e.util.IngestUtil;
 import io.fineo.lambda.e2e.manager.IKinesisStreams;
@@ -46,7 +47,7 @@ public class LocalLambdaRemoteKinesisConnector extends LambdaKinesisConnector<In
     this.executor = MoreExecutors.getExitingExecutorService(
       // Same as Executors#newSingleThreadExecutor, but we need a threadpoolexecutor, so copy/paste
       new ThreadPoolExecutor(1, 1,
-      0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>()),
+        0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>()),
       // addFirehose timeouts for the thread to complete
       120, TimeUnit.SECONDS);
 
@@ -56,35 +57,41 @@ public class LocalLambdaRemoteKinesisConnector extends LambdaKinesisConnector<In
     }
 
     executor.execute(() -> {
-      Map<String, BlockingQueue<List<ByteBuffer>>> streams = new HashMap<>();
-      for (String stream : mapping.keySet()) {
-        streams.put(stream, this.kinesis.getEventQueue(stream));
-      }
+      try {
+        Map<String, BlockingQueue<List<ByteBuffer>>> streams = new HashMap<>();
+        for (String stream : mapping.keySet()) {
+          streams.put(stream, this.kinesis.getEventQueue(stream));
+        }
 
-      while (!done) {
-        for (Map.Entry<String, List<IngestUtil.Lambda>> stream : mapping.entrySet()) {
-          String streamName = stream.getKey();
-          LOG.debug("Reading from stream -> " + streamName);
-          BlockingQueue<List<ByteBuffer>> queue = streams.get(streamName);
-          List<ByteBuffer> data = queue.poll();
-          // while there is more data to read from the queue, read it
-          while (data != null && !done) {
-            for (IngestUtil.Lambda method : stream.getValue()) {
-              LOG.info("--- Starting Method Call ---");
-              Instant start = Instant.now();
-              method.call(data);
-              Duration done = Duration.between(start, Instant.now());
-              LOG.info("---> Duration: " + done.toMillis() + " ms for " + method);
+        while (!done) {
+          for (Map.Entry<String, List<IngestUtil.Lambda>> stream : mapping.entrySet()) {
+            String streamName = stream.getKey();
+            LOG.debug("Reading from stream -> " + streamName);
+            BlockingQueue<List<ByteBuffer>> queue = streams.get(streamName);
+            List<ByteBuffer> data = queue.poll();
+            // while there is more data to read from the queue, read it
+            while (data != null && !done) {
+              for (IngestUtil.Lambda method : stream.getValue()) {
+                LOG.info("--- Starting Method Call ---");
+                Instant start = Instant.now();
+                method.call(data);
+                Duration done = Duration.between(start, Instant.now());
+                LOG.info("---> Duration: " + done.toMillis() + " ms for " + method);
+              }
+              data = queue.poll();
             }
-            data = queue.poll();
-          }
-          if(done){
-            break;
+            if (done) {
+              break;
+            }
           }
         }
+      } catch (AbortedException e) {
+        LOG.warn("Aborted while processing kinesis reads. This can happen when we stop the "
+                 + "executor. Reason: " + e.getMessage());
+      } finally {
+        LOG.info("Adding marker that CONNECT is complete");
+        DONE_QUEUE.add(true);
       }
-      LOG.info("Adding marker that CONNECT is complete");
-      DONE_QUEUE.add(true);
     });
   }
 
