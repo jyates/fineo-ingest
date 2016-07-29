@@ -13,6 +13,8 @@ import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -24,7 +26,7 @@ import static org.junit.Assert.assertEquals;
 /**
  * Wrapper around mock access to {@link AvroToDynamoWriter}
  */
-public class MockAvroToDynamo implements IDynamoResource{
+public class MockAvroToDynamo implements IDynamoResource {
 
   private static final Logger LOG = LoggerFactory.getLogger(MockAvroToDynamo.class);
 
@@ -56,8 +58,13 @@ public class MockAvroToDynamo implements IDynamoResource{
   }
 
   @Override
-  public void copyStoreTables(OutputCollector dynamo) {
-    // noop
+  public void copyStoreTables(OutputCollector dynamo) throws IOException {
+    try (OutputStream out = dynamo.get("writes")) {
+      int i = 0;
+      for (GenericRecord record : dynamoWrites) {
+        out.write(((i++) + ": " + record.toString()).getBytes());
+      }
+    }
   }
 
 
