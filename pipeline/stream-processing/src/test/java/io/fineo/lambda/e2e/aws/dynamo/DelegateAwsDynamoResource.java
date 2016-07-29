@@ -4,12 +4,11 @@ import com.google.inject.Injector;
 import io.fineo.etl.FineoProperties;
 import io.fineo.lambda.configure.dynamo.DynamoModule;
 import io.fineo.lambda.configure.dynamo.DynamoRegionConfigurator;
-import io.fineo.lambda.configure.util.InstanceToNamed;
 import io.fineo.lambda.dynamo.DynamoTestConfiguratorModule;
 import io.fineo.lambda.dynamo.avro.AvroToDynamoWriter;
-import io.fineo.lambda.e2e.manager.collector.OutputCollector;
 import io.fineo.lambda.e2e.manager.IDynamoResource;
 import io.fineo.lambda.e2e.manager.ManagerBuilder;
+import io.fineo.lambda.e2e.manager.collector.OutputCollector;
 import io.fineo.lambda.util.run.FutureWaiter;
 import io.fineo.schema.avro.RecordMetadata;
 import io.fineo.schema.store.SchemaStore;
@@ -19,7 +18,9 @@ import java.util.List;
 import java.util.Map;
 
 import static com.google.common.collect.Lists.newArrayList;
+import static io.fineo.lambda.configure.util.InstanceToNamed.property;
 import static io.fineo.lambda.e2e.validation.util.ValidationUtils.verifyRecordMatchesJson;
+import static java.lang.String.format;
 import static org.junit.Assert.assertEquals;
 
 /**
@@ -64,17 +65,21 @@ public class DelegateAwsDynamoResource implements IDynamoResource {
     return injector.getInstance(SchemaStore.class);
   }
 
-  public static void addLocalDynamo(ManagerBuilder builder, String url) {
+  public static void addLocalDynamo(ManagerBuilder builder, String host, int port,
+    String ingestTablePrefix) {
     builder.withDynamo(new DelegateAwsDynamoResource(),
       new DynamoModule(),
       new DynamoTestConfiguratorModule(),
-      InstanceToNamed.property(FineoProperties.DYNAMO_URL_FOR_TESTING, url));
+      property(FineoProperties.DYNAMO_READ_LIMIT, 1),
+      property(FineoProperties.DYNAMO_WRITE_LIMIT, 1),
+      property(FineoProperties.DYNAMO_URL_FOR_TESTING, format("http://%s:$s", host, port)),
+      property(FineoProperties.DYNAMO_INGEST_TABLE_PREFIX, ingestTablePrefix));
   }
 
-  public static void addAwsDynamo(ManagerBuilder builder){
+  public static void addAwsDynamo(ManagerBuilder builder) {
     builder.withDynamo(new DelegateAwsDynamoResource(),
       new DynamoModule(),
       new DynamoRegionConfigurator(),
-      InstanceToNamed.property(FineoProperties.DYNAMO_REGION, builder.getRegion()));
+      property(FineoProperties.DYNAMO_REGION, builder.getRegion()));
   }
 }

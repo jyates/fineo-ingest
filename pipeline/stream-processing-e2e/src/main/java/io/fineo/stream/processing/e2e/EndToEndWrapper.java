@@ -26,7 +26,7 @@ public class EndToEndWrapper {
     LocalOptions local = new LocalOptions();
     FirehoseOutput output = new FirehoseOutput();
     JCommander jc = new JCommander(new Object[]{local, json, output});
-    jc.addCommand("local", new InMemoryExecCommand(output));
+    jc.addCommand("local", new InMemoryExecCommand(local, output));
 
     jc.parse(args);
 

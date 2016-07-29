@@ -14,6 +14,7 @@ import io.fineo.schema.store.SchemaStore;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import static io.fineo.lambda.configure.util.SingleInstanceModule.instanceModule;
 import static java.util.Arrays.asList;
@@ -26,7 +27,7 @@ public class ManagerBuilder {
   private Module awsCredentials;
   private LambdaKinesisConnector connector;
   private IDynamoResource dynamo;
-  private SchemaStore store;
+  private Optional<SchemaStore> store;
   private IFirehoseResource firehose;
   private IKinesisStreams streams;
   private List<Module> additionalModules = new ArrayList<>();
@@ -76,12 +77,12 @@ public class ManagerBuilder {
   }
 
   public ManagerBuilder withStore(SchemaStore store) {
-    this.store = store;
+    this.store = Optional.ofNullable(store);
     return this;
   }
 
   public SchemaStore getStore() {
-    return store;
+    return store.get();
   }
 
   public ManagerBuilder withFirehose(IFirehoseResource firehose, Module... supplementalModules) {
@@ -107,7 +108,11 @@ public class ManagerBuilder {
       modules.add(awsCredentials);
     }
     addIfNotNull(dynamo, IDynamoResource.class, modules);
-    addIfNotNull(store, SchemaStore.class, modules, new SchemaStoreModule());
+    if(store == null) {
+      addIfNotNull(null, SchemaStore.class, modules, new SchemaStoreModule());
+    }else if(store.isPresent()){
+      addIfNotNull(store.get(), SchemaStore.class, modules);
+    }
     addIfNotNull(firehose, IFirehoseResource.class, modules);
     addIfNotNull(streams, IKinesisStreams.class, modules);
     addIfNotNull(connector, LambdaKinesisConnector.class, modules);

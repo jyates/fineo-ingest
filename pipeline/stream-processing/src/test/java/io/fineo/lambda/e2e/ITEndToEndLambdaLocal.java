@@ -180,7 +180,7 @@ public class ITEndToEndLambdaLocal {
     }
   }
 
-  private static Module getMockFirehoses(IFirehoseResource firehoses, String stagePrefix) {
+  public static Module getMockFirehoses(IFirehoseResource firehoses, String stagePrefix) {
     NamedProvider module = new NamedProvider();
     module.add(FirehoseModule.FIREHOSE_ARCHIVE_STREAM, FirehoseBatchWriter.class,
       () -> firehoses.getWriter(stagePrefix, StreamType.ARCHIVE));
