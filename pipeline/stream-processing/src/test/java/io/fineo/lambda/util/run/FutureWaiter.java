@@ -49,9 +49,14 @@ public class FutureWaiter {
         }
       });
     }
-    latch.await();
-    if (exception.get() != null) {
-      throw new RuntimeException(exception.get());
+    try {
+      latch.await();
+      if (exception.get() != null) {
+        throw new RuntimeException(exception.get());
+      }
+    } finally {
+      this.futures.clear();
+      this.exception.set(null);
     }
   }
 

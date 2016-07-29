@@ -5,7 +5,7 @@ import io.fineo.internal.customer.Metadata;
 import io.fineo.internal.customer.Metric;
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import io.fineo.lambda.e2e.validation.EndToEndValidator;
-import io.fineo.lambda.util.ResourceManager;
+import io.fineo.lambda.util.IResourceManager;
 import io.fineo.schema.avro.AvroSchemaEncoder;
 import io.fineo.schema.avro.SchemaTestUtils;
 import io.fineo.schema.store.SchemaBuilder;
@@ -26,13 +26,13 @@ public class EndToEndTestRunner {
   private static final Log LOG = LogFactory.getLog(EndToEndTestRunner.class);
 
   private final LambdaClientProperties props;
-  private final ResourceManager manager;
+  private final IResourceManager manager;
   private final EndToEndValidator validator;
   private final EndtoEndSuccessStatus status;
   private EventFormTracker progress;
 
-  public EndToEndTestRunner(LambdaClientProperties props, ResourceManager manager, EndToEndValidator validator)
-    throws Exception {
+  public EndToEndTestRunner(LambdaClientProperties props, IResourceManager manager,
+    EndToEndValidator validator) throws Exception {
     this.props = props;
     this.manager = manager;
     this.validator = validator;
@@ -102,7 +102,7 @@ public class EndToEndTestRunner {
 
 
   public void setup() throws Exception {
-    this.manager.setup(props);
+    this.manager.setup();
     this.progress = new EventFormTracker();
   }
 
@@ -138,5 +138,9 @@ public class EndToEndTestRunner {
 
   public EventFormTracker getProgress() {
     return this.progress;
+  }
+
+  public IResourceManager getManager() {
+    return manager;
   }
 }

@@ -15,7 +15,7 @@ import io.fineo.lambda.e2e.validation.PhaseValidationBuilder;
 import io.fineo.lambda.e2e.validation.step.ValidationStep;
 import io.fineo.lambda.e2e.validation.util.ValidationUtils;
 import io.fineo.lambda.util.LambdaTestUtils;
-import io.fineo.lambda.util.ResourceManager;
+import io.fineo.lambda.util.IResourceManager;
 import io.fineo.spark.rule.LocalSparkRule;
 import io.fineo.test.rule.TestOutput;
 import org.junit.ClassRule;
@@ -103,7 +103,7 @@ public class ITBatchProcessingWithLocalSpark extends BaseITEndToEndAwsServices {
     }
 
     @Override
-    public void validate(ResourceManager manager, LambdaClientProperties props,
+    public void validate(IResourceManager manager, LambdaClientProperties props,
       EventFormTracker progress) throws IOException, InterruptedException {
       String stream = props.getFirehoseStreamName(STAGED_PREFIX, ARCHIVE);
       ValidationUtils.verifyAvroRecordsFromStream(manager, progress, stream,

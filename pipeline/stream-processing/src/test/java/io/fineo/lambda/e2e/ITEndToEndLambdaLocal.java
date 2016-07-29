@@ -2,12 +2,12 @@ package io.fineo.lambda.e2e;
 
 import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
 import com.google.inject.AbstractModule;
+import com.google.inject.Binder;
 import com.google.inject.Inject;
 import com.google.inject.Module;
 import com.google.inject.Provider;
 import com.google.inject.Provides;
 import com.google.inject.name.Names;
-import io.fineo.etl.FineoProperties;
 import io.fineo.lambda.configure.PropertiesModule;
 import io.fineo.lambda.configure.firehose.FirehoseModule;
 import io.fineo.lambda.configure.legacy.StreamType;
@@ -15,10 +15,14 @@ import io.fineo.lambda.configure.util.SingleInstanceModule;
 import io.fineo.lambda.dynamo.avro.AvroToDynamoWriter;
 import io.fineo.lambda.e2e.resources.IngestUtil;
 import io.fineo.lambda.e2e.resources.aws.lambda.LambdaKinesisConnector;
-import io.fineo.lambda.e2e.resources.kinesis.IKinesisStreams;
-import io.fineo.lambda.e2e.resources.kinesis.MockKinesisStreams;
-import io.fineo.lambda.e2e.resources.lambda.LocalLambdaLocalKinesisConnector;
-import io.fineo.lambda.e2e.resources.manager.MockResourceManager;
+import io.fineo.lambda.e2e.resources.local.MockAvroToDynamo;
+import io.fineo.lambda.e2e.resources.local.LocalFirehoseStreams;
+import io.fineo.lambda.e2e.resources.manager.IKinesisStreams;
+import io.fineo.lambda.e2e.resources.local.MockKinesisStreams;
+import io.fineo.lambda.e2e.resources.local.LocalLambdaLocalKinesisConnector;
+import io.fineo.lambda.e2e.resources.manager.IDynamoResource;
+import io.fineo.lambda.e2e.resources.manager.IFirehoseResource;
+import io.fineo.lambda.e2e.resources.manager.ManagerBuilder;
 import io.fineo.lambda.firehose.FirehoseBatchWriter;
 import io.fineo.lambda.handle.LambdaWrapper;
 import io.fineo.lambda.handle.raw.RawRecordToAvroHandler;
@@ -37,7 +41,6 @@ import org.schemarepo.ValidatorFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,7 +53,6 @@ import static io.fineo.etl.FineoProperties.STAGED_PREFIX;
 import static io.fineo.lambda.configure.legacy.LambdaClientProperties
   .getFirehoseStreamPropertyVisibleForTesting;
 import static io.fineo.lambda.configure.legacy.StreamType.ARCHIVE;
-import static io.fineo.lambda.configure.util.SingleInstanceModule.instanceModule;
 
 /**
  * Test the end-to-end workflow of the lambda architecture.
@@ -81,6 +83,7 @@ public class ITEndToEndLambdaLocal {
     Map<String, Object> second = new HashMap<>(event);
     second.put("anotherField", 1);
     run(state, second);
+    state.getRunner().cleanup();
   }
 
   public static E2ETestState runTest() throws Exception {
@@ -98,6 +101,12 @@ public class ITEndToEndLambdaLocal {
   }
 
   public static E2ETestState prepareTest(SchemaStore store) throws Exception {
+    ManagerBuilder builder = new ManagerBuilder();
+    builder.withStore(store);
+    return prepareTest(builder);
+  }
+
+  public static E2ETestState prepareTest(ManagerBuilder builder) throws Exception {
     Properties props = new Properties();
     // firehose outputs
     props
@@ -111,9 +120,22 @@ public class ITEndToEndLambdaLocal {
     LambdaKinesisConnector connector = new LocalLambdaLocalKinesisConnector();
 
     MockKinesisStreams streams = new MockKinesisStreams();
-    MockResourceManager manager = new MockResourceManager(connector, store, streams);
-    LambdaWrapper<KinesisEvent, RawRecordToAvroHandler> start = ingestStage(props, store, manager);
-    LambdaWrapper<KinesisEvent, AvroToStorageHandler> storage = storageStage(props, store, manager);
+    builder.withStreams(streams);
+    MockAvroToDynamo dynamo = new MockAvroToDynamo();
+    builder.withDynamo(dynamo);
+    LocalFirehoseStreams firehoses = new LocalFirehoseStreams();
+    builder.withFirehose(firehoses);
+    builder.withConnector(connector);
+    List<Module> baseModules = getBaseModules(props, dynamo, streams);
+    // start
+    List<Module> rawStage = newArrayList(baseModules);
+    rawStage.add(getMockFirehoses(firehoses, RAW_PREFIX));
+    LambdaWrapper<KinesisEvent, RawRecordToAvroHandler> start = new RawStageWrapper(rawStage);
+    // storage
+    List<Module> writeStage = newArrayList(baseModules);
+    writeStage.add(getMockFirehoses(firehoses, STAGED_PREFIX));
+    LambdaWrapper<KinesisEvent, AvroToStorageHandler> storage =
+      new AvroToStorageWrapper(writeStage);
 
     Map<String, List<IngestUtil.Lambda>> stageMap =
       IngestUtil.newBuilder()
@@ -122,44 +144,55 @@ public class ITEndToEndLambdaLocal {
                 .build();
     connector.configure(stageMap, INGEST_CONNECTOR);
 
-    EndToEndTestRunner runner = new EndToEndTestBuilder(manager, props).validateAll().build();
-    return new E2ETestState(runner, manager);
+    EndToEndTestRunner runner = new EndToEndTestBuilder(builder, props).validateAll().build();
+    addStoreModule(builder, runner, rawStage, writeStage);
+    return new E2ETestState(runner);
   }
 
-  public static LambdaWrapper<KinesisEvent, RawRecordToAvroHandler> ingestStage(Properties
-    props, SchemaStore store, MockResourceManager manager) throws IOException {
+  private static void addStoreModule(ManagerBuilder builder, EndToEndTestRunner runner,
+    List<Module>... stages) {
+    // kind of a hack around the schema store. Generally, we will have the schema store passed
+    // into the builder. However, in some cases, we actually want an external schema store, but
+    // don't want to deal with instantiating it and then passing it in, so we lazily load it from
+    // the runner's manager. This has to happen _after_ the runner calls manager#setup so things
+    // are initialized
+    Module store;
+    if (builder.getStore() != null) {
+      store = new SingleInstanceModule<>(builder.getStore(), SchemaStore.class);
+    } else {
+      store = new Module() {
+        @Override
+        public void configure(Binder binder) {
+        }
+
+        @Provides
+        public SchemaStore store() {
+          return runner.getManager().getStore();
+        }
+      };
+    }
+
+    for (List<Module> stage : stages) {
+      stage.add(store);
+    }
+  }
+
+  private static Module getMockFirehoses(IFirehoseResource firehoses, String stagePrefix) {
     NamedProvider module = new NamedProvider();
     module.add(FirehoseModule.FIREHOSE_ARCHIVE_STREAM, FirehoseBatchWriter.class,
-      () -> manager.getWriter(RAW_PREFIX, StreamType.ARCHIVE));
+      () -> firehoses.getWriter(stagePrefix, StreamType.ARCHIVE));
     module.add(FirehoseModule.FIREHOSE_COMMIT_ERROR_STREAM, FirehoseBatchWriter.class,
-      () -> manager.getWriter(RAW_PREFIX, StreamType.COMMIT_ERROR));
+      () -> firehoses.getWriter(stagePrefix, StreamType.COMMIT_ERROR));
     module.add(FirehoseModule.FIREHOSE_MALFORMED_RECORDS_STREAM, FirehoseBatchWriter.class,
-      () -> manager.getWriter(RAW_PREFIX, StreamType.PROCESSING_ERROR));
-    List<Module> modules = getBaseModules(props, store, manager);
-    modules.add(module);
-    return new RawStageWrapper(modules);
+      () -> firehoses.getWriter(stagePrefix, StreamType.PROCESSING_ERROR));
+    return module;
   }
 
-  public static LambdaWrapper<KinesisEvent, AvroToStorageHandler> storageStage(Properties
-    props, SchemaStore store, MockResourceManager manager) throws IOException {
-    NamedProvider module = new NamedProvider();
-    module.add(FirehoseModule.FIREHOSE_ARCHIVE_STREAM, FirehoseBatchWriter.class,
-      () -> manager.getWriter(FineoProperties.STAGED_PREFIX, StreamType.ARCHIVE));
-    module.add(FirehoseModule.FIREHOSE_COMMIT_ERROR_STREAM, FirehoseBatchWriter.class,
-      () -> manager.getWriter(FineoProperties.STAGED_PREFIX, StreamType.COMMIT_ERROR));
-    module.add(FirehoseModule.FIREHOSE_MALFORMED_RECORDS_STREAM, FirehoseBatchWriter.class,
-      () -> manager.getWriter(FineoProperties.STAGED_PREFIX, StreamType.PROCESSING_ERROR));
-    List<Module> modules = getBaseModules(props, store, manager);
-    modules.add(module);
-    return new AvroToStorageWrapper(modules);
-  }
-
-  private static List<Module> getBaseModules(Properties
-    props, SchemaStore store, MockResourceManager manager) {
+  private static List<Module> getBaseModules(Properties props,
+    MockAvroToDynamo dynamo, MockKinesisStreams streams) {
     return newArrayList(new PropertiesModule(props),
-      instanceModule(store),
-      new SingleInstanceModule<>(manager.getStreams(), IKinesisStreams.class),
-      instanceModule(manager),
+      new SingleInstanceModule<>(dynamo, IDynamoResource.class),
+      new SingleInstanceModule<>(streams, IKinesisStreams.class),
       new LazyMockComponents());
   }
 
@@ -176,8 +209,8 @@ public class ITEndToEndLambdaLocal {
 
     @Provides
     @Inject
-    public AvroToDynamoWriter dynamo(MockResourceManager manager) {
-      return manager.getDynamo();
+    public AvroToDynamoWriter dynamo(IDynamoResource dynamo) {
+      return dynamo.getWriter();
     }
   }
 

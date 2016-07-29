@@ -1,21 +1,21 @@
 package io.fineo.lambda.e2e;
 
-import io.fineo.lambda.util.ResourceManager;
+import io.fineo.lambda.util.IResourceManager;
 
 public class E2ETestState {
   private EndToEndTestRunner runner;
-  private ResourceManager resources;
+  private IResourceManager resources;
 
-  public E2ETestState(EndToEndTestRunner runner, ResourceManager resources) {
+  public E2ETestState(EndToEndTestRunner runner) {
     this.runner = runner;
-    this.resources = resources;
+    this.resources = runner.getManager();
   }
 
   public EndToEndTestRunner getRunner() {
     return runner;
   }
 
-  public ResourceManager getResources() {
+  public IResourceManager getResources() {
     return resources;
   }
 }

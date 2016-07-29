@@ -10,7 +10,7 @@ import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import io.fineo.lambda.e2e.resources.TestProperties;
 import io.fineo.lambda.e2e.resources.aws.lambda.LambdaKinesisConnector;
-import io.fineo.lambda.e2e.resources.kinesis.IKinesisStreams;
+import io.fineo.lambda.e2e.resources.manager.IKinesisStreams;
 import io.fineo.lambda.util.run.FutureWaiter;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;

@@ -14,10 +14,13 @@ import com.amazonaws.services.kinesis.model.Record;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.AbstractIterator;
 import com.google.inject.Inject;
+import com.google.inject.Injector;
 import com.google.inject.name.Named;
+import io.fineo.lambda.e2e.resources.TestProperties;
 import io.fineo.lambda.e2e.resources.aws.AwsResource;
-import io.fineo.lambda.e2e.resources.kinesis.ClosableSupplier;
-import io.fineo.lambda.e2e.resources.kinesis.IKinesisStreams;
+import io.fineo.lambda.e2e.resources.ClosableSupplier;
+import io.fineo.lambda.e2e.resources.manager.IKinesisStreams;
+import io.fineo.lambda.e2e.resources.manager.ManagerBuilder;
 import io.fineo.lambda.kinesis.IKinesisProducer;
 import io.fineo.lambda.kinesis.KinesisProducer;
 import io.fineo.lambda.util.run.FutureWaiter;
@@ -35,12 +38,16 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import static io.fineo.lambda.configure.util.InstanceToNamed.property;
+
 /**
  * Manage interactions with Kinesis streams
  */
 public class KinesisStreamManager implements AwsResource, IKinesisStreams {
 
   private static final Logger LOG = LoggerFactory.getLogger(KinesisStreamManager.class);
+  private static final String AWS_REGION_KINESIS = "aws.region";
+  private static final String AWS_KINESIS_SHARD_COUNT_KINESIS = "aws.kinesis.shard.count";
   private final List<String> streams = new ArrayList<>();
   private final int kinesisRetries = 3;
 
@@ -54,8 +61,8 @@ public class KinesisStreamManager implements AwsResource, IKinesisStreams {
 
   @Inject
   public KinesisStreamManager(AWSCredentialsProvider provider,
-    ResultWaiter.ResultWaiterFactory waiter, @Named("aws.region") String region,
-    @Named("aws.kinesis.shard.count") int shardCount) {
+    ResultWaiter.ResultWaiterFactory waiter, @Named(AWS_REGION_KINESIS) String region,
+    @Named(AWS_KINESIS_SHARD_COUNT_KINESIS) int shardCount) {
     this.credentials = provider;
     this.waiter = waiter;
     this.region = region;
@@ -89,6 +96,11 @@ public class KinesisStreamManager implements AwsResource, IKinesisStreams {
     AmazonKinesisAsyncClient client = new AmazonKinesisAsyncClient(credentials);
     client.setRegion(RegionUtils.getRegion(region));
     return client;
+  }
+
+  @Override
+  public void init(Injector injector) {
+    //noop
   }
 
   @Override
@@ -256,5 +268,10 @@ public class KinesisStreamManager implements AwsResource, IKinesisStreams {
 
   public AmazonKinesisAsyncClient getKinesis() {
     return this.kinesis;
+  }
+
+  public static void addKinesis(ManagerBuilder builder) {
+    builder.withStreams(new DelegateAwsKinesisStreamManager(),  property(AWS_REGION_KINESIS,
+      builder.getRegion()),  property(AWS_KINESIS_SHARD_COUNT_KINESIS, TestProperties.Kinesis.SHARD_COUNT));
   }
 }

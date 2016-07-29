@@ -1,11 +1,11 @@
 package io.fineo.lambda.e2e.resources.aws.lambda;
 
 import io.fineo.lambda.e2e.resources.aws.AwsResource;
-import io.fineo.lambda.e2e.resources.kinesis.IKinesisStreams;
+import io.fineo.lambda.e2e.resources.manager.IKinesisStreams;
+import io.fineo.lambda.util.run.FutureWaiter;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
@@ -40,6 +40,6 @@ public abstract class LambdaKinesisConnector<T> implements AwsResource {
     return this.kinesis.getEventQueue(streamName);
   }
 
-  public void reset() {
+  public void cleanup(FutureWaiter future){
   }
 }

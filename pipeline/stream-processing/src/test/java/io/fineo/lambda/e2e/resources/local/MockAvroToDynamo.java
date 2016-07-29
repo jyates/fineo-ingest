@@ -1,7 +1,11 @@
-package io.fineo.lambda.e2e.resources.dynamo;
+package io.fineo.lambda.e2e.resources.local;
 
+import com.google.inject.Injector;
 import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.lambda.dynamo.avro.AvroToDynamoWriter;
+import io.fineo.lambda.e2e.resources.manager.collector.OutputCollector;
+import io.fineo.lambda.e2e.resources.manager.IDynamoResource;
+import io.fineo.lambda.util.run.FutureWaiter;
 import io.fineo.schema.avro.RecordMetadata;
 import io.fineo.schema.store.SchemaStore;
 import org.apache.avro.generic.GenericRecord;
@@ -20,15 +24,17 @@ import static org.junit.Assert.assertEquals;
 /**
  * Wrapper around mock access to {@link AvroToDynamoWriter}
  */
-public class MockAvroToDynamo {
+public class MockAvroToDynamo implements IDynamoResource{
 
   private static final Logger LOG = LoggerFactory.getLogger(MockAvroToDynamo.class);
-  private final AvroToDynamoWriter dynamo;
-  private final List<GenericRecord> dynamoWrites = new ArrayList<>();
-  private final SchemaStore store;
 
-  public MockAvroToDynamo(SchemaStore store) {
-    this.store = store;
+  private final List<GenericRecord> dynamoWrites = new ArrayList<>();
+  private AvroToDynamoWriter dynamo;
+  private SchemaStore store;
+
+  @Override
+  public void init(Injector injector) {
+    this.store = injector.getInstance(SchemaStore.class);
     this.dynamo = Mockito.mock(AvroToDynamoWriter.class);
     Mockito.doAnswer(invocationOnMock -> {
       GenericRecord record = (GenericRecord) invocationOnMock.getArguments()[0];
@@ -39,16 +45,24 @@ public class MockAvroToDynamo {
     Mockito.when(dynamo.flush()).thenReturn(new MultiWriteFailures(Collections.emptyList()));
   }
 
-  public void cleanup() {
-    this.dynamoWrites.clear();
+  public AvroToDynamoWriter getWriter() {
+    return dynamo;
   }
 
-  public void verifyWrites(RecordMetadata metadata, Map<String, Object> json) {
+  @Override
+  public void verify(RecordMetadata metadata, Map<String, Object> json) {
     assertEquals("Got wrong number of writes: " + dynamoWrites, 1, dynamoWrites.size());
     verifyRecordMatchesJson(store, json, dynamoWrites.get(0));
   }
 
-  public AvroToDynamoWriter getWriter() {
-    return dynamo;
+  @Override
+  public void copyStoreTables(OutputCollector dynamo) {
+    // noop
+  }
+
+
+  @Override
+  public void cleanup(FutureWaiter waiter) {
+    this.dynamoWrites.clear();
   }
 }

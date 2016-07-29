@@ -1,14 +1,14 @@
 package io.fineo.lambda.e2e.resources;
 
+import io.fineo.lambda.e2e.resources.manager.collector.OutputCollector;
+
 import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
 import java.util.Collection;
-import java.util.List;
 import java.util.function.Supplier;
 
 /**
@@ -16,12 +16,11 @@ import java.util.function.Supplier;
  */
 public class ResourceUtils {
 
-  public static void writeStream(String fileName, File directory,
+  public static void writeStream(String fileName, OutputCollector directory,
     Supplier<Collection<ByteBuffer>> dataSupplier) throws IOException {
-    File file = new File(directory, fileName);
+    OutputStream stream = directory.get(fileName);
     Collection<ByteBuffer> writes = dataSupplier.get();
-    WritableByteChannel out = Channels.newChannel(new BufferedOutputStream(new FileOutputStream
-      (file)));
+    WritableByteChannel out = Channels.newChannel(new BufferedOutputStream(stream));
     for (ByteBuffer data : writes) {
       out.write(data);
     }

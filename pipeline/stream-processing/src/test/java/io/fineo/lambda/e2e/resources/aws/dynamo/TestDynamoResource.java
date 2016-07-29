@@ -17,6 +17,7 @@ import io.fineo.lambda.dynamo.DynamoTableTimeManager;
 import io.fineo.lambda.dynamo.Schema;
 import io.fineo.lambda.dynamo.rule.AwsDynamoResource;
 import io.fineo.lambda.dynamo.rule.AwsDynamoSchemaTablesResource;
+import io.fineo.lambda.e2e.resources.manager.collector.FileCollector;
 import io.fineo.lambda.util.run.FutureWaiter;
 import io.fineo.lambda.util.run.ResultWaiter;
 import io.fineo.schema.store.SchemaStore;
@@ -28,7 +29,6 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
-import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -85,8 +85,8 @@ public class TestDynamoResource {
     client.putItem(name, item);
 
     // now write the data to a file
-    File out = output.newFolder("dynamo");
-    dynamo.copyStoreTables(out);
-    LOG.info("data is at: " + out);
+    FileCollector collector = new FileCollector(output);
+    dynamo.copyStoreTables(collector.getNextLayer("dynamo"));
+    LOG.info("data is at: " + collector.getRoot());
   }
 }

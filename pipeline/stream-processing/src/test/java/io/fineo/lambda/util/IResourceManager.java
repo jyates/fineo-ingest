@@ -1,6 +1,5 @@
 package io.fineo.lambda.util;
 
-import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import io.fineo.lambda.e2e.EndtoEndSuccessStatus;
 import io.fineo.schema.avro.RecordMetadata;
 import io.fineo.schema.store.SchemaStore;
@@ -13,8 +12,8 @@ import java.util.concurrent.BlockingQueue;
 /**
  *
  */
-public interface ResourceManager {
-  void setup(LambdaClientProperties props) throws Exception;
+public interface IResourceManager {
+  void setup() throws Exception;
 
   byte[] send(Map<String, Object> json) throws Exception;
 

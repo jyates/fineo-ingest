@@ -12,7 +12,7 @@ import io.fineo.lambda.e2e.E2ETestState;
 import io.fineo.lambda.e2e.EndToEndTestRunner;
 import io.fineo.lambda.e2e.ITEndToEndLambdaLocal;
 import io.fineo.lambda.util.LambdaTestUtils;
-import io.fineo.lambda.util.ResourceManager;
+import io.fineo.lambda.util.IResourceManager;
 import io.fineo.schema.store.SchemaStore;
 import io.fineo.spark.rule.LocalSparkRule;
 import io.fineo.test.rule.TestOutput;
@@ -460,12 +460,12 @@ public class ITAvroReadWriteSpark {
 
     LambdaClientProperties props = state.getRunner().getProps();
     String stream = props.getFirehoseStreamName(STAGED_PREFIX, ARCHIVE);
-    ResourceManager resources = state.getResources();
+    IResourceManager resources = state.getResources();
     writeStreamToFile(resources, stream, file);
     writeStreamToFile(resources, stream, file2);
   }
 
-  private void writeStreamToFile(ResourceManager resources, String stream, File file)
+  private void writeStreamToFile(IResourceManager resources, String stream, File file)
     throws IOException {
     FileOutputStream fout = new FileOutputStream(file);
     FileChannel channel = fout.getChannel();

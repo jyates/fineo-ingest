@@ -26,11 +26,10 @@ import io.fineo.lambda.e2e.resources.ResourceUtils;
 import io.fineo.lambda.e2e.resources.TestProperties;
 import io.fineo.lambda.e2e.resources.aws.AwsResource;
 import io.fineo.lambda.e2e.resources.aws.S3Resource;
+import io.fineo.lambda.e2e.resources.manager.collector.OutputCollector;
 import io.fineo.lambda.util.run.FutureWaiter;
 import io.fineo.lambda.util.run.ResultWaiter;
 import io.fineo.schema.Pair;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -277,15 +276,10 @@ public class FirehoseResource implements AwsResource {
       objs.stream().map(S3ObjectSummary::getKey).collect(Collectors.toList())), 0, objs.size());
   }
 
-  public void clone(List<Pair<String, StreamType>> toClone, File dir)
+  public void clone(List<Pair<String, StreamType>> toClone, OutputCollector dir)
     throws IOException {
     for (Pair<String, StreamType> stream : toClone) {
       String name = props.getFirehoseStreamName(stream.getKey(), stream.getValue());
-      File file = new File(dir, name);
-      if (file.exists()) {
-        LOG.info("Skipping copying data for file: " + file);
-        continue;
-      }
       ResourceUtils.writeStream(name, dir, () -> this.read(name));
     }
   }

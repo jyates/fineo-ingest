@@ -7,7 +7,7 @@ import io.fineo.lambda.e2e.validation.step.ArchiveValidation;
 import io.fineo.lambda.e2e.validation.step.ErrorStreams;
 import io.fineo.lambda.e2e.validation.step.ValidationStep;
 import io.fineo.lambda.e2e.validation.util.TriFunction;
-import io.fineo.lambda.util.ResourceManager;
+import io.fineo.lambda.util.IResourceManager;
 
 import java.util.ArrayDeque;
 import java.util.Queue;
@@ -19,11 +19,11 @@ public class PhaseValidationBuilder<T> {
   protected final Queue<ValidationStep> steps = new ArrayDeque<>();
   private final EndToEndTestBuilder builder;
   protected final String phase;
-  private final TriFunction<ResourceManager, LambdaClientProperties, EventFormTracker, byte[]>
+  private final TriFunction<IResourceManager, LambdaClientProperties, EventFormTracker, byte[]>
     archiveFunc;
 
   public PhaseValidationBuilder(EndToEndTestBuilder builder, String phase,
-    TriFunction<ResourceManager, LambdaClientProperties, EventFormTracker, byte[]> archiveFunc) {
+    TriFunction<IResourceManager, LambdaClientProperties, EventFormTracker, byte[]> archiveFunc) {
     this.builder = builder;
     this.phase = phase;
     this.archiveFunc = archiveFunc;

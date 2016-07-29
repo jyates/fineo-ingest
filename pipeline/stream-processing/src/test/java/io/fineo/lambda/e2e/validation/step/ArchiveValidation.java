@@ -4,7 +4,7 @@ import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import io.fineo.lambda.e2e.EventFormTracker;
 import io.fineo.lambda.e2e.validation.util.TriFunction;
 import io.fineo.lambda.e2e.validation.util.ValidationUtils;
-import io.fineo.lambda.util.ResourceManager;
+import io.fineo.lambda.util.IResourceManager;
 
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -16,16 +16,16 @@ import static org.junit.Assert.assertTrue;
 
 public class ArchiveValidation extends ValidationStep {
 
-  private final TriFunction<ResourceManager, LambdaClientProperties, EventFormTracker, byte[]> func;
+  private final TriFunction<IResourceManager, LambdaClientProperties, EventFormTracker, byte[]> func;
 
   public ArchiveValidation(String phase,
-    TriFunction<ResourceManager, LambdaClientProperties, EventFormTracker, byte[]> dataExtractor) {
+    TriFunction<IResourceManager, LambdaClientProperties, EventFormTracker, byte[]> dataExtractor) {
     super(phase);
     this.func = dataExtractor;
   }
 
   @Override
-  public void validate(ResourceManager manager, LambdaClientProperties props,
+  public void validate(IResourceManager manager, LambdaClientProperties props,
     EventFormTracker progress) {
     List<ByteBuffer> archived = manager.getFirehoseWrites(props.getFirehoseStreamName(phase,
       ARCHIVE));

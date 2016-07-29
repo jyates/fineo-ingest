@@ -13,9 +13,15 @@ import io.fineo.lambda.configure.util.SingleInstanceModule;
 import io.fineo.lambda.e2e.EndToEndTestBuilder;
 import io.fineo.lambda.e2e.EndToEndTestRunner;
 import io.fineo.lambda.e2e.resources.TestProperties;
+import io.fineo.lambda.e2e.resources.aws.dynamo.DelegateAwsDynamoResource;
+import io.fineo.lambda.e2e.resources.aws.firehose.DelegateFirehoseResource;
 import io.fineo.lambda.e2e.resources.aws.firehose.FirehoseStreams;
+import io.fineo.lambda.e2e.resources.aws.kinesis.KinesisStreamManager;
 import io.fineo.lambda.e2e.resources.aws.lambda.LambdaKinesisConnector;
 import io.fineo.lambda.e2e.resources.aws.manager.AwsResourceManager;
+import io.fineo.lambda.e2e.resources.manager.collector.FileCollector;
+import io.fineo.lambda.e2e.resources.manager.ManagerBuilder;
+import io.fineo.lambda.util.IResourceManager;
 import io.fineo.test.rule.TestOutput;
 import org.junit.After;
 import org.junit.ClassRule;
@@ -46,7 +52,7 @@ public class BaseITEndToEndAwsServices {
 
   private LambdaClientProperties props;
   private EndToEndTestRunner runner;
-  private AwsResourceManager manager;
+  private IResourceManager manager;
 
   public BaseITEndToEndAwsServices(boolean cleanup) {
     this.cleanup = cleanup;
@@ -68,12 +74,22 @@ public class BaseITEndToEndAwsServices {
 
   protected void run(LambdaKinesisConnector connector, Map<String, Object>... msgs)
     throws Exception {
-    this.manager = new AwsResourceManager(getCredentialsModule(), output, connector, region,
-      getAdditionalModules());
-    this.manager.cleanupResourcesOnFailure(cleanup);
-    EndToEndTestBuilder builder = new EndToEndTestBuilder(props, manager);
+    // setup the manager
+    ManagerBuilder managerBuilder = new ManagerBuilder();
+    managerBuilder.withAwsCredentials(getCredentialsModule());
+    managerBuilder.withRegion(region);
+    managerBuilder.withConnector(connector);
+    managerBuilder.withCollector(new FileCollector(output));
+    DelegateAwsDynamoResource.addAwsDynamo(managerBuilder);
+    DelegateFirehoseResource.add(managerBuilder);
+    KinesisStreamManager.addKinesis(managerBuilder);
+    managerBuilder.withAdditionalModules(getAdditionalModules());
+    managerBuilder.withCleanup(cleanup);
+
+    EndToEndTestBuilder builder = new EndToEndTestBuilder(props, managerBuilder);
     setValidationSteps(builder);
     this.runner = builder.build();
+    this.manager = runner.getManager();
     runner.setup();
 
     for (Map<String, Object> json : msgs) {

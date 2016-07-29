@@ -3,7 +3,7 @@ package io.fineo.lambda.e2e.validation.util;
 import com.google.common.collect.Lists;
 import io.fineo.lambda.e2e.EventFormTracker;
 import io.fineo.lambda.util.LambdaTestUtils;
-import io.fineo.lambda.util.ResourceManager;
+import io.fineo.lambda.util.IResourceManager;
 import io.fineo.lambda.util.SchemaUtil;
 import io.fineo.schema.avro.AvroSchemaEncoder;
 import io.fineo.schema.avro.RecordMetadata;
@@ -80,7 +80,7 @@ public class ValidationUtils {
     LOG.info("Record matches JSON!");
   }
 
-  public static void verifyAvroRecordsFromStream(ResourceManager manager, EventFormTracker progress,
+  public static void verifyAvroRecordsFromStream(IResourceManager manager, EventFormTracker progress,
     String stream, Supplier<BlockingQueue<List<ByteBuffer>>> bytes, int timeout)
     throws IOException, InterruptedException {
     BlockingQueue<List<ByteBuffer>> queue = bytes.get();

@@ -1,11 +1,14 @@
-package io.fineo.lambda.e2e.resources.kinesis;
+package io.fineo.lambda.e2e.resources.local;
 
 import com.google.common.collect.Lists;
+import com.google.inject.Injector;
 import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.lambda.e2e.resources.WrappingQueue;
+import io.fineo.lambda.e2e.resources.manager.IKinesisStreams;
 import io.fineo.lambda.kinesis.IKinesisProducer;
 import io.fineo.lambda.kinesis.KinesisProducer;
 import io.fineo.lambda.avro.FirehoseRecordWriter;
+import io.fineo.lambda.util.run.FutureWaiter;
 import org.apache.avro.generic.GenericRecord;
 import org.mockito.Mockito;
 
@@ -24,9 +27,11 @@ import java.util.concurrent.BlockingQueue;
 public class MockKinesisStreams implements IKinesisStreams {
 
   private Map<String, List<List<ByteBuffer>>> kinesisEvents = new HashMap<>();
-  private IKinesisProducer producer = Mockito.mock(KinesisProducer.class);
+  private IKinesisProducer producer;
 
-  public MockKinesisStreams() throws IOException {
+  @Override
+  public void init(Injector injector) throws IOException {
+    producer = Mockito.mock(KinesisProducer.class);
     // setup the 'stream' handling
     Mockito.doAnswer(invocation ->
     {
@@ -75,4 +80,8 @@ public class MockKinesisStreams implements IKinesisStreams {
     kinesisEvents.clear();
   }
 
+  @Override
+  public void cleanup(FutureWaiter waiter) {
+    reset();
+  }
 }

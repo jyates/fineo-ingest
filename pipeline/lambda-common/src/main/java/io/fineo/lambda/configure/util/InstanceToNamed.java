@@ -25,4 +25,12 @@ public class InstanceToNamed<T> extends AbstractModule implements Serializable {
   public static <T> InstanceToNamed<T> namedInstance(String name, T instance) {
     return new InstanceToNamed<>(name, instance, (Class<T>) instance.getClass());
   }
+
+  public static InstanceToNamed<String> property(String key, String value){
+    return new InstanceToNamed<>(key, value, String.class);
+  }
+
+  public static InstanceToNamed<Integer> property(String key, Integer value){
+    return new InstanceToNamed<>(key, value, Integer.class);
+  }
 }

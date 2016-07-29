@@ -19,6 +19,7 @@ import io.fineo.lambda.dynamo.iter.PageManager;
 import io.fineo.lambda.dynamo.iter.PagingIterator;
 import io.fineo.lambda.dynamo.iter.ScanPager;
 import io.fineo.lambda.e2e.resources.aws.AwsResource;
+import io.fineo.lambda.e2e.resources.manager.collector.OutputCollector;
 import io.fineo.lambda.util.run.FutureWaiter;
 import io.fineo.lambda.util.run.ResultWaiter;
 import io.fineo.schema.avro.RecordMetadata;
@@ -29,8 +30,6 @@ import org.apache.commons.logging.LogFactory;
 
 import java.io.BufferedOutputStream;
 import java.io.DataOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -98,18 +97,16 @@ public class DynamoResource implements AwsResource {
     deleteDynamoTables(table);
   }
 
-  public void copyStoreTables(File outputDir) {
+  public void copyStoreTables(OutputCollector output) {
     String table = props.getDynamoIngestTablePrefix();
     getTables(table).parallel().forEach(name -> {
       try {
-        // create a directory for each table
-        File out = new File(outputDir, name);
+        // create a directory for each table;
         ScanRequest request = new ScanRequest(name);
         ScanPager runner = new ScanPager(dynamo, request, Schema.PARTITION_KEY_NAME, null);
         Iterable<ResultOrException<Map<String, AttributeValue>>> iter =
           () -> new PagingIterator<>(5, new PageManager(Lists.newArrayList(runner)));
-        DataOutputStream dos = new DataOutputStream(new BufferedOutputStream(new FileOutputStream
-          (out)));
+        DataOutputStream dos = new DataOutputStream(new BufferedOutputStream(output.get(name)));
         for (ResultOrException<Map<String, AttributeValue>> result : iter) {
           result.doThrow();
           Map<String, AttributeValue> row = result.getResult();

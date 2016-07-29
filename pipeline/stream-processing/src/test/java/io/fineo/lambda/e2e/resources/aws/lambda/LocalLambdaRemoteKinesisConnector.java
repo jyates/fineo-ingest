@@ -2,7 +2,7 @@ package io.fineo.lambda.e2e.resources.aws.lambda;
 
 import com.google.common.util.concurrent.MoreExecutors;
 import io.fineo.lambda.e2e.resources.IngestUtil;
-import io.fineo.lambda.e2e.resources.kinesis.IKinesisStreams;
+import io.fineo.lambda.e2e.resources.manager.IKinesisStreams;
 import io.fineo.lambda.util.run.FutureWaiter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,8 +14,10 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -27,6 +29,7 @@ public class LocalLambdaRemoteKinesisConnector extends LambdaKinesisConnector<In
 
   private static final Logger LOG =
     LoggerFactory.getLogger(LocalLambdaRemoteKinesisConnector.class);
+  private final BlockingDeque<Boolean> DONE_QUEUE = new LinkedBlockingDeque<>(1);
   private ExecutorService executor;
   protected boolean done;
 
@@ -75,16 +78,28 @@ public class LocalLambdaRemoteKinesisConnector extends LambdaKinesisConnector<In
             }
             data = queue.poll();
           }
+          if(done){
+            break;
+          }
         }
       }
-      LOG.info("Done connecting to local streams!");
+      LOG.info("Adding marker that CONNECT is complete");
+      DONE_QUEUE.add(true);
     });
   }
 
   @Override
   public void cleanup(FutureWaiter futures) {
+    LOG.info("Wait for CONNECT to complete");
     this.done = true;
     this.executor.shutdown();
     this.executor.shutdownNow();
+    try {
+      DONE_QUEUE.take();
+    } catch (InterruptedException e) {
+      throw new RuntimeException(e);
+    }
+    LOG.info("DONE connecting");
+    this.done = false;
   }
 }

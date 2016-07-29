@@ -21,9 +21,8 @@ import io.fineo.lambda.e2e.resources.aws.dynamo.DynamoResource;
 import io.fineo.lambda.e2e.resources.aws.firehose.FirehoseResource;
 import io.fineo.lambda.e2e.resources.aws.kinesis.KinesisStreamManager;
 import io.fineo.lambda.e2e.resources.aws.lambda.LambdaKinesisConnector;
-import io.fineo.lambda.e2e.resources.manager.BaseResourceManager;
+import io.fineo.lambda.e2e.resources.manager.ResourceManager;
 import io.fineo.lambda.util.run.FutureWaiter;
-import io.fineo.lambda.util.run.ResultWaiter;
 import io.fineo.schema.Pair;
 import io.fineo.schema.avro.RecordMetadata;
 import io.fineo.schema.store.SchemaStore;
@@ -38,7 +37,6 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
@@ -51,7 +49,7 @@ import static org.junit.Assert.assertEquals;
 /**
  * Manages lambda test resources on AWS
  */
-public class AwsResourceManager extends BaseResourceManager {
+public class AwsResourceManager {
   private static final Log LOG = LogFactory.getLog(AwsResourceManager.class);
   private static final ListeningExecutorService executor = MoreExecutors.listeningDecorator(
     MoreExecutors.getExitingExecutorService((ThreadPoolExecutor) Executors.newCachedThreadPool()));
@@ -61,6 +59,7 @@ public class AwsResourceManager extends BaseResourceManager {
   private final Module awsCredentials;
   private final TestOutput output;
   private final List<Module> modules;
+  private final LambdaKinesisConnector connector;
 
   private FirehoseResource firehose;
   private KinesisStreamManager kinesis;
@@ -70,11 +69,11 @@ public class AwsResourceManager extends BaseResourceManager {
 
   public AwsResourceManager(Module awsCredentials, TestOutput output,
     LambdaKinesisConnector connector, String region, List<Module> additionalModules) {
-    super(connector);
     this.awsCredentials = awsCredentials;
     this.output = output;
     this.region = region;
     this.modules = newArrayList(additionalModules);
+    this.connector = null;
   }
 
   /**
@@ -84,18 +83,16 @@ public class AwsResourceManager extends BaseResourceManager {
     this.cleanup = cleanup;
   }
 
-  @Override
-  public void setup(LambdaClientProperties props) throws Exception {
+  public void setup() throws Exception {
     FutureWaiter future = new FutureWaiter(executor);
-    ResultWaiter.ResultWaiterFactory waiter = new ResultWaiter.ResultWaiterFactory(TestProperties
-      .FIVE_MINUTES, TestProperties.ONE_SECOND);
 
+    LambdaClientProperties props = null;
     modules.addAll(newArrayList(
       awsCredentials,
       instanceModule(props),
       instanceModule(props.getRawPropertiesForTesting()),
       new PropertiesModule(props.getRawPropertiesForTesting()),
-      instanceModule(waiter),
+//      instanceModule(waiter),
       new SchemaStoreModule(),
       new DynamoModule(),
       new DynamoRegionConfigurator(),
@@ -135,29 +132,20 @@ public class AwsResourceManager extends BaseResourceManager {
     future.await();
   }
 
-  @Override
   public List<ByteBuffer> getFirehoseWrites(String stream) {
     return firehose.read(stream);
   }
 
-  @Override
-  public BlockingQueue<List<ByteBuffer>> getKinesisWrites(String stream) {
-    return this.connector.getWrites(stream);
-  }
-
-  @Override
   public SchemaStore getStore() {
     return this.dynamo.getStore();
   }
 
-  @Override
   public void verifyDynamoWrites(RecordMetadata metadata, Map<String, Object> json) {
     List<GenericRecord> records = dynamo.read(metadata);
     assertEquals(newArrayList(records.get(0)), records);
     verifyRecordMatchesJson(getStore(), json, records.get(0));
   }
 
-  @Override
   public void cleanup(EndtoEndSuccessStatus status) throws InterruptedException, IOException {
     try {
       if (status != null && !status.isSuccessful()) {
@@ -177,10 +165,10 @@ public class AwsResourceManager extends BaseResourceManager {
           // copy kinesis data
           File out = output.newFolder("kinesis");
           for (String streamName : kinesis.getStreamNames()) {
-            ResourceUtils.writeStream(streamName, out, () -> this.connector.getWrites(streamName));
+            ResourceUtils.writeStream(streamName, null, () -> this.connector.getWrites(streamName));
           }
           // copy any dynamo data
-          dynamo.copyStoreTables(output.newFolder(FineoProperties.STAGED_PREFIX, "dynamo"));
+          dynamo.copyStoreTables(null);//output.newFolder(FineoProperties.STAGED_PREFIX, "dynamo"));
         }
       }
     } finally {
@@ -205,6 +193,6 @@ public class AwsResourceManager extends BaseResourceManager {
       toClone.add(new Pair<>(stage, t));
     }
     File dir = output.newFolder(stage, "s3");
-    firehose.clone(toClone, dir);
+    firehose.clone(toClone, null);
   }
 }
