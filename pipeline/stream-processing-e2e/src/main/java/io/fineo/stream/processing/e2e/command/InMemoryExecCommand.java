@@ -5,14 +5,13 @@ import com.beust.jcommander.Parameters;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.Module;
-import io.fineo.lambda.e2e.E2ETestState;
-import io.fineo.lambda.e2e.EndToEndTestBuilder;
-import io.fineo.lambda.e2e.EndToEndTestRunner;
-import io.fineo.lambda.e2e.resources.IngestUtil;
 import io.fineo.lambda.e2e.aws.lambda.LambdaKinesisConnector;
-import io.fineo.lambda.e2e.resources.kinesis.MockKinesisStreams;
-import io.fineo.lambda.e2e.resources.lambda.LocalLambdaLocalKinesisConnector;
-import io.fineo.lambda.e2e.manager.MockResourceManager;
+import io.fineo.lambda.e2e.local.LocalLambdaLocalKinesisConnector;
+import io.fineo.lambda.e2e.local.MockKinesisStreams;
+import io.fineo.lambda.e2e.state.E2ETestState;
+import io.fineo.lambda.e2e.state.EndToEndTestBuilder;
+import io.fineo.lambda.e2e.state.EndToEndTestRunner;
+import io.fineo.lambda.e2e.util.IngestUtil;
 import io.fineo.lambda.handle.LambdaWrapper;
 import io.fineo.lambda.handle.raw.RawRecordToAvroHandler;
 import io.fineo.lambda.handle.staged.AvroToStorageHandler;
@@ -37,8 +36,6 @@ import static io.fineo.lambda.configure.legacy.LambdaClientProperties
 import static io.fineo.lambda.configure.legacy.StreamType.ARCHIVE;
 import static io.fineo.lambda.e2e.ITEndToEndLambdaLocal.INGEST_CONNECTOR;
 import static io.fineo.lambda.e2e.ITEndToEndLambdaLocal.STAGE_CONNECTOR;
-import static io.fineo.lambda.e2e.ITEndToEndLambdaLocal.ingestStage;
-import static io.fineo.lambda.e2e.ITEndToEndLambdaLocal.storageStage;
 
 
 /**
