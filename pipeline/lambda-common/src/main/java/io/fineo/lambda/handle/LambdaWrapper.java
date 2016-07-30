@@ -1,5 +1,6 @@
 package io.fineo.lambda.handle;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.Module;
@@ -21,6 +22,7 @@ public abstract class LambdaWrapper<T, C extends LambdaHandler<?>> {
   private final Class<C> clazz;
   private final List<Module> modules;
   private C inst;
+  private Injector guice;
 
   public LambdaWrapper(Class<C> handlerClass, List<Module> modules) {
     this.clazz = handlerClass;
@@ -29,7 +31,7 @@ public abstract class LambdaWrapper<T, C extends LambdaHandler<?>> {
 
   protected C getInstance(){
     if (inst == null) {
-      Injector guice = Guice.createInjector(modules);
+      this.guice = Guice.createInjector(modules);
       this.inst = guice.getInstance(clazz);
     }
     return this.inst;
@@ -49,5 +51,10 @@ public abstract class LambdaWrapper<T, C extends LambdaHandler<?>> {
   public static void addBasicProperties(List<Module> modules, Properties props) {
     modules.add(new PropertiesModule(props));
     modules.add(new DefaultCredentialsModule());
+  }
+
+  @VisibleForTesting
+  public Injector getGuiceForTesting() {
+    return guice;
   }
 }

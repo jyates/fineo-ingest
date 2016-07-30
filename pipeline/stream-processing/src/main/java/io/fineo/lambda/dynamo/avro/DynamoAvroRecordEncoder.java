@@ -10,19 +10,8 @@ import static org.apache.commons.lang3.tuple.MutablePair.of;
 
 public class DynamoAvroRecordEncoder {
 
-  private static final String KNOWN_FIELD_PREFIX = "k_";
-  private static final String UNKNOWN_FIELD_PREFIX = "u_";
-
-  public static String getKnownFieldName(String avroAliasFieldName){
-    return KNOWN_FIELD_PREFIX+avroAliasFieldName;
-  }
-
-  public static String getUnknownFieldName(String avroAliasFieldName){
-    return UNKNOWN_FIELD_PREFIX+avroAliasFieldName;
-  }
-
   static Pair<String, AttributeValue> convertField(GenericData.Record value) {
-    Pair<String, AttributeValue> pair = of(getKnownFieldName((String) value.get(0)), null);
+    Pair<String, AttributeValue> pair = of((String) value.get(0), null);
     Object recordValue = value.get(1);
     org.apache.avro.Schema.Field field = value.getSchema().getField("value");
     switch (field.schema().getType()) {

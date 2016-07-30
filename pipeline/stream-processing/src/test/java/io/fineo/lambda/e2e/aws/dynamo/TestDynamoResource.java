@@ -6,12 +6,13 @@ import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.inject.Guice;
-import com.google.inject.Provider;
+import com.google.inject.Injector;
 import io.fineo.aws.AwsDependentTests;
 import io.fineo.etl.FineoProperties;
 import io.fineo.lambda.configure.PropertiesModule;
 import io.fineo.lambda.configure.SchemaStoreModule;
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
+import io.fineo.lambda.configure.util.SingleInstanceModule;
 import io.fineo.lambda.dynamo.DynamoTableCreator;
 import io.fineo.lambda.dynamo.DynamoTableTimeManager;
 import io.fineo.lambda.dynamo.Schema;
@@ -20,7 +21,6 @@ import io.fineo.lambda.dynamo.rule.AwsDynamoSchemaTablesResource;
 import io.fineo.lambda.e2e.manager.collector.FileCollector;
 import io.fineo.lambda.util.run.FutureWaiter;
 import io.fineo.lambda.util.run.ResultWaiter;
-import io.fineo.schema.store.SchemaStore;
 import io.fineo.test.rule.TestOutput;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -59,13 +59,15 @@ public class TestDynamoResource {
     LambdaClientProperties clientProperties = tableResource.getClientProperties(props);
 
     AmazonDynamoDBAsyncClient client = tableResource.getAsyncClient();
-    Provider<SchemaStore> store = Guice.createInjector(
+
+    Injector injector = Guice.createInjector(
       new SchemaStoreModule(),
       new PropertiesModule(clientProperties.getRawPropertiesForTesting()),
-      instanceModule(client)).getProvider(SchemaStore.class);
-    DynamoResource dynamo = new DynamoResource(client, new ResultWaiter
-      .ResultWaiterFactory(1000, 100), store,
-      clientProperties);
+      instanceModule(clientProperties),
+      instanceModule(client),
+      instanceModule(new ResultWaiter.ResultWaiterFactory(1000, 100)),
+      new SingleInstanceModule<>(client, AmazonDynamoDBAsyncClient.class));
+    DynamoResource dynamo = injector.getInstance(DynamoResource.class);
     ListeningExecutorService exec =
       MoreExecutors.listeningDecorator(Executors.newSingleThreadExecutor());
 
@@ -74,8 +76,7 @@ public class TestDynamoResource {
     dynamo.setup(waiter);
     waiter.await();
 
-    DynamoTableTimeManager tables =
-      new DynamoTableTimeManager(client, clientProperties.getDynamoIngestTablePrefix());
+    DynamoTableTimeManager tables = injector.getInstance(DynamoTableTimeManager.class);
     DynamoTableCreator creator = new DynamoTableCreator(tables, new DynamoDB(client), 1, 1);
     String name = creator.getTableAndEnsureExists(System.currentTimeMillis());
 

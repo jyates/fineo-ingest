@@ -26,4 +26,6 @@ public interface IResourceManager {
   SchemaStore getStore();
 
   void verifyDynamoWrites(RecordMetadata metadata, Map<String, Object> json);
+
+  void cleanupDynamoClient();
 }

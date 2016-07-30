@@ -3,7 +3,11 @@ package io.fineo.lambda.dynamo;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Joiner;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
+import com.google.inject.Inject;
+import com.google.inject.name.Named;
+import io.fineo.etl.FineoProperties;
 import io.fineo.lambda.dynamo.iter.PageManager;
 import io.fineo.lambda.dynamo.iter.PagingIterator;
 import io.fineo.lambda.dynamo.iter.TableNamePager;
@@ -45,8 +49,11 @@ public class DynamoTableTimeManager {
 
   private final AmazonDynamoDBAsyncClient client;
 
-  public DynamoTableTimeManager(AmazonDynamoDBAsyncClient client, String prefix) {
-    this.prefix = prefix;
+  @Inject
+  public DynamoTableTimeManager(AmazonDynamoDBAsyncClient client,
+    @Named(FineoProperties.DYNAMO_INGEST_TABLE_PREFIX) String prefix) {
+    this.prefix = Preconditions.checkNotNull(prefix,
+      "Dynamo client write tables must have a prefix!");
     this.client = client;
   }
 
@@ -83,9 +90,9 @@ public class DynamoTableTimeManager {
     Instant tableEnd;
     while (names.hasNext()) {
       String name = names.next();
-      String[] parts = name.split(SEPARATOR);
-      tableStart = Instant.ofEpochMilli(Long.parseLong(parts[1]));
-      tableEnd = Instant.ofEpochMilli(Long.parseLong(parts[2]));
+      DynamoTableNameParts parts = DynamoTableNameParts.parse(prefix, name);
+      tableStart = Instant.ofEpochMilli(parts.getStart());
+      tableEnd = Instant.ofEpochMilli(parts.getEnd());
       if (!overlaps(range, tableStart, tableEnd)) {
         break;
       }

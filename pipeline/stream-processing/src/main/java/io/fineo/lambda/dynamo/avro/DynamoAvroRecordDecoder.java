@@ -26,8 +26,6 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-import static io.fineo.lambda.dynamo.avro.DynamoAvroRecordEncoder.getKnownFieldName;
-
 /**
  * Decode a Dynamo row into a {@link GenericRecord} that can then be
  * translated into 'customer friendly' alias names via a {@link AvroRecordTranslator}.
@@ -89,7 +87,7 @@ public class DynamoAvroRecordDecoder {
           // record, but eh, what can you do? #startup
           cast(schemaField.schema().getFields().get(1), value.getValue()));
       record.put(name, fieldRecord);
-      handledFields.add(getKnownFieldName(value.getKey()));
+      handledFields.add(value.getKey());
       allFields.remove(name);
     });
 
@@ -109,11 +107,10 @@ public class DynamoAvroRecordDecoder {
 
   private Pair<String, AttributeValue> getValue(Map<String, AttributeValue> row,
     List<String> aliasNames) {
-    for (String alias : aliasNames) {
-      String name = getKnownFieldName(alias);
+    for (String name : aliasNames) {
       AttributeValue value = row.get(name);
       if (value != null) {
-        return new ImmutablePair<>(alias, value);
+        return new ImmutablePair<>(name, value);
       }
     }
     throw new IllegalStateException(

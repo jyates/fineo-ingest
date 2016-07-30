@@ -1,5 +1,6 @@
 package io.fineo.lambda.e2e.manager;
 
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.inject.Guice;
@@ -160,5 +161,10 @@ public class ResourceManager implements IResourceManager {
   @Override
   public void verifyDynamoWrites(RecordMetadata metadata, Map<String, Object> json) {
     dynamo.verify(metadata, json);
+  }
+
+  @Override
+  public void cleanupDynamoClient() {
+    injector.getInstance(AmazonDynamoDBAsyncClient.class).shutdown();
   }
 }

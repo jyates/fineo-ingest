@@ -1,16 +1,20 @@
 package io.fineo.stream.processing.e2e.command;
 
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
 import com.beust.jcommander.Parameters;
 import com.google.inject.Binder;
-import com.google.inject.Guice;
+import com.google.inject.ConfigurationException;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
 import com.google.inject.Module;
 import com.google.inject.Provides;
+import com.google.inject.ProvisionException;
 import io.fineo.lambda.configure.PropertiesModule;
+import io.fineo.lambda.configure.dynamo.AvroToDynamoModule;
 import io.fineo.lambda.configure.util.SingleInstanceModule;
 import io.fineo.lambda.e2e.aws.dynamo.DelegateAwsDynamoResource;
+import io.fineo.lambda.e2e.aws.dynamo.DynamoResource;
 import io.fineo.lambda.e2e.aws.lambda.LambdaKinesisConnector;
 import io.fineo.lambda.e2e.local.LocalFirehoseStreams;
 import io.fineo.lambda.e2e.local.LocalLambdaLocalKinesisConnector;
@@ -28,8 +32,6 @@ import io.fineo.lambda.handle.staged.AvroToStorageHandler;
 import io.fineo.lambda.handle.staged.AvroToStorageWrapper;
 import io.fineo.lambda.handle.util.HandlerUtils;
 import io.fineo.lambda.kinesis.IKinesisProducer;
-import io.fineo.schema.store.SchemaStore;
-import io.fineo.stream.processing.e2e.module.FakeAwsCredentialsModule;
 import io.fineo.stream.processing.e2e.options.FirehoseOutput;
 import io.fineo.stream.processing.e2e.options.LocalOptions;
 
@@ -69,36 +71,46 @@ public class InMemoryExecCommand extends BaseCommand {
   private static final String STORAGE_OUTPUT_STREAM = "staged-archive";
 
   private final FirehoseOutput output;
-  private final LocalOptions local;
 
-  public InMemoryExecCommand(LocalOptions local, FirehoseOutput output) {
-    this.local = local;
+  public InMemoryExecCommand(FirehoseOutput output) {
     this.output = output;
   }
 
   @Override
   public void run(List<Module> baseModules, Map<String, Object> event) throws Exception {
-    // setup the different lambda functions
     E2ETestState state = buildState(baseModules);
     EndToEndTestRunner runner = state.getRunner();
-    runner.setup();
-    runner.send(event);
-    runner.validate();
+    try {
+      runner.setup();
+      runner.send(event);
+      runner.validate();
 
-    // write the output to the target file
-    List<ByteBuffer> writes = state.getResources().getFirehoseWrites(STORAGE_OUTPUT_STREAM);
-    File out = new File(output.get());
-    FileChannel channel = new FileOutputStream(out, false).getChannel();
-    for (ByteBuffer buff : writes) {
-      buff.flip();
-      channel.write(buff);
+      // write the output to the target file
+      List<ByteBuffer> writes = state.getResources().getFirehoseWrites(STORAGE_OUTPUT_STREAM);
+      File out = new File(output.get());
+      try (FileChannel channel = new FileOutputStream(out, false).getChannel()) {
+        for (ByteBuffer buff : writes) {
+          buff.flip();
+          channel.write(buff);
+        }
+      }
+      runner.cleanup();
+    } finally {
+      // make sure we cleanup the dynamo client, otherwise we have hanging threads
+      runner.getManager().cleanupDynamoClient();
+      for (LambdaWrapper wrapper : state.getStages()) {
+        Injector injector = wrapper.getGuiceForTesting();
+        try {
+          injector.getInstance(AmazonDynamoDBAsyncClient.class).shutdown();
+        } catch (ConfigurationException | ProvisionException e) {
+          // skip
+        }
+      }
     }
-    channel.close();
-    runner.cleanup();
   }
 
-  private E2ETestState buildState(List<Module> store) throws Exception {
-    // need to set these here so the lambdaclientproperties is happy and work ok
+  private E2ETestState buildState(List<Module> base) throws Exception {
+    // need to set these here so the lambdaclientproperties is happy and works ok
     Properties props = new Properties();
     // firehose outputs
     props
@@ -108,26 +120,26 @@ public class InMemoryExecCommand extends BaseCommand {
 
     // between stage stream
     props.setProperty(KINESIS_PARSED_RAW_OUT_STREAM_NAME, STAGE_CONNECTOR);
+    props.setProperty(DynamoResource.FINEO_DYNAMO_RESOURCE_CLEANUP, "false");
 
     ManagerBuilder managerBuilder = new ManagerBuilder();
     managerBuilder.withStore(null);
-    managerBuilder.withAdditionalModules(store);
-    Module credentials = new FakeAwsCredentialsModule();
-    managerBuilder.withAwsCredentials(credentials);
+    managerBuilder.withAdditionalModules(base);
     MockKinesisStreams streams = new MockKinesisStreams();
     managerBuilder.withStreams(streams);
     LocalFirehoseStreams firehoses = new LocalFirehoseStreams();
     managerBuilder.withFirehose(firehoses);
     LambdaKinesisConnector connector = new LocalLambdaLocalKinesisConnector();
     managerBuilder.withConnector(connector);
-    DelegateAwsDynamoResource
-      .addLocalDynamo(managerBuilder, local.host, local.port, local.ingestTablePrefix);
+    // rest of the dynamo configuration is alrady handled
+    managerBuilder.withDynamo(new DelegateAwsDynamoResource());
 
     // modules for the stages
-    List<Module> baseModules = newArrayList(store);
+    List<Module> baseModules = newArrayList(base);
     baseModules.add(new SingleInstanceModule<>(streams, IKinesisStreams.class));
-    baseModules.add(credentials);
     baseModules.add(new PropertiesModule(props));
+    baseModules.add(new AvroToDynamoModule());
+    // lazy binding - this only called after the streams have been initialized in the test runner
     baseModules.add(new Module() {
       @Override
       public void configure(Binder binder) {
@@ -163,12 +175,8 @@ public class InMemoryExecCommand extends BaseCommand {
     EndToEndTestRunner runner = builder.validateRawPhase(25).all()
                                        .validateStoragePhase().all()
                                        .build();
-    return new E2ETestState(runner);
-  }
-
-  private SchemaStore getSchemaStore(List<Module> baseModules) {
-    List<Module> schema = newArrayList(baseModules);
-    Injector guice = Guice.createInjector(schema);
-    return guice.getInstance(SchemaStore.class);
+    E2ETestState state = new E2ETestState(runner);
+    state.setStages(start, storage);
+    return state;
   }
 }

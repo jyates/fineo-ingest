@@ -27,7 +27,7 @@ public class AvroToDynamoModule extends AbstractModule implements Serializable {
   @Provides
   @Inject
   @Singleton
-  public DynamoTableCreator getDynamoTableManager(DynamoTableTimeManager tables,
+  public DynamoTableCreator getDynamoTableCreator(DynamoTableTimeManager tables,
     DynamoDB dynamo,
     @Named(FineoProperties.DYNAMO_READ_LIMIT) long readLimit,
     @Named(FineoProperties.DYNAMO_WRITE_LIMIT) long writeLimit) {

@@ -162,6 +162,7 @@
                 <configuration>
                   <artifactSet>
                     <excludes>
+                      <exclude>commons-logging:commons-logging</exclude>
                       <!-- Test jars -->
                       <exclude>junit:junit</exclude>
                       <exclude>org.mockito:mockito-all</exclude>

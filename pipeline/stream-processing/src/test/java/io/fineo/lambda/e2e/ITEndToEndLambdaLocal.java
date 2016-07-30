@@ -149,7 +149,9 @@ public class ITEndToEndLambdaLocal {
 
     EndToEndTestRunner runner = new EndToEndTestBuilder(builder, props).validateAll().build();
     addStoreModule(builder, runner, rawStage, writeStage);
-    return new E2ETestState(runner);
+    E2ETestState state = new E2ETestState(runner);
+    state.setStages(start, storage);
+    return state;
   }
 
   private static void addStoreModule(ManagerBuilder builder, EndToEndTestRunner runner,

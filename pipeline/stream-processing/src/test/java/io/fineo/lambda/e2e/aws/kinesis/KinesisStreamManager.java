@@ -271,7 +271,8 @@ public class KinesisStreamManager implements AwsResource, IKinesisStreams {
   }
 
   public static void addKinesis(ManagerBuilder builder) {
-    builder.withStreams(new DelegateAwsKinesisStreamManager(),  property(AWS_REGION_KINESIS,
-      builder.getRegion()),  property(AWS_KINESIS_SHARD_COUNT_KINESIS, TestProperties.Kinesis.SHARD_COUNT));
+    builder.withStreams(new DelegateAwsKinesisStreamManager(),
+      property(AWS_REGION_KINESIS, builder.getRegion()),
+      property(AWS_KINESIS_SHARD_COUNT_KINESIS, TestProperties.Kinesis.SHARD_COUNT));
   }
 }

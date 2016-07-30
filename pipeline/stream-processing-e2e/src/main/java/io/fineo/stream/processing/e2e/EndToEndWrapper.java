@@ -19,6 +19,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
+import static io.fineo.lambda.configure.util.InstanceToNamed.property;
+import static java.lang.String.format;
+
 public class EndToEndWrapper {
 
   public static void main(String[] args) throws Exception {
@@ -26,7 +29,7 @@ public class EndToEndWrapper {
     LocalOptions local = new LocalOptions();
     FirehoseOutput output = new FirehoseOutput();
     JCommander jc = new JCommander(new Object[]{local, json, output});
-    jc.addCommand("local", new InMemoryExecCommand(local, output));
+    jc.addCommand("local", new InMemoryExecCommand(output));
 
     jc.parse(args);
 
@@ -54,6 +57,7 @@ public class EndToEndWrapper {
     props.setProperty(FineoProperties.DYNAMO_SCHEMA_STORE_TABLE, store.schemaTable);
     props.setProperty(FineoProperties.DYNAMO_READ_LIMIT, "1");
     props.setProperty(FineoProperties.DYNAMO_WRITE_LIMIT, "1");
+    props.setProperty(FineoProperties.DYNAMO_RETRIES, "3");
 
     modules.add(new PropertiesModule(props));
 

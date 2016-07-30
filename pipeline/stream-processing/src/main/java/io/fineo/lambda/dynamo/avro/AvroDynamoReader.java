@@ -4,8 +4,6 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.google.inject.Inject;
-import com.google.inject.name.Named;
-import io.fineo.etl.FineoProperties;
 import io.fineo.internal.customer.Metric;
 import io.fineo.lambda.dynamo.DynamoTableTimeManager;
 import io.fineo.lambda.dynamo.Range;
@@ -44,10 +42,10 @@ public class AvroDynamoReader {
 
   @Inject
   public AvroDynamoReader(SchemaStore store, AmazonDynamoDBAsyncClient client,
-    @Named(FineoProperties.DYNAMO_INGEST_TABLE_PREFIX) String prefix) {
+    DynamoTableTimeManager manager) {
     this.store = store;
     this.client = client;
-    this.tableManager = new DynamoTableTimeManager(client, prefix);
+    this.tableManager = manager;
   }
 
   public void setPrefetchSize(int prefetchSize) {

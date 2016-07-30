@@ -1,9 +1,29 @@
 package io.fineo.lambda.dynamo;
 
+import com.google.common.base.Preconditions;
+import com.google.common.collect.Iterators;
+import com.google.common.collect.Lists;
+
+import java.util.Iterator;
+
+import static com.google.common.collect.Lists.newArrayList;
 import static io.fineo.lambda.dynamo.DynamoTableTimeManager.TABLE_NAME_PARTS_JOINER;
 
 /**
- *
+ * Handles parsing the name of a table
+ * <p>
+ * In short, there are four main pieces:
+ * <ol>
+ * <li>prefix</li>
+ * <li>start time  - millis since epoch</li>
+ * <li>end time  - millis since epoch</li>
+ * <li>month - when writes were made to the table</li>
+ * <li>year - when writes were made to the table</li>
+ * </ol>
+ * This layout allows us to manage tables that have not been written to recently (effectively
+ * time-stepping the tables and allowing us to delete older tables, saving capacity and money)
+ * and also see if we have 'bad' tenants that are writing to tables that are far back in time.
+ * </p>
  */
 public class DynamoTableNameParts {
   private String prefix;
@@ -18,13 +38,45 @@ public class DynamoTableNameParts {
     return new DynamoTableNameParts(prefix, start, end, writeMonth, writeYear);
   }
 
-  public static DynamoTableNameParts parse(String tableName) {
+  /**
+   * Pare the table name without prefix validation. Its assumed that you did the validation
+   * somewhere previously... didn't you?
+   *
+   * @param tableName     name to parse
+   * @param includePrefix if we should attempt to parse the prefix out of the table name. This is
+   *                      extra overhead that you may or may not care about.
+   * @return the parts of the table name that are relevant to the time range
+   */
+  public static DynamoTableNameParts parse(String tableName, boolean includePrefix) {
     String[] parts = tableName.split(DynamoTableTimeManager.SEPARATOR);
-    if (parts.length != 5) {
+    Iterator<String> iter = Lists.reverse(newArrayList(parts)).iterator();
+    long year = Long.valueOf(iter.next());
+    long month = Long.valueOf(iter.next());
+    long end = Long.valueOf(iter.next());
+    long start = Long.valueOf(iter.next());
+    String prefix = null;
+    if (includePrefix) {
+      String suffix = TABLE_NAME_PARTS_JOINER.join(start, end, month, year);
+      prefix = tableName.substring(0, tableName.length() - 1 - suffix.length());
+    }
+    return new DynamoTableNameParts(prefix, start, end, month, year);
+  }
+
+  public static DynamoTableNameParts parse(String prefix, String tableName) {
+    Preconditions.checkState(tableName.substring(0, prefix.length()).equals(prefix),
+      "Table %s does not start with expected prefix: %s", tableName, prefix);
+    // skip past the separator between the prefix and name
+    tableName = tableName.substring(prefix.length() + 1);
+    String[] parts = tableName.split(DynamoTableTimeManager.SEPARATOR);
+    if (parts.length != 4) {
       throw new IllegalArgumentException("Table: " + tableName + " is not a managed table!");
     }
-    return new DynamoTableNameParts(parts[0], Long.valueOf(parts[1]), Long.valueOf(parts[2]),
-      Long.valueOf(parts[3]), Long.valueOf(parts[4]));
+    Iterator<String> iter = Iterators.forArray(parts);
+    return new DynamoTableNameParts(prefix,
+      Long.valueOf(iter.next()),
+      Long.valueOf(iter.next()),
+      Long.valueOf(iter.next()),
+      Long.valueOf(iter.next()));
   }
 
   public DynamoTableNameParts(String prefix, long start, long end, long writeMonth,

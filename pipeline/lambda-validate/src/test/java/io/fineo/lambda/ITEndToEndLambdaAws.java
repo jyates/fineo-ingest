@@ -57,11 +57,4 @@ public class ITEndToEndLambdaAws extends BaseITEndToEndAwsServices {
 
     run(connector, LambdaTestUtils.createRecords(1, 1));
   }
-
-  @Override
-  protected List<Module> getAdditionalModules() {
-    return asList(instanceModule(
-      new FirehoseStreams(3 * TestProperties.ONE_MINUTE, "s3",
-        TestProperties.Firehose.S3_BUCKET_NAME)));
-  }
 }

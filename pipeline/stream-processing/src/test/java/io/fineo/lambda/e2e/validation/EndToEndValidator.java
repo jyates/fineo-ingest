@@ -22,7 +22,7 @@ public class EndToEndValidator {
 
   public void validate(IResourceManager manager, LambdaClientProperties properties,
     EventFormTracker progress) throws IOException, InterruptedException {
-    LOG.info("\n -------- Validating Test Run ------- \n");
+    LOG.info("\n ^^^^^^ Validating Test Run ^^^^^^ \n");
     for (ValidationStep step : steps) {
       String stepName = step.getClass().getSimpleName();
       LOG.info(
@@ -30,6 +30,6 @@ public class EndToEndValidator {
       step.validate(manager, properties, progress);
       LOG.info("=> "+stepName+" SUCCESS");
     }
-    LOG.info("\n -------- Validation SUCCESS ------- \n");
+    LOG.info("\n ******** Validation SUCCESS ******** \n");
   }
 }

@@ -118,6 +118,7 @@
                 <configuration>
                   <artifactSet>
                     <excludes>
+                      <exclude>commons-logging:commons-logging</exclude>
                       <!-- Spark jars are already on cluster -->
                       <exclude>org.apache.spark:*</exclude>
                       <exclude>org.scala-lang:*</exclude>

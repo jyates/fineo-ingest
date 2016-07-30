@@ -29,6 +29,7 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 
 import static java.time.temporal.ChronoUnit.DAYS;
 import static java.util.Arrays.asList;
@@ -174,11 +175,60 @@ public class TestDynamoTableTimeManaging {
     String name = manager.getTableName(fwt, epoch);
     DynamoTableNameParts parts = new DynamoTableNameParts(prefix, 1446076800000l, 1446681600000l,
       11, 2015);
-    assertEquals(parts, DynamoTableNameParts.parse(name));
+    assertEquals(parts, DynamoTableNameParts.parse(prefix, name));
 
     // try another table that _should_ end up with the same table
     name = manager.getTableName(fwt, inst(LocalDateTime.of(2015, 11, 4, 1, 1)).toEpochMilli());
-    assertEquals(parts, DynamoTableNameParts.parse(name));
+    assertEquals(parts, DynamoTableNameParts.parse(prefix, name));
+
+    assertEquals(parts, DynamoTableNameParts.parse(name, true));
+    DynamoTableNameParts parsed = DynamoTableNameParts.parse(name, false);
+    // check each of the sub-parts
+    assertEquals(parts.getStart(), parsed.getStart());
+    assertEquals(parts.getEnd(), parsed.getEnd());
+    assertEquals(parts.getWriteMonth(), parsed.getWriteMonth());
+    assertEquals(parts.getWriteYear(), parsed.getWriteYear());
+  }
+
+  @Test
+  public void testCreateTable() throws Exception {
+    AmazonDynamoDBAsyncClient client = tables.getAsyncClient();
+
+    DynamoTableCreator loader =
+      new DynamoTableCreator(new DynamoTableTimeManager(client, UUID.randomUUID().toString()),
+        new DynamoDB(client), 10, 10);
+    String name = DynamoTableTimeManager.TABLE_NAME_PARTS_JOINER.join(prefix, "1", "2");
+    loader.createTable(name);
+    oneTableWithPrefix(client, prefix);
+
+    loader.createTable(name);
+    oneTableWithPrefix(client, prefix);
+
+    // something happened and the table gets deleted
+    client.deleteTable(name);
+    loader.createTable(name);
+    oneTableWithPrefix(client, prefix);
+
+    // another table gets created with a different range, ensure that we still don't try and create
+    // the table again
+    String earlierTableName = DynamoTableTimeManager.TABLE_NAME_PARTS_JOINER.join(prefix, "0", "1");
+    loader.createTable(earlierTableName);
+    loader.createTable(name);
+  }
+
+  @Test
+  public void testTableNamesWithEarlySeparator() throws Exception {
+    AmazonDynamoDBAsyncClient client = tables.getAsyncClient();
+    DynamoTableTimeManager time = new DynamoTableTimeManager(client, "some" + DynamoTableTimeManager
+      .SEPARATOR + "table");
+    DynamoTableCreator tables = new DynamoTableCreator(time, new DynamoDB(client), 10, 10);
+    String name = tables.getTableAndEnsureExists(100);
+    assertEquals(name, time.getCoveringTableNames(new Range<>(Instant.ofEpochMilli(0), Instant
+      .ofEpochMilli(101))).stream().map(p -> p.getKey()).findFirst().get());
+  }
+
+  private void oneTableWithPrefix(AmazonDynamoDBAsyncClient client, String prefix) {
+    assertEquals(1, client.listTables(prefix, 10).getTableNames().size());
   }
 
   private List<String> getTableNames(Multimap<Instant, String> tableMap, Instant... times) {
@@ -205,10 +255,6 @@ public class TestDynamoTableTimeManaging {
         new AttributeDefinition().withAttributeName("key").withAttributeType(ScalarAttributeType.S))
       .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L));
 
-  }
-
-  private String getTableName(Instant writeStart, Instant writeEnd, Instant monthYear) {
-    return getTableName(writeStart.toEpochMilli(), writeEnd.toEpochMilli(), monthYear);
   }
 
   private String getTableName(long writeStart, long writeEnd, Instant monthYear) {

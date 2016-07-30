@@ -26,15 +26,11 @@ import java.util.List;
 import java.util.Map;
 
 import static io.fineo.lambda.dynamo.avro.DynamoAvroRecordEncoder.convertField;
-import static io.fineo.lambda.dynamo.avro.DynamoAvroRecordEncoder.getUnknownFieldName;
 
 
 /**
- * Write {@link BaseFields} based avro-records into dynamo.
- * <p>
- * The name of the table is: [configured prefix]_[start time]-[end time] where start/end are
- * simply linux timestamps (names required to match pattern: [a-zA-Z0-9_.-]+).
- * <p/>
+ * Write {@link BaseFields} based avro-records into dynamo. Uses {@link DynamoTableCreator} to
+ * create names based on a prefix.
  * <p>
  * Its assumed that we always know at least the orgID, if not also the schema canonical name.
  * Thus the partition key doesn't need a separator or length suffix.
@@ -51,6 +47,7 @@ import static io.fineo.lambda.dynamo.avro.DynamoAvroRecordEncoder.getUnknownFiel
  * requests have completed</b>. This is merely a simple wrapper around an {@link AwsAsyncSubmitter}
  *
  * @see AwsAsyncSubmitter for more information about thread safety
+ * @see DynamoTableCreator for information on table naming
  * </p>
  */
 public class AvroToDynamoWriter {
@@ -107,7 +104,7 @@ public class AvroToDynamoWriter {
     // store the unknown fields from the base fields that we parsed
     Map<String, String> unknown = fields.getUnknownFields();
     unknown.forEach((name, value) -> {
-      setAttribute(getUnknownFieldName(name), new AttributeValue(value), expressionBuilder, values);
+      setAttribute(name, new AttributeValue(value), expressionBuilder, values);
     });
 
     // for each field in the record, add it to the update, skipping the 'base fields' field,

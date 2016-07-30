@@ -14,6 +14,7 @@ import java.util.List;
 
 /**
  * Manages creating the actual Dynamo tables, if they don't exist.
+ * @see DynamoTableNameParts for information on table naming conventions
  */
 public class DynamoTableCreator {
   private static final Logger LOG = LoggerFactory.getLogger(DynamoTableCreator.class);
