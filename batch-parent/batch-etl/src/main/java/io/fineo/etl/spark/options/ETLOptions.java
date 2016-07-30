@@ -17,6 +17,7 @@
 package io.fineo.etl.spark.options;
 
 import com.beust.jcommander.Parameter;
+import io.fineo.etl.spark.SparkETL;
 
 /**
  * Bean for storing the current options and helper methods for things like printing the help.
@@ -50,7 +51,7 @@ public class ETLOptions {
   }
 
   public String completed() {
-    return this.completed;
+    return this.completed + "/" + SparkETL.VERSION;
   }
 
   public void completed(String archiveUri) {

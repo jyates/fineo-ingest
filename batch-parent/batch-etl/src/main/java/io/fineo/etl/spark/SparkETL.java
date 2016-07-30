@@ -59,6 +59,9 @@ public class SparkETL {
 
   public static final String FORMAT = "parquet";
   public static final String UNKNOWN_DATA_FORMAT = "json";
+  // TODO really need to make a common protocol across drill and batch processing... #startup
+  // this version matches the version used in Drill's read layout
+  public static final String VERSION = "0";
   private final ETLOptions opts;
   public static String UNKNOWN_FIELDS_KEY = "unknown";
   private SchemaStore store;
