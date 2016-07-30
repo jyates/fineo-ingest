@@ -34,6 +34,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executors;
 
+import static io.fineo.lambda.configure.util.InstanceToNamed.property;
 import static io.fineo.lambda.configure.util.SingleInstanceModule.instanceModule;
 
 @Category(AwsDependentTests.class)
@@ -56,6 +57,7 @@ public class TestDynamoResource {
     props.put(FineoProperties.TEST_PREFIX, prefix);
     props.put(FineoProperties.DYNAMO_INGEST_TABLE_PREFIX, prefix);
     props.put(FineoProperties.DYNAMO_SCHEMA_STORE_TABLE, tableResource.getTestTableName());
+    props.put(FineoProperties.DYNAMO_TABLE_MANAGER_CACHE_TIME, "10000");
     LambdaClientProperties clientProperties = tableResource.getClientProperties(props);
 
     AmazonDynamoDBAsyncClient client = tableResource.getAsyncClient();

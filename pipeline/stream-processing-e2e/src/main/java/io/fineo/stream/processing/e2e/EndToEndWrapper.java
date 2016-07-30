@@ -58,6 +58,7 @@ public class EndToEndWrapper {
     props.setProperty(FineoProperties.DYNAMO_READ_LIMIT, "1");
     props.setProperty(FineoProperties.DYNAMO_WRITE_LIMIT, "1");
     props.setProperty(FineoProperties.DYNAMO_RETRIES, "3");
+    props.setProperty(FineoProperties.DYNAMO_TABLE_MANAGER_CACHE_TIME, "3600000");
 
     modules.add(new PropertiesModule(props));
 

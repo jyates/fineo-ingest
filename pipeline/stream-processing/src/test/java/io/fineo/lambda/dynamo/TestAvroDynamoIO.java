@@ -78,7 +78,7 @@ public class TestAvroDynamoIO {
       // each scan returns up to 6 records, which should be paged through in two requests
       ScanRequest scan = new ScanRequest();
       scan.setLimit(6);
-      return reader.scan(orgId, orgMetricType, range, scan);
+      return reader.scanMetricAlias(orgId, orgMetricType, range);
     });
   }
 
@@ -182,8 +182,8 @@ public class TestAvroDynamoIO {
     }
 
     public void verifyRecords() {
-      verifyRecords((reader, orgId, orgMetricType, range) -> reader.scan(orgId, orgMetricType,
-        range));
+      verifyRecords((reader, orgId, orgMetricType, range) ->
+        reader.scanMetricAlias(orgId, orgMetricType, range));
     }
 
     public void verifyRecords(Reader recordReader) {

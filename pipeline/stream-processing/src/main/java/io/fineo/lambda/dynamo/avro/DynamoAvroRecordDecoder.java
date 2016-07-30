@@ -1,11 +1,9 @@
 package io.fineo.lambda.dynamo.avro;
 
-import com.amazonaws.services.dynamodbv2.model.AttributeValue;
+import com.amazonaws.services.dynamodbv2.document.Item;
 import com.amazonaws.util.Base64;
-import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
 import io.fineo.internal.customer.BaseFields;
-import io.fineo.internal.customer.Metadata;
 import io.fineo.internal.customer.Metric;
 import io.fineo.schema.avro.AvroRecordTranslator;
 import io.fineo.schema.avro.AvroSchemaEncoder;
@@ -14,8 +12,6 @@ import io.fineo.schema.store.SchemaStore;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.apache.commons.lang3.tuple.Pair;
 
 import java.nio.ByteBuffer;
 import java.util.HashMap;
@@ -25,6 +21,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
+
+import static io.fineo.lambda.dynamo.Schema.SORT_KEY_NAME;
 
 /**
  * Decode a Dynamo row into a {@link GenericRecord} that can then be
@@ -36,8 +34,7 @@ public class DynamoAvroRecordDecoder {
   private final Schema.Parser parser;
 
   private List<String> handledFields = Lists.newArrayList(AvroSchemaEncoder
-    .BASE_FIELDS_KEY, io.fineo.lambda.dynamo.Schema.PARTITION_KEY_NAME, io.fineo.lambda.dynamo
-    .Schema.SORT_KEY_NAME, io.fineo.lambda.dynamo.Schema.MARKER);
+    .BASE_FIELDS_KEY, io.fineo.lambda.dynamo.Schema.PARTITION_KEY_NAME, SORT_KEY_NAME, io.fineo.lambda.dynamo.Schema.MARKER);
   private Predicate<Schema.Field> retainedField = field -> !handledFields.contains(field.name());
 
   public DynamoAvroRecordDecoder(SchemaStore store) {
@@ -45,16 +42,7 @@ public class DynamoAvroRecordDecoder {
     this.parser = new Schema.Parser();
   }
 
-  public GenericRecord decode(String orgId, Map<String, AttributeValue> row) {
-    Metadata org = store.getOrgMetadata(orgId);
-    String partitionKey = row.get(io.fineo.lambda.dynamo.Schema.PARTITION_KEY_NAME).getS();
-    // skip past the org in the key
-    String metricID = partitionKey.substring(orgId.length());
-    Metric metric = store.getMetricMetadataFromAlias(org, metricID);
-    return decode(orgId, metric, row);
-  }
-
-  public GenericRecord decode(String orgId, Metric metric, Map<String, AttributeValue> row) {
+  public GenericRecord decode(String orgId, Metric metric, Item item) {
     String schemaName =
       SchemaNameUtils.getCustomerSchemaFullName(orgId, metric.getMetadata().getCanonicalName());
 
@@ -65,13 +53,13 @@ public class DynamoAvroRecordDecoder {
     GenericData.Record record = new GenericData.Record(schema);
 
     // extract the base fields
-    long ts = Long.valueOf(row.get(io.fineo.lambda.dynamo.Schema.SORT_KEY_NAME).getN());
+    long ts = item.getLong(SORT_KEY_NAME);
     BaseFields base = new BaseFields();
     base.setTimestamp(ts);
     record.put(AvroSchemaEncoder.BASE_FIELDS_KEY, base);
 
     Set<String> allFields = new HashSet<>();
-    allFields.addAll(row.keySet());
+    allFields.addAll(item.asMap().keySet());
     Map<String, List<String>> namesToAliases = metric.getMetadata().getCanonicalNamesToAliases();
 
     // set the remaining fields
@@ -79,15 +67,15 @@ public class DynamoAvroRecordDecoder {
     schema.getFields().stream().filter(retainedField).forEach(schemaField -> {
       String name = schemaField.name();
       List<String> aliases = namesToAliases.get(name);
-      Pair<String, AttributeValue> value = getValue(row, aliases);
+      String key = findKey(item, aliases);
 
       GenericRecord fieldRecord =
-        AvroSchemaEncoder.asTypedRecord(finalSchema, name, value.getKey(),
+        AvroSchemaEncoder.asTypedRecord(finalSchema, name, key,
           // its unfortunate that we do it this way - I'd love to not expose the internals of the
           // record, but eh, what can you do? #startup
-          cast(schemaField.schema().getFields().get(1), value.getValue()));
+          cast(schemaField.schema().getFields().get(1), item, key));
       record.put(name, fieldRecord);
-      handledFields.add(value.getKey());
+      handledFields.add(key);
       allFields.remove(name);
     });
 
@@ -97,7 +85,7 @@ public class DynamoAvroRecordDecoder {
     allFields.stream()
              .filter(name -> !handledFields.contains(name))
              .forEach(name -> {
-               String value = getFieldAsString(row.get(name));
+               String value = item.getString(name);
                unknownFields.put(name, value);
              });
     base.setUnknownFields(unknownFields);
@@ -105,62 +93,62 @@ public class DynamoAvroRecordDecoder {
     return record;
   }
 
-  private Pair<String, AttributeValue> getValue(Map<String, AttributeValue> row,
+  private String findKey(Item row,
     List<String> aliasNames) {
     for (String name : aliasNames) {
-      AttributeValue value = row.get(name);
+      Object value = row.get(name);
       if (value != null) {
-        return new ImmutablePair<>(name, value);
+       return name;
       }
     }
     throw new IllegalStateException(
       "Got a row for which no alias matches! Row: " + row + ", aliases: " + aliasNames);
   }
 
-  private Object cast(Schema.Field field, AttributeValue value) {
+  private Object cast(Schema.Field field, Item item, String key) {
     switch (field.schema().getType()) {
       case STRING:
-        return value.getS();
+        return item.getString(key);
       case BYTES:
-        return value.getB();
+        return item.getBinary(key);
       case INT:
-        return Integer.valueOf(value.getN());
+        return item.getInt(key);
       case LONG:
-        return Long.parseLong(value.getN());
+        return item.getLong(key);
       case FLOAT:
-        return Float.parseFloat(value.getN());
+        return item.getFloat(key);
       case DOUBLE:
-        return Double.parseDouble(value.getN());
+        return item.getDouble(key);
       case BOOLEAN:
-        return value.getBOOL();
+        return item.getBOOL(key);
       default:
         return null;
     }
   }
 
-  private String getFieldAsString(AttributeValue value) {
-    if (value.getS() != null)
-      return value.getS();
-    else if (value.getN() != null)
-      return value.getN();
-    else if (value.getBOOL() != null)
-      return value.getBOOL().toString();
-    else if (value.getSS() != null)
-      return Joiner.on(",").join(value.getSS());
-    else if (value.getNS() != null)
-      return Joiner.on(",").join(value.getNS());
-    else if (value.getBS() != null)
-      return Joiner.on(",").join(value.getBS().stream().map(stringEncode).toArray());
-    else if (value.getM() != null)
-      throw new IllegalArgumentException("Map type not supported!");
-    else if (value.getL() != null)
-      throw new IllegalArgumentException("List of types not supported!");
-    else if (value.getNULL() != null)
-      return "";
-    else if (value.getB() != null)
-      return stringEncode.apply(value.getB());
-    throw new IllegalArgumentException("All attribute fields are null!");
-  }
+//  private String getFieldAsString(AttributeValue value) {
+//    if (value.getS() != null)
+//      return value.getS();
+//    else if (value.getN() != null)
+//      return value.getN();
+//    else if (value.getBOOL() != null)
+//      return value.getBOOL().toString();
+//    else if (value.getSS() != null)
+//      return Joiner.on(",").join(value.getSS());
+//    else if (value.getNS() != null)
+//      return Joiner.on(",").join(value.getNS());
+//    else if (value.getBS() != null)
+//      return Joiner.on(",").join(value.getBS().stream().map(stringEncode).toArray());
+//    else if (value.getM() != null)
+//      throw new IllegalArgumentException("Map type not supported!");
+//    else if (value.getL() != null)
+//      throw new IllegalArgumentException("List of types not supported!");
+//    else if (value.getNULL() != null)
+//      return "";
+//    else if (value.getB() != null)
+//      return stringEncode.apply(value.getB());
+//    throw new IllegalArgumentException("All attribute fields are null!");
+//  }
 
   private Function<ByteBuffer, String> stringEncode = buffer -> {
     byte[] actual = new byte[buffer.remaining()];

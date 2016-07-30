@@ -1,6 +1,7 @@
 package io.fineo.lambda.dynamo;
 
 import com.amazonaws.services.dynamodbv2.document.DynamoDB;
+import com.amazonaws.services.dynamodbv2.document.Table;
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
@@ -42,12 +43,12 @@ public class DynamoTableCreator {
   public String getTableAndEnsureExists(long ts) {
     String name = manager.getTableName(ts);
     // The the actual heavy lifting, if the table does not exist yet
-    createTable(name);
+    getTableAndEnsureExists(name);
     return name;
   }
 
   @VisibleForTesting
-  void createTable(String fullTableName) {
+  void getTableAndEnsureExists(String fullTableName) {
     // get the prefix since
     LOG.debug("Checking for table: " + fullTableName);
     if (manager.tableExists(fullTableName)) {
@@ -56,6 +57,8 @@ public class DynamoTableCreator {
     LOG.info("Creating table: " + fullTableName);
     baseRequest.setTableName(fullTableName);
 
-    TableUtils.createTable(dynamo, baseRequest);
+    Table t= TableUtils.createTable(dynamo, baseRequest);
+    // save a network lookup later for this table
+    manager.updateTableReference(t);
   }
 }

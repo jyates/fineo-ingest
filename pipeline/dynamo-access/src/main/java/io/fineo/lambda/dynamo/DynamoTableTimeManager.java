@@ -1,18 +1,23 @@
 package io.fineo.lambda.dynamo;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
+import com.amazonaws.services.dynamodbv2.document.DynamoDB;
+import com.amazonaws.services.dynamodbv2.document.Table;
+import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
+import com.amazonaws.services.dynamodbv2.model.TableDescription;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import io.fineo.etl.FineoProperties;
-import io.fineo.lambda.dynamo.iter.PageManager;
-import io.fineo.lambda.dynamo.iter.PagingIterator;
-import io.fineo.lambda.dynamo.iter.TableNamePager;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -24,7 +29,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.stream.Stream;
+import java.util.concurrent.TimeUnit;
 
 import static java.time.Instant.now;
 
@@ -39,7 +44,9 @@ import static java.time.Instant.now;
  * <tt>[prefix]_[start_millis]_[end_millis]_[write_month]_[write_year]</tt>
  */
 public class DynamoTableTimeManager {
+  private static final Logger LOG = LoggerFactory.getLogger(DynamoTableTimeManager.class);
 
+  private final LoadingCache<String, Table> cache;
   public static final String SEPARATOR = "_";
   static final Joiner TABLE_NAME_PARTS_JOINER = Joiner.on(SEPARATOR);
   private static final Duration TABLE_TIME_LENGTH = Duration.ofDays(7);
@@ -48,13 +55,36 @@ public class DynamoTableTimeManager {
   private static final ZoneOffset ZONE = ZoneOffset.UTC;
 
   private final AmazonDynamoDBAsyncClient client;
+  private final DynamoDB dynamo;
 
   @Inject
   public DynamoTableTimeManager(AmazonDynamoDBAsyncClient client,
-    @Named(FineoProperties.DYNAMO_INGEST_TABLE_PREFIX) String prefix) {
+    @Named(FineoProperties.DYNAMO_INGEST_TABLE_PREFIX) String prefix,
+    @Named(FineoProperties.DYNAMO_TABLE_MANAGER_CACHE_TIME) long timeoutMs) {
     this.prefix = Preconditions.checkNotNull(prefix,
       "Dynamo client write tables must have a prefix!");
     this.client = client;
+    this.dynamo = new DynamoDB(client);
+    this.cache = CacheBuilder.newBuilder()
+                             .expireAfterWrite(timeoutMs, TimeUnit.MILLISECONDS)
+                             .build(new CacheLoader<String, Table>() {
+                               @Override
+                               public Table load(String key) throws Exception {
+                                 // create the table and attempt to describe it, "warming" the
+                                 // result
+                                 Table table = dynamo.getTable(key);
+                                 try {
+                                   table.describe();
+                                 } catch (ResourceNotFoundException e) {
+                                   LOG.info("Table: {} doesn't exist!", key);
+                                 }
+                                 return table;
+                               }
+                             });
+  }
+
+  public DynamoTableTimeManager(AmazonDynamoDBAsyncClient client, String prefix) {
+    this(client, prefix, 10);
   }
 
   /**
@@ -80,16 +110,14 @@ public class DynamoTableTimeManager {
     String startKey = TABLE_NAME_PARTS_JOINER
       .join(prefix, clientInitialRange.getStart().toEpochMilli(),
         clientInitialRange.getEnd().toEpochMilli());
-    TableNamePager pager = new TableNamePager(prefix, startKey, client, 5);
-    Iterator<String> names = new PagingIterator<>(5, new PageManager<>(
-      Lists.newArrayList(pager)));
-    if (!names.hasNext()) {
+    Iterator<String> results = TableUtils.getTables(client, startKey, prefix, 5);
+    if (!results.hasNext()) {
       return tables;
     }
     Instant tableStart;
     Instant tableEnd;
-    while (names.hasNext()) {
-      String name = names.next();
+    while (results.hasNext()) {
+      String name = results.next();
       DynamoTableNameParts parts = DynamoTableNameParts.parse(prefix, name);
       tableStart = Instant.ofEpochMilli(parts.getStart());
       tableEnd = Instant.ofEpochMilli(parts.getEnd());
@@ -139,11 +167,23 @@ public class DynamoTableTimeManager {
     return new Range<>(start, start.plus(TABLE_TIME_LENGTH));
   }
 
-  public boolean tableExists(String fullTableName) {
-    String tableAndStart = DynamoTableTimeManager.getPrefixAndStart(fullTableName);
-    Stream<String> tables = TableUtils.getTables(client, tableAndStart, 1);
-    // we have the table already, we are done
-    return tables.count() > 0;
+  public boolean tableExists(String name) {
+    try {
+      // use a cache so we can avoid lots of network calls (which can cause throttling)
+      Table table = cache.getUnchecked(name);
+      // it has a description and we checked within the specified timeout
+      if (table.getDescription() != null) {
+        return true;
+      }
+      TableDescription desc = table.describe();
+      return desc != null;
+    } catch (ResourceNotFoundException e) {
+      return false;
+    }
+  }
+
+  public void updateTableReference(Table table) {
+    this.cache.put(table.getTableName(), table);
   }
 
   public class TableTimeInfo {

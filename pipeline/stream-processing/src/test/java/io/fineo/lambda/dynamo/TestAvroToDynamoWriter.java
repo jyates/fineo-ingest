@@ -8,16 +8,20 @@ import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
 import com.google.common.collect.Lists;
+import io.fineo.aws.AwsDependentTests;
+import io.fineo.aws.rule.AwsCredentialResource;
 import io.fineo.lambda.FailureHandler;
 import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.lambda.dynamo.avro.AvroToDynamoWriter;
 import io.fineo.schema.avro.SchemaTestUtils;
 import org.apache.avro.generic.GenericRecord;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.mockito.Mockito;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
 
 import static junit.framework.TestCase.assertTrue;
 import static org.junit.Assert.assertEquals;
@@ -27,38 +31,42 @@ import static org.junit.Assert.assertEquals;
  * Test writing avro records to dynamo. Also covers happy path and failure testing for the
  * {@link io.fineo.lambda.aws.AwsAsyncRequest}, which is omitted for time.
  */
+@Category(AwsDependentTests.class)
 public class TestAvroToDynamoWriter {
 
   @Test
   public void testFailedWriteDynamoUnreachable() throws Exception {
-    AmazonDynamoDBAsyncClient client = Mockito.mock(AmazonDynamoDBAsyncClient.class);
-    String prefix = UUID.randomUUID().toString();
+    AwsCredentialResource credentials = new AwsCredentialResource();
+    LocalDynamoTestUtil util = new LocalDynamoTestUtil(credentials);
+    try {
+      util.start();
+      AmazonDynamoDBAsyncClient clientForBasicActions = util.getAsyncClient();
+      String prefix = UUID.randomUUID().toString();
 
-    Mockito.when(client.updateItemAsync(Mockito.any(), Mockito.any())).then
-      (invocationOnMock -> {
-        AsyncHandler<UpdateItemRequest, UpdateItemResult> handler =
-          (AsyncHandler<UpdateItemRequest, UpdateItemResult>) invocationOnMock.getArguments()[1];
-        handler.onError(new ResourceNotFoundException("mocked exception"));
-        return null;
-      });
+      AmazonDynamoDBAsyncClient spy = Mockito.spy(clientForBasicActions);
+      Mockito.doThrow(new ResourceNotFoundException("mocked exception"))
+             .when(spy).updateItem(Mockito.any());
 
-    long time = System.currentTimeMillis();
-    DynamoTableTimeManager manager = new DynamoTableTimeManager(client, prefix);
-    String name = manager.getTableName(time);
-    ListTablesResult tables = new ListTablesResult();
-    tables.setTableNames(Lists.newArrayList(name));
-    Mockito.when(client.listTables(Mockito.any(), Mockito.any())).thenReturn(tables);
+      long time = System.currentTimeMillis();
+      DynamoTableTimeManager manager = new DynamoTableTimeManager(spy, prefix);
+      String name = manager.getTableName(time);
+      ListTablesResult tables = new ListTablesResult();
+      tables.setTableNames(Lists.newArrayList(name));
 
-    DynamoDB dynamo = new DynamoDB(client);
-    DynamoTableCreator creator = new DynamoTableCreator(manager, dynamo, 10L, 10L);
-    AvroToDynamoWriter writer = new AvroToDynamoWriter(client, 1L, creator);
+      DynamoDB dynamo = new DynamoDB(spy);
+      DynamoTableCreator creator = new DynamoTableCreator(manager, dynamo, 10L, 10L);
+      AvroToDynamoWriter writer = new AvroToDynamoWriter(spy, 1L, creator);
 
-    GenericRecord record = SchemaTestUtils.createRandomRecord("orgId", "metricType",
-      time, 1).get(0);
-    writer.write(record);
-    MultiWriteFailures<GenericRecord> failures = writer.flush();
-    assertTrue(failures.any());
-    List<GenericRecord> failed = FailureHandler.getFailedRecords(failures);
-    assertEquals(Lists.newArrayList(record), failed);
+      GenericRecord record = SchemaTestUtils.createRandomRecord("orgId", "metricType",
+        time, 1).get(0);
+      writer.write(record);
+      util.stop();
+      MultiWriteFailures<GenericRecord> failures = writer.flush();
+      assertTrue(failures.any());
+      List<GenericRecord> failed = FailureHandler.getFailedRecords(failures);
+      assertEquals(Lists.newArrayList(record), failed);
+    } finally {
+      util.stop();
+    }
   }
 }

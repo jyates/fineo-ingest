@@ -3,41 +3,46 @@ package io.fineo.lambda.dynamo;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.amazonaws.services.dynamodbv2.document.DynamoDB;
 import com.amazonaws.services.dynamodbv2.document.Table;
+import com.amazonaws.services.dynamodbv2.document.spec.ListTablesSpec;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.TableDescription;
-import com.google.common.collect.Lists;
-import io.fineo.lambda.dynamo.iter.PageManager;
-import io.fineo.lambda.dynamo.iter.PagingIterator;
-import io.fineo.lambda.dynamo.iter.PagingRunner;
-import io.fineo.lambda.dynamo.iter.TableNamePager;
 
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
+import java.util.Iterator;
 
 /**
  *
  */
 public class TableUtils {
-  public static void createTable(DynamoDB dynamo, CreateTableRequest baseRequest) {
+  public static Table createTable(DynamoDB dynamo, CreateTableRequest baseRequest) {
     Table t = dynamo.createTable(baseRequest);
     while (true) {
       try {
         TableDescription desc = t.waitForActiveOrDelete();
         if (desc == null) {
           throw new RuntimeException(
-            "Table " + baseRequest.getTableName() + " was deleted while waiting for it to become active!");
+            "Table " + baseRequest
+              .getTableName() + " was deleted while waiting for it to become active!");
         }
-        break;
+        return t;
       } catch (InterruptedException e) {
         // ignore
       }
     }
   }
 
-  public static Stream<String> getTables(AmazonDynamoDBAsyncClient dynamo, String prefix, int
-    pageSize) {
-    PagingRunner<String> runner = new TableNamePager(prefix, dynamo, pageSize);
-    return StreamSupport.stream(new PagingIterator<>(pageSize, new PageManager<>(
-      Lists.newArrayList(runner))).iterable().spliterator(), false);
+  public static Iterator<String> getTables(AmazonDynamoDBAsyncClient client, String tableAndStart,
+    int pageSize) {
+    return getTables(client, tableAndStart, tableAndStart, pageSize);
+  }
+
+  public static Iterator<String> getTables(AmazonDynamoDBAsyncClient client, String tableAndStart,
+    String prefix, int pageSize) {
+    DynamoDB dynamo = new DynamoDB(client);
+    ListTablesSpec spec = new ListTablesSpec();
+    spec.withMaxPageSize(pageSize);
+    spec.withExclusiveStartTableName(tableAndStart);
+    Iterator<Table> results = Iterators.whereStop(dynamo.listTables(spec).iterator(),
+      table -> table.getTableName().startsWith(prefix));
+    return com.google.common.collect.Iterators.transform(results, Table::getTableName);
   }
 }

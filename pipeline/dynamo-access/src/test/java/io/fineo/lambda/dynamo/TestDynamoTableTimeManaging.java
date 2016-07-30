@@ -195,25 +195,27 @@ public class TestDynamoTableTimeManaging {
     AmazonDynamoDBAsyncClient client = tables.getAsyncClient();
 
     DynamoTableCreator loader =
-      new DynamoTableCreator(new DynamoTableTimeManager(client, UUID.randomUUID().toString()),
+      new DynamoTableCreator(new DynamoTableTimeManager(client, UUID.randomUUID().toString(), 10),
         new DynamoDB(client), 10, 10);
     String name = DynamoTableTimeManager.TABLE_NAME_PARTS_JOINER.join(prefix, "1", "2");
-    loader.createTable(name);
+    loader.getTableAndEnsureExists(name);
     oneTableWithPrefix(client, prefix);
 
-    loader.createTable(name);
+    loader.getTableAndEnsureExists(name);
     oneTableWithPrefix(client, prefix);
 
     // something happened and the table gets deleted
     client.deleteTable(name);
-    loader.createTable(name);
+    // sleep to make sure we go past the check time in the manager
+    Thread.currentThread().sleep(1000);
+    loader.getTableAndEnsureExists(name);
     oneTableWithPrefix(client, prefix);
 
     // another table gets created with a different range, ensure that we still don't try and create
     // the table again
     String earlierTableName = DynamoTableTimeManager.TABLE_NAME_PARTS_JOINER.join(prefix, "0", "1");
-    loader.createTable(earlierTableName);
-    loader.createTable(name);
+    loader.getTableAndEnsureExists(earlierTableName);
+    loader.getTableAndEnsureExists(name);
   }
 
   @Test

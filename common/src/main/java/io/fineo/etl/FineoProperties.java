@@ -19,4 +19,6 @@ public class FineoProperties {
   /* These prefixes combine with the StreamType below to generate the full property names */
   public static final String RAW_PREFIX = "fineo.firehose.raw";
   public static final String STAGED_PREFIX = "fineo.firehose.staged";
+  public static final String DYNAMO_TABLE_MANAGER_CACHE_TIME =
+    "fineo.dynamo.table-manager.cache.time";
 }

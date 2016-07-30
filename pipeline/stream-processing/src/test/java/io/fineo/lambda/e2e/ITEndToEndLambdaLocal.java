@@ -8,6 +8,7 @@ import com.google.inject.Module;
 import com.google.inject.Provider;
 import com.google.inject.Provides;
 import com.google.inject.name.Names;
+import io.fineo.etl.FineoProperties;
 import io.fineo.lambda.configure.PropertiesModule;
 import io.fineo.lambda.configure.firehose.FirehoseModule;
 import io.fineo.lambda.configure.legacy.StreamType;
@@ -44,6 +45,7 @@ import org.schemarepo.ValidatorFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -119,6 +121,7 @@ public class ITEndToEndLambdaLocal {
 
     // between stage stream
     props.setProperty(KINESIS_PARSED_RAW_OUT_STREAM_NAME, STAGE_CONNECTOR);
+    props.setProperty(FineoProperties.DYNAMO_TABLE_MANAGER_CACHE_TIME, "3600000");
 
     LambdaKinesisConnector connector = new LocalLambdaLocalKinesisConnector();
 

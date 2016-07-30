@@ -8,6 +8,7 @@ class Properties::Dynamo
     @opts = []
     @opts << ArgOpts.simple("dynamo.region","us-east-1", 'Region for the table')
     @opts << ArgOpts.simple("dynamo.limit.retries", "3", 'Number of retries to make in the Fineo AWS wrapper')
+    @opts << ArgOpts.simple("dynamo.table-manager.cache.timeout", "3600000", 'Milliseconds that a table is retained in the table manager cache between checking if it exists')
   end
 
   def withSchemaStore

@@ -1,11 +1,11 @@
 package io.fineo.lambda.e2e.aws.dynamo;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
-import com.amazonaws.services.dynamodbv2.model.AttributeValue;
+import com.amazonaws.services.dynamodbv2.document.DynamoDB;
+import com.amazonaws.services.dynamodbv2.document.Item;
+import com.amazonaws.services.dynamodbv2.document.Table;
 import com.amazonaws.services.dynamodbv2.model.ListTablesResult;
-import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.name.Named;
@@ -14,13 +14,8 @@ import io.fineo.internal.customer.Metric;
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import io.fineo.lambda.dynamo.DynamoTableTimeManager;
 import io.fineo.lambda.dynamo.Range;
-import io.fineo.lambda.dynamo.ResultOrException;
-import io.fineo.lambda.dynamo.Schema;
 import io.fineo.lambda.dynamo.TableUtils;
 import io.fineo.lambda.dynamo.avro.AvroDynamoReader;
-import io.fineo.lambda.dynamo.iter.PageManager;
-import io.fineo.lambda.dynamo.iter.PagingIterator;
-import io.fineo.lambda.dynamo.iter.ScanPager;
 import io.fineo.lambda.e2e.aws.AwsResource;
 import io.fineo.lambda.e2e.manager.collector.OutputCollector;
 import io.fineo.lambda.util.run.FutureWaiter;
@@ -39,6 +34,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 import static io.fineo.etl.FineoProperties.DYNAMO_SCHEMA_STORE_TABLE;
 import static org.junit.Assert.assertEquals;
@@ -75,7 +71,7 @@ public class DynamoResource implements AwsResource {
   }
 
   @Inject(optional = true)
-  public void setCleanupTables(@Named(FINEO_DYNAMO_RESOURCE_CLEANUP) boolean cleanup){
+  public void setCleanupTables(@Named(FINEO_DYNAMO_RESOURCE_CLEANUP) boolean cleanup) {
     this.cleanup = cleanup;
   }
 
@@ -103,7 +99,7 @@ public class DynamoResource implements AwsResource {
   }
 
   public void cleanup(FutureWaiter futures) {
-    if(!cleanup){
+    if (!cleanup) {
       return;
     }
     futures.run(this::deleteSchemaStore);
@@ -124,15 +120,11 @@ public class DynamoResource implements AwsResource {
     getTables(prefix).parallel().forEach(name -> {
       try {
         // create a directory for each table;
-        ScanRequest request = new ScanRequest(name);
-        ScanPager runner = new ScanPager(dynamo, request, Schema.PARTITION_KEY_NAME, null);
-        Iterable<ResultOrException<Map<String, AttributeValue>>> iter =
-          () -> new PagingIterator<>(5, new PageManager(Lists.newArrayList(runner)));
+        DynamoDB db = new DynamoDB(dynamo);
+        Table table = db.getTable(name);
         DataOutputStream dos = new DataOutputStream(new BufferedOutputStream(output.get(name)));
-        for (ResultOrException<Map<String, AttributeValue>> result : iter) {
-          result.doThrow();
-          Map<String, AttributeValue> row = result.getResult();
-          for (Map.Entry<String, AttributeValue> pair : row.entrySet()) {
+        for (Item result : table.scan()) {
+          for (Map.Entry<String, Object> pair : result.asMap().entrySet()) {
             LOG.trace("Copied: " + pair.getKey() + "=> " + pair.getValue());
             dos.writeBytes(pair.getKey() + " => " + pair.getValue() + "\n");
           }
@@ -152,7 +144,8 @@ public class DynamoResource implements AwsResource {
       Preconditions.checkArgument(prefix.startsWith(testPrefix),
         "Table names have to start with the test prefix: %s. Got prefix: %s", testPrefix, prefix);
     }
-    return TableUtils.getTables(dynamo, prefix, 1);
+    Iterable<String> names = () -> TableUtils.getTables(dynamo, prefix, 1);
+    return StreamSupport.stream(names.spliterator(), true);
   }
 
   public List<GenericRecord> read(RecordMetadata metadata) {
@@ -168,7 +161,7 @@ public class DynamoResource implements AwsResource {
       this.waiter.get()
                  .withDescription("Metadata records to appear in schema store: " + storeTable)
                  .withStatus(() ->
-                   reader.scan(metadata.getOrgID(), metric, range, null)
+                   reader.scan(metadata.getOrgID(), metric, range)
                          .collect(Collectors.toList()))
                  .withStatusCheck(list -> ((List<GenericRecord>) list).size() > 0);
     assertTrue("Didn't get any rows from Dynamo within timeout!", waiter.waitForResult());

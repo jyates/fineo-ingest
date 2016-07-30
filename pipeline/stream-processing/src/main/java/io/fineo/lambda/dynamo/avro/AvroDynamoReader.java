@@ -1,17 +1,18 @@
 package io.fineo.lambda.dynamo.avro;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
+import com.amazonaws.services.dynamodbv2.document.DynamoDB;
+import com.amazonaws.services.dynamodbv2.document.Item;
+import com.amazonaws.services.dynamodbv2.document.Table;
+import com.amazonaws.services.dynamodbv2.document.spec.ScanSpec;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
-import com.amazonaws.services.dynamodbv2.model.ScanRequest;
+import com.google.common.collect.Iterables;
 import com.google.inject.Inject;
 import io.fineo.internal.customer.Metric;
 import io.fineo.lambda.dynamo.DynamoTableTimeManager;
+import io.fineo.lambda.dynamo.Iterators;
 import io.fineo.lambda.dynamo.Range;
-import io.fineo.lambda.dynamo.ResultOrException;
 import io.fineo.lambda.dynamo.Schema;
-import io.fineo.lambda.dynamo.iter.PageManager;
-import io.fineo.lambda.dynamo.iter.PagingIterator;
-import io.fineo.lambda.dynamo.iter.ScanPager;
 import io.fineo.schema.avro.AvroSchemaManager;
 import io.fineo.schema.store.SchemaStore;
 import org.apache.avro.generic.GenericRecord;
@@ -21,13 +22,14 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
+
+import static io.fineo.lambda.dynamo.Schema.PARTITION_KEY_NAME;
+import static io.fineo.lambda.dynamo.Schema.SORT_KEY_NAME;
 
 /**
  * Read records from Dynamo
@@ -52,61 +54,46 @@ public class AvroDynamoReader {
     this.prefetchSize = prefetchSize;
   }
 
-  public Stream<GenericRecord> scan(String orgId, String aliasMetricName, Range<Instant> range) {
-    return scan(orgId, aliasMetricName, range, null);
-  }
-
-  public Stream<GenericRecord> scan(String orgId, String aliasMetricName, Range<Instant> range,
-    ScanRequest baseRequest) {
+  public Stream<GenericRecord> scanMetricAlias(String orgId, String aliasMetricName,
+    Range<Instant> range) {
     AvroSchemaManager manager = new AvroSchemaManager(store, orgId);
     Metric metric = manager.getMetricInfo(aliasMetricName);
-    return scan(orgId, metric, range, baseRequest);
+    return scan(orgId, metric, range);
   }
 
-  public Stream<GenericRecord> scan(String orgId, Metric metric, Range<Instant> range,
-    ScanRequest baseRequest) {
+  public Stream<GenericRecord> scan(String orgId, Metric metric, Range<Instant> range) {
     String canonicalName = metric.getMetadata().getCanonicalName();
     AttributeValue partitionKey = Schema.getPartitionKey(orgId, canonicalName);
     DynamoAvroRecordDecoder decoder = new DynamoAvroRecordDecoder(store);
-    return scan(range, partitionKey, result -> decoder.decode(orgId, metric, result),
-      Optional.ofNullable(baseRequest));
+    return scanMetricAlias(range, partitionKey, result -> decoder.decode(orgId, metric, result)
+    );
   }
 
-  private Function<Instant, Map<String, AttributeValue>> getStartKeys(AttributeValue partitionKey) {
-    return instant -> {
-      Map<String, AttributeValue> exclusiveStart = new HashMap<>(2);
-      exclusiveStart.put(Schema.PARTITION_KEY_NAME, partitionKey);
-      exclusiveStart.put(Schema.SORT_KEY_NAME, Schema.getSortKey(instant.toEpochMilli()));
-      return exclusiveStart;
-    };
-  }
-
-  private Stream<GenericRecord> scan(Range<Instant> range, AttributeValue
-    stringPartitionKey, Function<Map<String, AttributeValue>,
-    GenericRecord> translator, Optional<ScanRequest> baseRequest) {
+  private Stream<GenericRecord> scanMetricAlias(Range<Instant> range, AttributeValue
+    stringPartitionKey, Function<Item, GenericRecord> translator) {
     // get the potential tables that match the range
     List<Pair<String, Range<Instant>>> tables = tableManager.getCoveringTableNames(range);
     LOG.debug("Scanning tables: " + tables);
-    // get a scan across each table
-    List<ScanPager> scanners = new ArrayList<>(tables.size());
 
-    String stop = stringPartitionKey.getS() + "0";
-    Function<Instant, Map<String, AttributeValue>> rangeCreator = getStartKeys(stringPartitionKey);
+    DynamoDB dynamo = new DynamoDB(client);
+    List<Iterable<Item>> iters = new ArrayList<>();
+    String startPartition = stringPartitionKey.getS();
+    String stop = startPartition + "0";
+    Function<Range<Instant>, Long> sortStart =
+      r -> Long.parseLong(Schema.getSortKey(range.getStart().toEpochMilli()).getN());
     for (Pair<String, Range<Instant>> table : tables) {
-      ScanRequest request = baseRequest.isPresent() ?
-                            baseRequest.get().clone() : new ScanRequest();
-      request.setTableName(table.getKey());
-      request.setExclusiveStartKey(rangeCreator.apply(table.getValue().getStart()));
-      request.setConsistentRead(true);
-      scanners.add(new ScanPager(client, request, Schema.PARTITION_KEY_NAME, stop));
+      Table dt = dynamo.getTable(table.getKey());
+      ScanSpec spec = new ScanSpec();
+      spec.withConsistentRead(true);
+      spec.withExclusiveStartKey(PARTITION_KEY_NAME, startPartition,
+        SORT_KEY_NAME, sortStart.apply(table.getValue()));
+      Iterable<Item> iter = dt.scan(spec);
+      Iterator<Item> itemIter = iter.iterator();
+      // wrap the iterator to stop when we hit the end key
+      iters.add(() -> Iterators.whereStop(itemIter,
+        item -> item.getString(PARTITION_KEY_NAME).compareTo(stop) <= 0));
     }
 
-    // create an iterable around all the requests
-    Iterable<ResultOrException<Map<String, AttributeValue>>> iter =
-      () -> new PagingIterator<>(prefetchSize, new PageManager(scanners));
-    return StreamSupport.stream(iter.spliterator(), false).map(re -> {
-      re.doThrow();
-      return re.getResult();
-    }).map(translator);
+    return StreamSupport.stream(Iterables.concat(iters).spliterator(), false).map(translator);
   }
 }
