@@ -10,15 +10,14 @@ import io.fineo.lambda.configure.PropertiesModule;
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import io.fineo.lambda.configure.legacy.StreamType;
 import io.fineo.lambda.configure.util.SingleInstanceModule;
-import io.fineo.lambda.e2e.state.EndToEndTestBuilder;
-import io.fineo.lambda.e2e.state.EndToEndTestRunner;
 import io.fineo.lambda.e2e.aws.dynamo.DelegateAwsDynamoResource;
 import io.fineo.lambda.e2e.aws.firehose.DelegateFirehoseResource;
 import io.fineo.lambda.e2e.aws.kinesis.KinesisStreamManager;
 import io.fineo.lambda.e2e.aws.lambda.LambdaKinesisConnector;
-import io.fineo.lambda.e2e.aws.manager.AwsResourceManager;
-import io.fineo.lambda.e2e.manager.collector.FileCollector;
 import io.fineo.lambda.e2e.manager.ManagerBuilder;
+import io.fineo.lambda.e2e.manager.collector.FileCollector;
+import io.fineo.lambda.e2e.state.EndToEndTestBuilder;
+import io.fineo.lambda.e2e.state.EndToEndTestRunner;
 import io.fineo.lambda.util.IResourceManager;
 import io.fineo.test.rule.TestOutput;
 import org.junit.After;
@@ -34,7 +33,7 @@ import java.util.Properties;
 import static java.util.Arrays.asList;
 
 /**
- * Base class for tests that use the {@link AwsResourceManager} and the {@link EndToEndTestRunner}
+ * Base class for tests that use the AWS based resources and the {@link EndToEndTestRunner}
  */
 public class BaseITEndToEndAwsServices {
 
