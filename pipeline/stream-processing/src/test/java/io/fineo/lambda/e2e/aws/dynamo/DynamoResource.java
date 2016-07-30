@@ -159,7 +159,7 @@ public class DynamoResource implements AwsResource {
     Range<Instant> range = Range.of(ts, ts + 1);
     ResultWaiter<List<GenericRecord>> waiter =
       this.waiter.get()
-                 .withDescription("Metadata records to appear in schema store: " + storeTable)
+                 .withDescription("Avro records to appear in output tables")
                  .withStatus(() ->
                    reader.scan(metadata.getOrgID(), metric, range)
                          .collect(Collectors.toList()))

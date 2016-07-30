@@ -65,8 +65,7 @@ public class AvroDynamoReader {
     String canonicalName = metric.getMetadata().getCanonicalName();
     AttributeValue partitionKey = Schema.getPartitionKey(orgId, canonicalName);
     DynamoAvroRecordDecoder decoder = new DynamoAvroRecordDecoder(store);
-    return scanMetricAlias(range, partitionKey, result -> decoder.decode(orgId, metric, result)
-    );
+    return scanMetricAlias(range, partitionKey, result -> decoder.decode(orgId, metric, result));
   }
 
   private Stream<GenericRecord> scanMetricAlias(Range<Instant> range, AttributeValue
@@ -79,8 +78,10 @@ public class AvroDynamoReader {
     List<Iterable<Item>> iters = new ArrayList<>();
     String startPartition = stringPartitionKey.getS();
     String stop = startPartition + "0";
+    String start = startPartition.substring(0, startPartition.length() -1);
     Function<Range<Instant>, Long> sortStart =
-      r -> Long.parseLong(Schema.getSortKey(range.getStart().toEpochMilli()).getN());
+      // read prefix has to start *before* the desired read
+      r -> Long.parseLong(Schema.getSortKey(range.getStart().toEpochMilli()).getN()) - 1;
     for (Pair<String, Range<Instant>> table : tables) {
       Table dt = dynamo.getTable(table.getKey());
       ScanSpec spec = new ScanSpec();
