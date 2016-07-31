@@ -39,7 +39,7 @@ public class RawJsonToRecordHandler {
     // parse out the necessary values
     MapRecord record = new MapRecord(values);
     LOG.trace("got record");
-    // this is an ugly reach into the bridge, logic for the org ID, specially as we pull it out
+    // this is an ugly reach into the bridge logic for the org ID, specially as we pull it out
     // when we create the schema bridge, but that requires a bit more refactoring than I want
     // to do right now for the schema bridge. Maybe an easy improvement later.
     String orgId = record.getStringByField(AvroSchemaEncoder.ORG_ID_KEY);
