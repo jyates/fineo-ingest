@@ -14,7 +14,9 @@ import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 
+import java.math.BigDecimal;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -36,7 +38,8 @@ public class DynamoAvroRecordDecoder {
   private final Schema.Parser parser;
 
   private List<String> handledFields = Lists.newArrayList(AvroSchemaEncoder
-    .BASE_FIELDS_KEY, io.fineo.lambda.dynamo.Schema.PARTITION_KEY_NAME, SORT_KEY_NAME, io.fineo.lambda.dynamo.Schema.MARKER);
+      .BASE_FIELDS_KEY, io.fineo.lambda.dynamo.Schema.PARTITION_KEY_NAME, SORT_KEY_NAME,
+    io.fineo.lambda.dynamo.Schema.ID_FIELD);
   private Predicate<Schema.Field> retainedField = field -> !handledFields.contains(field.name());
 
   public DynamoAvroRecordDecoder(SchemaStore store) {
@@ -44,7 +47,7 @@ public class DynamoAvroRecordDecoder {
     this.parser = new Schema.Parser();
   }
 
-  public GenericRecord decode(String orgId, Metric metric, Item item) {
+  public List<GenericRecord> decode(String orgId, Metric metric, Item item) {
     String schemaName =
       SchemaNameUtils.getCustomerSchemaFullName(orgId, metric.getMetadata().getCanonicalName());
 
@@ -52,19 +55,29 @@ public class DynamoAvroRecordDecoder {
     if (schema == null) {
       schema = parser.parse(metric.getMetricSchema());
     }
-    GenericData.Record record = new GenericData.Record(schema);
 
     // extract the base fields
     long ts = item.getLong(SORT_KEY_NAME);
+    Collection<String> ids = item.getStringSet(io.fineo.lambda.dynamo.Schema.ID_FIELD);
+    List<GenericRecord> records = new ArrayList<>(ids.size());
+    for (String id : ids) {
+      records.add(parseRecord(schema, metric, ts, item, id));
+    }
+
+    return records;
+  }
+
+  private GenericRecord parseRecord(Schema schema, Metric metric, long ts, Item item, String id) {
     BaseFields base = new BaseFields();
     base.setTimestamp(ts);
+
+    GenericData.Record record = new GenericData.Record(schema);
     record.put(AvroSchemaEncoder.BASE_FIELDS_KEY, base);
 
     Set<String> allFields = new HashSet<>();
     allFields.addAll(item.asMap().keySet());
     Map<String, List<String>> namesToAliases = metric.getMetadata().getCanonicalNamesToAliases();
 
-    ItemRecord iRecord = new ItemRecord(item);
     // set the remaining fields
     final Schema finalSchema = schema;
     schema.getFields().stream().filter(retainedField).forEach(schemaField -> {
@@ -73,7 +86,7 @@ public class DynamoAvroRecordDecoder {
       String key = findKey(item, aliases);
 
       GenericRecord fieldRecord =
-        AvroSchemaEncoder.asTypedRecord(finalSchema, name, key, iRecord);
+        AvroSchemaEncoder.asTypedRecord(finalSchema, name, key, new IdSpecificItemRecord(id, item));
       record.put(name, fieldRecord);
       handledFields.add(key);
       allFields.remove(name);
@@ -85,27 +98,28 @@ public class DynamoAvroRecordDecoder {
     allFields.stream()
              .filter(name -> !handledFields.contains(name))
              .forEach(name -> {
-               String value = item.getString(name);
-               unknownFields.put(name, value);
+               Map map = item.getMap(name);
+               String value = (String) map.get(id);
+               if (value != null) {
+                 unknownFields.put(name, value);
+               }
              });
     base.setUnknownFields(unknownFields);
-
     return record;
   }
 
-  private String findKey(Item row,
-    List<String> aliasNames) {
+  private String findKey(Item row, List<String> aliasNames) {
     for (String name : aliasNames) {
-      Object value = row.get(name);
-      if (value != null) {
-       return name;
+      Map map = row.getMap(name);
+      if (map != null) {
+        return name;
       }
     }
     throw new IllegalStateException(
       "Got a row for which no alias matches! Row: " + row + ", aliases: " + aliasNames);
   }
 
-  private class ItemRecord implements Record{
+  private class ItemRecord implements Record {
     private final Item item;
 
     private ItemRecord(Item item) {
@@ -160,6 +174,67 @@ public class DynamoAvroRecordDecoder {
     @Override
     public Object getField(String name) {
       return item.get(name);
+    }
+  }
+
+  private class IdSpecificItemRecord implements Record {
+    private final String id;
+    private final Item item;
+
+    private IdSpecificItemRecord(String id, Item item) {
+      this.id = id;
+      this.item = item;
+    }
+
+    @Override
+    public Boolean getBooleanByField(String fieldName) {
+      Map<String, Boolean> map = item.getMap(fieldName);
+      return map.get(id);
+    }
+
+    @Override
+    public Integer getIntegerByField(String fieldName) {
+      return ((BigDecimal) item.getMap(fieldName).get(id)).intValue();
+    }
+
+    @Override
+    public Long getLongByFieldName(String fieldName) {
+      return ((BigDecimal) item.getMap(fieldName).get(id)).longValue();
+    }
+
+    @Override
+    public Float getFloatByFieldName(String fieldName) {
+      return ((BigDecimal) item.getMap(fieldName).get(id)).floatValue();
+    }
+
+    @Override
+    public Double getDoubleByFieldName(String fieldName) {
+      return ((BigDecimal) item.getMap(fieldName).get(id)).doubleValue();
+    }
+
+    @Override
+    public ByteBuffer getBytesByFieldName(String fieldName) {
+      return (ByteBuffer) item.getMap(fieldName).get(id);
+    }
+
+    @Override
+    public String getStringByField(String fieldName) {
+      return (String) item.getMap(fieldName).get(id);
+    }
+
+    @Override
+    public Collection<String> getFieldNames() {
+      return item.asMap().keySet();
+    }
+
+    @Override
+    public Iterable<Map.Entry<String, Object>> getFields() {
+      return null;
+    }
+
+    @Override
+    public Object getField(String name) {
+      return null;
     }
   }
 

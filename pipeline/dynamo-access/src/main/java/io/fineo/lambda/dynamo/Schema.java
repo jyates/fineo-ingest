@@ -32,9 +32,13 @@ public class Schema {
    * shortened for 'timestamp'
    */
   public static final String SORT_KEY_NAME = "_fts";
+
+  /**
+   * Id field used to collect the ids used to handle overlapping events at the same time
+   */
+  public static final String ID_FIELD = "_fid";
+
   private static final Pair<List<KeySchemaElement>, List<AttributeDefinition>> SCHEMA;
-  // TODO replace with a schema ID so we can lookup the schema on read, if necessary
-  public static final String MARKER = "marker";
 
   static {
     List<KeySchemaElement> schema = new ArrayList<>();

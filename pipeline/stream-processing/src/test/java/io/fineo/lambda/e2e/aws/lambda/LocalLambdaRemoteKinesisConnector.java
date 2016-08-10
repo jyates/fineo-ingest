@@ -48,7 +48,7 @@ public class LocalLambdaRemoteKinesisConnector extends LambdaKinesisConnector<In
       // Same as Executors#newSingleThreadExecutor, but we need a threadpoolexecutor, so copy/paste
       new ThreadPoolExecutor(1, 1,
         0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>()),
-      // addFirehose timeouts for the thread to complete
+      // addFirehose timeouts for the thread to done
       120, TimeUnit.SECONDS);
 
     // create each stream
@@ -76,7 +76,7 @@ public class LocalLambdaRemoteKinesisConnector extends LambdaKinesisConnector<In
           return;
         }
       } finally {
-        LOG.info("Adding marker that CONNECT is complete");
+        LOG.info("Adding marker that CONNECT is done");
         DONE_QUEUE.add(true);
       }
     });
@@ -116,7 +116,7 @@ public class LocalLambdaRemoteKinesisConnector extends LambdaKinesisConnector<In
 
   @Override
   public void cleanup(FutureWaiter futures) {
-    LOG.info("Wait for CONNECT to complete");
+    LOG.info("Wait for CONNECT to done");
     this.done = true;
     this.executor.shutdown();
     this.executor.shutdownNow();

@@ -51,8 +51,6 @@ import static io.fineo.lambda.dynamo.avro.DynamoAvroRecordEncoder.convertField;
  * </p>
  */
 public class AvroToDynamoWriter {
-  private static final Logger LOG = LoggerFactory.getLogger(AvroToDynamoWriter.class);
-  private static final Joiner COMMAS = Joiner.on(',');
 
   private final DynamoTableCreator tables;
   private final AwsAsyncSubmitter<UpdateItemRequest, UpdateItemResult, GenericRecord> submitter;
@@ -70,97 +68,22 @@ public class AvroToDynamoWriter {
    * @param record record to write to dynamo. Expected to have at least a {@link BaseFields} field
    */
   public void write(GenericRecord record) {
-    AwsAsyncRequest<GenericRecord, UpdateItemRequest> request = getUpdateForTable(record);
-    this.submitter.submit(request);
+    DynamoUpdate request = getUpdateForRecord(record);
+    request.submit(this.submitter);
   }
 
   public MultiWriteFailures<GenericRecord> flush() {
     return this.submitter.flush();
   }
 
-  /**
-   * Pull out the timestamp from the record to find the table. Then setup the partition and and
-   * sort key, so we just need to update the rest of the fields from the record
-   *
-   * @param record to parse
-   * @return
+  private DynamoUpdate getUpdateForRecord(GenericRecord record) {
+    return new DynamoUpdate(record, this::getTableForEvent);
+  }
+
+  /*
+   * Pull out the timestamp from the record to find the table
    */
-  private AwsAsyncRequest<GenericRecord, UpdateItemRequest> getUpdateForTable(
-    GenericRecord record) {
-    RecordMetadata metadata = RecordMetadata.get(record);
-
-    UpdateItemRequest request = new UpdateItemRequest();
-    BaseFields fields = metadata.getBaseFields();
-
-    String tableName = tables.getTableAndEnsureExists(fields.getTimestamp());
-    request.setTableName(tableName);
-
-    request.addKeyEntry(Schema.PARTITION_KEY_NAME, getPartitionKey(metadata));
-    request.addKeyEntry(Schema.SORT_KEY_NAME, getSortKey(fields));
-
-    Map<String, List<String>> expressionBuilder = new HashMap<>();
-    Map<String, AttributeValue> values = new HashMap<>();
-
-    // store the unknown fields from the base fields that we parsed
-    Map<String, String> unknown = fields.getUnknownFields();
-    unknown.forEach((name, value) -> {
-      setAttribute(name, new AttributeValue(value), expressionBuilder, values);
-    });
-
-    // for each field in the record, add it to the update, skipping the 'base fields' field,
-    // since we handled that separately above
-    record.getSchema().getFields().stream()
-          .filter(field -> !field.name().equals(AvroSchemaEncoder.BASE_FIELDS_KEY))
-          .forEach(field -> {
-            Pair<String, AttributeValue> attribute =
-              convertField((GenericData.Record) record.get(field.name()));
-            setAttribute(attribute.getKey(), attribute.getValue(),expressionBuilder, values);
-          });
-
-    // add a default field, just in case there are no fields in the record
-    if (expressionBuilder.size() == 0) {
-      setAttribute(Schema.MARKER, new AttributeValue("0"), expressionBuilder, values);
-    }
-
-    // convert each part of the expression into a single expression
-    StringBuilder sb = new StringBuilder();
-    for (Map.Entry<String, List<String>> part : expressionBuilder.entrySet()) {
-      sb.append(part.getKey() + " " + COMMAS.join(part.getValue()));
-    }
-    request.withUpdateExpression(sb.toString());
-    // and the values for that expression
-    request.withExpressionAttributeValues(values);
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("Record: " + record);
-      LOG.debug("Using update: " + request.getUpdateExpression());
-      LOG.debug("Using expression values: " + request.getExpressionAttributeValues());
-    }
-
-    return new AwsAsyncRequest<>(record, request);
-  }
-
-  private void setAttribute(String name, AttributeValue value, Map<String, List<String>> expression,
-    Map<String, AttributeValue> values) {
-    List<String> set = expression.get("SET");
-    if (set == null) {
-      set = new ArrayList<>();
-      expression.put("SET", set);
-    }
-
-    // convert the name into a unique value so we can get an ExpressionAttributeValue
-    String attributeName = DynamoExpressionPlaceHolders.asExpressionAttributeValue(name);
-    while (values.containsKey(attributeName)) {
-      attributeName += "a";
-    }
-    values.put(attributeName, value);
-    set.add(name + "= " + attributeName);
-  }
-
-  private static AttributeValue getSortKey(BaseFields fields) {
-    return new AttributeValue().withN(fields.getTimestamp().toString());
-  }
-
-  private static AttributeValue getPartitionKey(RecordMetadata metadata) {
-    return Schema.getPartitionKey(metadata.getOrgID(), metadata.getMetricCanonicalType());
+  private String getTableForEvent(BaseFields field) {
+    return tables.getTableAndEnsureExists(field.getTimestamp());
   }
 }

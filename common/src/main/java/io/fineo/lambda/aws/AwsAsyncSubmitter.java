@@ -5,6 +5,7 @@ import com.amazonaws.handlers.AsyncHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -29,19 +30,20 @@ import java.util.concurrent.Phaser;
  * of requests, and then wait on all those requests to complete via {@link #flush()}.
  * </p>
  */
-public class AwsAsyncSubmitter<S extends AmazonWebServiceRequest, R, B> {
+public class AwsAsyncSubmitter<REQUEST extends AmazonWebServiceRequest, RESPONSE extends
+  Serializable, BASE_REQUEST> {
 
   private static final Logger LOG = LoggerFactory.getLogger(AwsAsyncSubmitter.class);
 
   private final long retries;
-  private final Submitter<S, R> client;
+  private final Submitter<REQUEST, RESPONSE> client;
 
   private volatile Phaser phase = newPhaser();
   private final List<UpdateItemHandler> actions = Collections.synchronizedList(new ArrayList<>());
-  private final List<AwsAsyncRequest<B, S>> failed =
+  private final List<AwsAsyncRequest<BASE_REQUEST, REQUEST>> failed =
     Collections.synchronizedList(new ArrayList<>(0));
 
-  public AwsAsyncSubmitter(long retries, Submitter<S, R> client) {
+  public AwsAsyncSubmitter(long retries, Submitter<REQUEST, RESPONSE> client) {
     if (retries < 0) {
       retries = 1;
     }
@@ -49,7 +51,7 @@ public class AwsAsyncSubmitter<S extends AmazonWebServiceRequest, R, B> {
     this.client = client;
   }
 
-  public void submit(AwsAsyncRequest<B, S> request) {
+  public void submit(AwsAsyncRequest<BASE_REQUEST, REQUEST> request) {
     Phaser phase = this.phase;
     UpdateItemHandler handler = new UpdateItemHandler(phase, request);
     actions.add(handler);
@@ -59,30 +61,33 @@ public class AwsAsyncSubmitter<S extends AmazonWebServiceRequest, R, B> {
 
   private void register(Phaser phase, String msg) {
     int p = phase.register();
-    LOG.trace("REGISTER(" + p + ") - " + msg);
+    LOG.trace("REGISTER({}[p:{}])) - {}", p, phase.getUnarrivedParties(), msg);
   }
 
   private void submit(UpdateItemHandler handler) {
     if (handler.attempts >= retries) {
-      this.actions.remove(handler);
-      this.failed.add(handler.request);
-      done(handler.phaser, "Actions exceeded retries");
+      fail(handler);
       return;
     }
     LOG.trace("Resubmitting!");
     client.submit(handler.getRequest(), handler);
   }
 
+  private void fail(UpdateItemHandler handler) {
+    this.actions.remove(handler);
+    this.failed.add(handler.request);
+    done(handler.phaser, "Actions exceeded retries");
+  }
+
   /**
-   * Flush all writes that were submitted before calling {@link #flush()}. Some writes may still
-   * be outstanding after flush, if they were submitted on a different thread to <tt>thius</tt>.
+   * Flush all writes that were submitted before calling {@link #flush()}. Waits for all elements
+   * in the phaser to complete. Some things may be submitted to the phaser after we call flush -
+   * we will wait for those too. There is a slight
    *
    * @return any failures that occurred
    */
-  public MultiWriteFailures<B> flush() {
+  public MultiWriteFailures<BASE_REQUEST> flush() {
     Phaser phaser = this.phase;
-    this.phase = newPhaser();
-
     register(phaser, "Flushing");
     phaser.awaitAdvance(done(phaser, "Flushing - waiting advance"));
     LOG.trace("Flushed completed => Advanced"); ;
@@ -99,23 +104,23 @@ public class AwsAsyncSubmitter<S extends AmazonWebServiceRequest, R, B> {
 
   private int done(Phaser phaser, String msg) {
     int p = phaser.arriveAndDeregister();
-    LOG.trace("DE-REGISTER(" + p + "): " + msg);
+    LOG.trace("DE-REGISTER({}[p:{}]): {}", p, phaser.getUnarrivedParties(), msg);
     return p;
   }
 
-  public class UpdateItemHandler implements AsyncHandler<S, R> {
+  public class UpdateItemHandler implements AsyncHandler<REQUEST, RESPONSE> {
 
     private final Phaser phaser;
     private int attempts = 0;
 
-    private final AwsAsyncRequest<B, S> request;
+    private final AwsAsyncRequest<BASE_REQUEST, REQUEST> request;
 
-    public UpdateItemHandler(Phaser phase, AwsAsyncRequest<B, S> request) {
+    public UpdateItemHandler(Phaser phase, AwsAsyncRequest<BASE_REQUEST, REQUEST> request) {
       this.phaser = phase;
       this.request = request;
     }
 
-    public S getRequest() {
+    public REQUEST getRequest() {
       return request.getRequest();
     }
 
@@ -123,13 +128,25 @@ public class AwsAsyncSubmitter<S extends AmazonWebServiceRequest, R, B> {
     public void onError(Exception exception) {
       LOG.error("Failed to make an update for request: " + this.request, exception);
       attempts++;
-      submit(this);
+      try {
+        if (request.onError(exception)) {
+          submit(this);
+        } else {
+          done(this.phaser, "Had error, but marked completed: " + this);
+        }
+      } catch (Exception e) {
+        LOG.error("Fatal execption when processing error!", e);
+        // make sure we don't attempt this again
+        this.attempts = Integer.MAX_VALUE;
+        fail(this);
+      }
     }
 
     @Override
-    public void onSuccess(S request, R updateItemResult) {
+    public void onSuccess(REQUEST request, RESPONSE updateItemResult) {
       // remove the request from the pending list because we were successful
       LOG.debug("Update success: " + this);
+      this.request.onSuccess(request, updateItemResult);
       actions.remove(this);
       done(this.phaser, "Completed update: " + this);
     }

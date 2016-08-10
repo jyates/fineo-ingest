@@ -3,8 +3,11 @@ package io.fineo.lambda.dynamo;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.amazonaws.services.dynamodbv2.model.ListTablesResult;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.Multimap;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
+import com.sun.tools.javac.jvm.Gen;
 import io.fineo.aws.AwsDependentTests;
 import io.fineo.internal.customer.BaseFields;
 import io.fineo.lambda.aws.MultiWriteFailures;
@@ -15,10 +18,14 @@ import io.fineo.lambda.dynamo.avro.AvroToDynamoWriter;
 import io.fineo.lambda.dynamo.rule.AwsDynamoResource;
 import io.fineo.lambda.dynamo.rule.AwsDynamoTablesResource;
 import io.fineo.lambda.util.SchemaUtil;
+import io.fineo.schema.MapRecord;
+import io.fineo.schema.Pair;
 import io.fineo.schema.avro.AvroSchemaEncoder;
+import io.fineo.schema.avro.AvroSchemaManager;
 import io.fineo.schema.avro.RecordMetadata;
 import io.fineo.schema.avro.SchemaTestUtils;
 import io.fineo.schema.store.SchemaStore;
+import io.fineo.schema.store.StoreManager;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.logging.Log;
@@ -32,12 +39,18 @@ import org.schemarepo.ValidatorFactory;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static com.google.common.collect.ImmutableList.of;
 import static io.fineo.lambda.configure.util.SingleInstanceModule.instanceModule;
+import static io.fineo.schema.avro.SchemaTestUtils.getBaseFields;
+import static io.fineo.schema.store.TestSchemaManager.commitSimpleType;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -95,6 +108,55 @@ public class TestAvroDynamoIO {
     runner.writeRecords();
     runner.verifyTables();
     runner.verifyRecords();
+  }
+
+  @Test
+  public void testWriteOverlappingRecords() throws Exception {
+    SchemaStore store = new SchemaStore(new InMemoryRepository(ValidatorFactory.EMPTY));
+    StoreManager manager = new StoreManager(store);
+    String orgId = "org1", metricName = "metricname", fieldName = "f1";
+    commitSimpleType(manager, orgId, metricName, of(), new Pair<>(fieldName, "INTEGER"));
+    TestRunner runner = new TestRunner(store, orgId, metricName, new ArrayList<>());
+    runner.writeRecords(createRandomRecordForSchema(store, orgId, metricName, 1, 1,
+      fieldName, 1));
+    LOG.info("---- Starting second request ----");
+    runner.writeRecords(createRandomRecordForSchema(store, orgId, metricName, 1, 1, fieldName, 2));
+    runner.verifyTables();
+    runner.verifyRecords();
+  }
+
+  @Test
+  public void testWriteOverlappingRecordsConcurrently() throws Exception {
+    SchemaStore store = new SchemaStore(new InMemoryRepository(ValidatorFactory.EMPTY));
+    StoreManager manager = new StoreManager(store);
+    String orgId = "org1", metricName = "metricname", fieldName = "f1";
+    commitSimpleType(manager, orgId, metricName, of(), new Pair<>(fieldName, "INTEGER"));
+
+    List<GenericRecord> records = createRandomRecordForSchema(store, orgId, metricName, 1, 100,
+      fieldName, 1);
+    records.addAll(createRandomRecordForSchema(store, orgId, metricName, 1, 100, fieldName, 2));
+    records.addAll(createRandomRecordForSchema(store, orgId, metricName, 1, 100, fieldName, 3));
+
+    TestRunner runner = new TestRunner(store, orgId, metricName, records);
+    runner.writeRecords();
+    runner.verifyTables();
+    runner.verifyRecords();
+  }
+
+  public static List<GenericRecord> createRandomRecordForSchema(SchemaStore store, String orgId,
+    String metricType, long startTs, int recordCount, String fieldName, int fieldValue) {
+    AvroSchemaEncoder bridge = (new AvroSchemaManager(store, orgId)).encode(metricType);
+    ArrayList records = new ArrayList(recordCount);
+
+    for (int i = 0; i < recordCount; ++i) {
+      Map fields = getBaseFields(orgId, metricType, startTs + (long) i);
+      MapRecord record = new MapRecord(fields);
+      fields.put(fieldName, fieldValue);
+
+      records.add(bridge.encode(record));
+    }
+
+    return records;
   }
 
   @Test
@@ -166,12 +228,24 @@ public class TestAvroDynamoIO {
     }
 
     public void writeRecords() throws Exception {
+      writeRecords(this.expected, false);
+    }
+
+    public void writeRecords(List<GenericRecord> records) {
+      writeRecords(records, true);
+    }
+
+    public void writeRecords(List<GenericRecord> records, boolean addToExpected) {
+      if (addToExpected) {
+        this.expected.addAll(records);
+      }
       // write it to dynamo and wait for a response
-      for (GenericRecord record : this.expected) {
+      for (GenericRecord record : records) {
         writer.write(record);
       }
       MultiWriteFailures failures = writer.flush();
-      assertFalse("There was a write failure", failures.any());
+      assertFalse("There was a write failure! Failures: " + failures.getActions(),
+        failures.any());
     }
 
     public void verifyTables() {
@@ -191,43 +265,76 @@ public class TestAvroDynamoIO {
       List<GenericRecord> records =
         recordReader.read(reader, org, metric, range).collect(Collectors.toList());
 
-      LOG.info("Expected records: "+this.expected);
-      LOG.info("Got records: "+records);
+      LOG.info("Expected records: " + this.expected);
+      LOG.info("Got records:      " + records);
 
-      int[] count = new int[1];
-      for (GenericRecord actual : records) {
-        assertTrue(
-          "More records read than expected \nexpected:" + SchemaUtil.toString(expected) +
-          "\n --------------------- \n " +
-          "actual:" + SchemaUtil.toString(records),
-          expected.size() > count[0]);
-        GenericRecord expected = this.expected.get(count[0]++);
-        RecordMetadata actualMeta = RecordMetadata.get(actual);
-        RecordMetadata expectedMeta = RecordMetadata.get(expected);
-        assertEquals("Wrong orgID read", expectedMeta.getOrgID(), actualMeta.getOrgID());
-        assertEquals("Wrong canonical metric type read", expectedMeta.getMetricCanonicalType(),
-          actualMeta.getMetricCanonicalType());
-        assertEquals("Wrong schema read", expectedMeta.getMetricSchema(),
-          actualMeta.getMetricSchema());
-        // we don't store the alias field in the record, so we can't exactly match the base fields.
-        // Instead, we have to verify them by hand
-        BaseFields actualBase = actualMeta.getBaseFields();
-        BaseFields expectedBase = expectedMeta.getBaseFields();
-        assertEquals("Timestamp is wrong. Expected: " + expected + "\nActual: " + actual,
-          expectedBase.getTimestamp(), actualBase.getTimestamp());
-        assertEquals("Unknown fields are wrong. Expected: " + expected + "\nActual: " + actual,
-          expectedBase.getUnknownFields(), actualBase.getUnknownFields());
+      Multimap<Long, GenericRecord> groupedExcepted = groupByTs(expected);
+      Multimap<Long, GenericRecord> groupedActual = groupByTs(records);
+      assertEquals(
+        "Wrong number of actual vs. grouped records!\n Expected: " + groupedExcepted + "\n"
+        + " Actual: " + groupedActual, groupedExcepted.size(), groupedActual.size());
 
-        // verify the non-base fields match
-        Schema schema = expectedMeta.getMetricSchema();
-        schema.getFields().stream()
-              .filter(field -> !field.name().equals(AvroSchemaEncoder.BASE_FIELDS_KEY))
-              .forEach(field -> {
-                String name = field.name();
-                assertEquals(expected.get(name), actual.get(name));
-              });
+      for (Map.Entry<Long, Collection<GenericRecord>> recs : groupedExcepted.asMap().entrySet()) {
+        Collection<GenericRecord> actualRecs = groupedActual.get(recs.getKey());
+        assertEquals("Wrong number of records for ts: " + recs.getKey(), recs.getValue().size(),
+          actualRecs.size());
+        boolean found = false;
+        for (GenericRecord expected : recs.getValue()) {
+          for (GenericRecord actual : actualRecs) {
+            if (matches(expected, actual)) {
+              found = true;
+              break;
+            }
+          }
+          assertTrue("Missing record: " + expected + " from actual records. Seems to have a "
+                     + "non-matching record also present in actual: " + actualRecs, found);
+        }
       }
-      assertEquals("Didn't read the correct number of records", expected.size(), count[0]);
+    }
+
+    private boolean matches(GenericRecord expected, GenericRecord actual) {
+      RecordMetadata actualMeta = RecordMetadata.get(actual);
+      RecordMetadata expectedMeta = RecordMetadata.get(expected);
+      if (!expectedMeta.getOrgID().equals(actualMeta.getOrgID())) {
+        return false;
+      }
+      if (!expectedMeta.getMetricCanonicalType().equals(actualMeta.getMetricCanonicalType())) {
+        return false;
+      }
+      if (!expectedMeta.getMetricSchema().equals(actualMeta.getMetricSchema())) {
+        return false;
+      }
+
+      // we don't store the alias field in the record, so we can't exactly match the base fields.
+      // Instead, we have to verify them by hand
+      BaseFields actualBase = actualMeta.getBaseFields();
+      BaseFields expectedBase = expectedMeta.getBaseFields();
+      if (!expectedBase.getTimestamp().equals(actualBase.getTimestamp())) {
+        return false;
+      }
+      if (!expectedBase.getUnknownFields().equals(actualBase.getUnknownFields())) {
+        return false;
+      }
+
+      // verify the non-base fields match
+      Schema schema = expectedMeta.getMetricSchema();
+      return schema.getFields().stream()
+                   .filter(field -> !field.name().equals(AvroSchemaEncoder.BASE_FIELDS_KEY))
+                   .map(field -> {
+                     String name = field.name();
+                     return expected.get(name).equals(actual.get(name));
+                   })
+                   .allMatch(match -> match == true);
+    }
+
+    private Multimap<Long, GenericRecord> groupByTs(List<GenericRecord> records) {
+      Multimap<Long, GenericRecord> grouped = ArrayListMultimap.create();
+      for (GenericRecord record : records) {
+        RecordMetadata meta = RecordMetadata.get(record);
+        Long ts = meta.getBaseFields().getTimestamp();
+        grouped.put(ts, record);
+      }
+      return grouped;
     }
 
     public TestRunner withTimeRange(long start, long end) {

@@ -13,6 +13,14 @@ public class DynamoExpressionPlaceHolders {
   private DynamoExpressionPlaceHolders() {
   }
 
+  public static String asExpressionName(String name){
+    int num = name.hashCode();
+    if (num < 0) {
+      num = -num;
+    }
+    return "#n" + num;
+  }
+
   /**
    * Convert the value to a valid expression value placeholder
    */

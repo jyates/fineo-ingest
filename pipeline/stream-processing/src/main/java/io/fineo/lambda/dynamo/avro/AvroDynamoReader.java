@@ -69,7 +69,7 @@ public class AvroDynamoReader {
   }
 
   private Stream<GenericRecord> scanMetricAlias(Range<Instant> range, AttributeValue
-    stringPartitionKey, Function<Item, GenericRecord> translator) {
+    stringPartitionKey, Function<Item, List<GenericRecord>> translator) {
     // get the potential tables that match the range
     List<Pair<String, Range<Instant>>> tables = tableManager.getCoveringTableNames(range);
     LOG.debug("Scanning tables: " + tables);
@@ -95,6 +95,7 @@ public class AvroDynamoReader {
         item -> item.getString(PARTITION_KEY_NAME).compareTo(stop) <= 0));
     }
 
-    return StreamSupport.stream(Iterables.concat(iters).spliterator(), false).map(translator);
+    return StreamSupport.stream(Iterables.concat(iters).spliterator(), false).map(translator)
+                        .flatMap(List::stream);
   }
 }

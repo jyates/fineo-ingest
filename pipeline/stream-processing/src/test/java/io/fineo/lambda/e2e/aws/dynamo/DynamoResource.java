@@ -78,7 +78,7 @@ public class DynamoResource implements AwsResource {
   public void setup(FutureWaiter future) {
     future.run(() -> {
       storeRef.set(store.get());
-      LOG.debug("Schema store creation complete!");
+      LOG.debug("Schema store creation done!");
     });
   }
 

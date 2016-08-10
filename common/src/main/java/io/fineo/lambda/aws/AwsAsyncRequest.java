@@ -5,22 +5,26 @@ import com.amazonaws.AmazonWebServiceRequest;
 /**
  * Wrapper around a base record and the service request to 'submit' that record
  */
-public class AwsAsyncRequest<B, R extends AmazonWebServiceRequest> {
+public class AwsAsyncRequest<BASE_FIELD, REQUEST extends AmazonWebServiceRequest> {
 
-  protected B base;
-  private R request;
+  protected BASE_FIELD base;
+  protected REQUEST request;
 
-  public AwsAsyncRequest(B base, R request) {
+  public AwsAsyncRequest(BASE_FIELD base, REQUEST request) {
     this.base = base;
     this.request = request;
   }
 
-  public R getRequest(){
+  public REQUEST getRequest() {
     return this.request;
   }
 
-  public B getBaseRecord(){
+  public BASE_FIELD getBaseRecord() {
     return this.base;
+  }
+
+  protected void setRequest(REQUEST request) {
+    this.request = request;
   }
 
   @Override
@@ -29,5 +33,18 @@ public class AwsAsyncRequest<B, R extends AmazonWebServiceRequest> {
            "base=" + base +
            ", request=" + request +
            '}';
+  }
+
+  /**
+   * Get notified of an exception while processing
+   * @param exception the error message
+   * @return <tt>true</tt> if this operation should be retried
+   */
+  public boolean onError(Exception exception) {
+    return true;
+  }
+
+  public <RESULT> void onSuccess(REQUEST request, RESULT result) {
+    // noop
   }
 }

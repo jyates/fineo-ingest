@@ -61,7 +61,7 @@ public class FutureWaiter {
   }
 
   public void setException(Exception e) {
-    LOG.error("Failed to complete task!", e);
+    LOG.error("Failed to done task!", e);
     this.exception.set(e);
   }
 }
