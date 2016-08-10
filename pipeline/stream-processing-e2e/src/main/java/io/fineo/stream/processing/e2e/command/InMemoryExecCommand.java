@@ -74,15 +74,16 @@ public class InMemoryExecCommand extends BaseCommand {
   private static final String STORAGE_OUTPUT_STREAM = "staged-archive";
 
   private final FirehoseOutput output;
-  private final boolean validate;
+  private final SkipValidation skip;
 
   public InMemoryExecCommand(FirehoseOutput output, SkipValidation skip) {
     this.output = output;
-    this.validate = !skip.should;
+    this.skip = skip;
   }
 
   @Override
   public void run(List<Module> baseModules, List<Map<String, Object>> events) throws Exception {
+    boolean validate = !skip.should;
     E2ETestState state = buildState(baseModules);
     EndToEndTestRunner runner = state.getRunner();
     try {
@@ -93,8 +94,8 @@ public class InMemoryExecCommand extends BaseCommand {
       if (validate) {
         runner.validate();
       } else {
-        LOG.info("Not validating, but waiting 5 minutes for everything to settle out");
-        Thread.currentThread().sleep(300000);
+        LOG.info("Not validating, but waiting 2 minutes for everything to settle out");
+        Thread.currentThread().sleep(120000);
       }
 
       // write the output to the target file
@@ -106,7 +107,15 @@ public class InMemoryExecCommand extends BaseCommand {
           channel.write(buff);
         }
       }
-      runner.cleanup();
+      try {
+        runner.cleanup();
+      } catch (Exception e) {
+        if (validate) {
+          throw e;
+        } else {
+          LOG.warn("Got exception while cleaning up!", e);
+        }
+      }
     } finally {
       // make sure we cleanup the dynamo client, otherwise we have hanging threads
       runner.getManager().cleanupDynamoClient();

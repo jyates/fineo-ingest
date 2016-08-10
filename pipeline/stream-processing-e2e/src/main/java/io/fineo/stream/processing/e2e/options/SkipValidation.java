@@ -8,5 +8,5 @@ import com.beust.jcommander.Parameter;
 public class SkipValidation {
 
   @Parameter(names = "--skip-validation")
-  public boolean should;
+  public boolean should = false;
 }

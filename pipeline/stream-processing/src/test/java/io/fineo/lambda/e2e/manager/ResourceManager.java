@@ -97,21 +97,22 @@ public class ResourceManager implements IResourceManager {
         LOG.info("Data available at: " + output.getRoot());
         LOG.info("");
         LOG.info(" ---- FAILURE ----");
+
+        // just get all the data, maybe we messed up the test
+        cloneS3(RAW_PREFIX);
+        cloneS3(STAGED_PREFIX);
+
+        // copy kinesis data
+        OutputCollector out = output.getNextLayer("kinesis");
+        for (String streamName : kinesis.getStreamNames()) {
+          ResourceUtils.writeStream(streamName, out, () -> this.connector.getWrites(streamName));
+        }
+        // copy any dynamo data
+        dynamo.copyStoreTables(output.getNextLayer(STAGED_PREFIX).getNextLayer("dynamo"));
+
         if (!status.isMessageSent() || !status.isUpdateStoreCorrect()) {
           LOG.error("We didn't start the test correctly!");
           firehose.ensureNoDataStored();
-        } else {
-          // just get all the data, maybe we messed up the test
-          cloneS3(RAW_PREFIX);
-          cloneS3(STAGED_PREFIX);
-
-          // copy kinesis data
-          OutputCollector out = output.getNextLayer("kinesis");
-          for (String streamName : kinesis.getStreamNames()) {
-            ResourceUtils.writeStream(streamName, out, () -> this.connector.getWrites(streamName));
-          }
-          // copy any dynamo data
-          dynamo.copyStoreTables(output.getNextLayer(STAGED_PREFIX).getNextLayer("dynamo"));
         }
       }
     } finally {
