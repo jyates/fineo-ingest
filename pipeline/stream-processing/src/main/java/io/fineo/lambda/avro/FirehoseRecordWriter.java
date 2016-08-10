@@ -67,6 +67,10 @@ public class FirehoseRecordWriter {
       fileWriter.setCodec(this.codec);
     }
     fileWriter.create(record.getSchema(), out);
+    if(LOG.isDebugEnabled()){
+      LOG.debug("Creating record with schema: {}", record.getSchema());
+      LOG.debug("Writing record: {}", record);
+    }
     fileWriter.append(record);
     fileWriter.close();
     out.flush();

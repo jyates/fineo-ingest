@@ -27,11 +27,11 @@ public class Schema {
   /**
    * name of the column shortened (for speed) of "org ID" and "metric id"
    */
-  public static final String PARTITION_KEY_NAME = "oid_mid";
+  public static final String PARTITION_KEY_NAME = "_foid_mid";
   /**
    * shortened for 'timestamp'
    */
-  public static final String SORT_KEY_NAME = "ts";
+  public static final String SORT_KEY_NAME = "_fts";
   private static final Pair<List<KeySchemaElement>, List<AttributeDefinition>> SCHEMA;
   // TODO replace with a schema ID so we can lookup the schema on read, if necessary
   public static final String MARKER = "marker";

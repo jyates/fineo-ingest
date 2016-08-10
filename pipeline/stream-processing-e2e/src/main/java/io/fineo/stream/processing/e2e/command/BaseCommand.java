@@ -10,5 +10,6 @@ import java.util.Map;
  *
  */
 public abstract class BaseCommand {
-  public abstract void run(List<Module> baseModules, Map<String, Object> event) throws Exception;
+
+  public abstract void run(List<Module> baseModules, List<Map<String, Object>> events) throws Exception;
 }

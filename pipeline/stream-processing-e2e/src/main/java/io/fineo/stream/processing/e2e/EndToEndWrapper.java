@@ -13,6 +13,7 @@ import io.fineo.stream.processing.e2e.module.FakeAwsCredentialsModule;
 import io.fineo.stream.processing.e2e.options.FirehoseOutput;
 import io.fineo.stream.processing.e2e.options.JsonArgument;
 import io.fineo.stream.processing.e2e.options.LocalOptions;
+import io.fineo.stream.processing.e2e.options.SkipValidation;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,20 +26,21 @@ import static java.lang.String.format;
 public class EndToEndWrapper {
 
   public static void main(String[] args) throws Exception {
+    SkipValidation validate = new SkipValidation();
     JsonArgument json = new JsonArgument();
     LocalOptions local = new LocalOptions();
     FirehoseOutput output = new FirehoseOutput();
-    JCommander jc = new JCommander(new Object[]{local, json, output});
-    jc.addCommand("local", new InMemoryExecCommand(output));
+    JCommander jc = new JCommander(new Object[]{local, json, output, validate});
+    jc.addCommand("local", new InMemoryExecCommand(output, validate));
 
     jc.parse(args);
 
-    Map<String, Object> event = json.get();
+    List<Map<String, Object>> events = json.get();
     List<Module> schemaStore = getSchemaStoreModules(local);
 
     String cmd = jc.getParsedCommand();
     BaseCommand command = (BaseCommand) jc.getCommands().get(cmd).getObjects().get(0);
-    command.run(schemaStore, event);
+    command.run(schemaStore, events);
   }
 
   private static List<Module> getSchemaStoreModules(LocalOptions store) {

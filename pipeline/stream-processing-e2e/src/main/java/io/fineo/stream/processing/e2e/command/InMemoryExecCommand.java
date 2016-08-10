@@ -33,7 +33,9 @@ import io.fineo.lambda.handle.staged.AvroToStorageWrapper;
 import io.fineo.lambda.handle.util.HandlerUtils;
 import io.fineo.lambda.kinesis.IKinesisProducer;
 import io.fineo.stream.processing.e2e.options.FirehoseOutput;
-import io.fineo.stream.processing.e2e.options.LocalOptions;
+import io.fineo.stream.processing.e2e.options.SkipValidation;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -68,22 +70,32 @@ import static io.fineo.lambda.e2e.ITEndToEndLambdaLocal.getMockFirehoses;
             commandDescription = "Run the ingest against a local target")
 public class InMemoryExecCommand extends BaseCommand {
 
+  private static final Logger LOG = LoggerFactory.getLogger(InMemoryExecCommand.class);
   private static final String STORAGE_OUTPUT_STREAM = "staged-archive";
 
   private final FirehoseOutput output;
+  private final boolean validate;
 
-  public InMemoryExecCommand(FirehoseOutput output) {
+  public InMemoryExecCommand(FirehoseOutput output, SkipValidation skip) {
     this.output = output;
+    this.validate = !skip.should;
   }
 
   @Override
-  public void run(List<Module> baseModules, Map<String, Object> event) throws Exception {
+  public void run(List<Module> baseModules, List<Map<String, Object>> events) throws Exception {
     E2ETestState state = buildState(baseModules);
     EndToEndTestRunner runner = state.getRunner();
     try {
       runner.setup();
-      runner.send(event);
-      runner.validate();
+      for (Map<String, Object> event : events) {
+        runner.send(event);
+      }
+      if (validate) {
+        runner.validate();
+      } else {
+        LOG.info("Not validating, but waiting 5 minutes for everything to settle out");
+        Thread.currentThread().sleep(300000);
+      }
 
       // write the output to the target file
       List<ByteBuffer> writes = state.getResources().getFirehoseWrites(STORAGE_OUTPUT_STREAM);
@@ -101,9 +113,11 @@ public class InMemoryExecCommand extends BaseCommand {
       for (LambdaWrapper wrapper : state.getStages()) {
         Injector injector = wrapper.getGuiceForTesting();
         try {
-          injector.getInstance(AmazonDynamoDBAsyncClient.class).shutdown();
+          AmazonDynamoDBAsyncClient client = injector.getInstance(AmazonDynamoDBAsyncClient.class);
+          if (client != null) {
+            client.shutdown();
+          }
         } catch (ConfigurationException | ProvisionException e) {
-          // skip
         }
       }
     }
