@@ -62,37 +62,56 @@ public class LocalLambdaRemoteKinesisConnector extends LambdaKinesisConnector<In
         for (String stream : mapping.keySet()) {
           streams.put(stream, this.kinesis.getEventQueue(stream));
         }
-
+        // keep trying to read records from the streams until we are told to stop
         while (!done) {
-          for (Map.Entry<String, List<IngestUtil.Lambda>> stream : mapping.entrySet()) {
-            String streamName = stream.getKey();
-            LOG.debug("Reading from stream -> " + streamName);
-            BlockingQueue<List<ByteBuffer>> queue = streams.get(streamName);
-            List<ByteBuffer> data = queue.poll();
-            // while there is more data to read from the queue, read it
-            while (data != null && !done) {
-              for (IngestUtil.Lambda method : stream.getValue()) {
-                LOG.info("--- Starting Method Call ---");
-                Instant start = Instant.now();
-                method.call(data);
-                Duration done = Duration.between(start, Instant.now());
-                LOG.info("---> Duration: " + done.toMillis() + " ms for " + method);
-              }
-              data = queue.poll();
-            }
-            if (done) {
-              break;
-            }
-          }
+          tryProcessing(streams);
+          Thread.sleep(50);
         }
       } catch (AbortedException e) {
         LOG.warn("Aborted while processing kinesis reads. This can happen when we stop the "
                  + "executor. Reason: " + e.getMessage());
+      } catch (InterruptedException e) {
+        LOG.warn("Interrupted while processing!");
+        if (done) {
+          return;
+        }
       } finally {
         LOG.info("Adding marker that CONNECT is complete");
         DONE_QUEUE.add(true);
       }
     });
+  }
+
+  private void tryProcessing(Map<String, BlockingQueue<List<ByteBuffer>>> streams) {
+    boolean more = true;
+    while (!done && more) {
+      more = false;
+      // do a pass through the lambdas to see if there is any data to handle
+      for (Map.Entry<String, List<IngestUtil.Lambda>> stream : mapping.entrySet()) {
+        String streamName = stream.getKey();
+        LOG.debug("Reading from stream -> " + streamName);
+        BlockingQueue<List<ByteBuffer>> queue = streams.get(streamName);
+        // no more data for this stream, go onto the next on
+        List<ByteBuffer> data = queue.poll();
+        if (data == null) {
+          continue;
+        }
+
+        // call the stream with the data
+        for (IngestUtil.Lambda method : stream.getValue()) {
+          LOG.info("--- Starting Method Call ---");
+          Instant start = Instant.now();
+          method.call(data);
+          Duration done = Duration.between(start, Instant.now());
+          LOG.info("---> Duration: " + done.toMillis() + " ms for " + method);
+        }
+
+        // this queue has more data to process, try again
+        if (queue.peek() != null) {
+          more = true;
+        }
+      }
+    }
   }
 
   @Override
