@@ -5,6 +5,7 @@ import com.amazonaws.util.Base64;
 import com.google.common.collect.Lists;
 import io.fineo.internal.customer.BaseFields;
 import io.fineo.internal.customer.Metric;
+import io.fineo.schema.Record;
 import io.fineo.schema.avro.AvroRecordTranslator;
 import io.fineo.schema.avro.AvroSchemaEncoder;
 import io.fineo.schema.avro.SchemaNameUtils;
@@ -14,6 +15,7 @@ import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 
 import java.nio.ByteBuffer;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -62,6 +64,7 @@ public class DynamoAvroRecordDecoder {
     allFields.addAll(item.asMap().keySet());
     Map<String, List<String>> namesToAliases = metric.getMetadata().getCanonicalNamesToAliases();
 
+    ItemRecord iRecord = new ItemRecord(item);
     // set the remaining fields
     final Schema finalSchema = schema;
     schema.getFields().stream().filter(retainedField).forEach(schemaField -> {
@@ -70,10 +73,7 @@ public class DynamoAvroRecordDecoder {
       String key = findKey(item, aliases);
 
       GenericRecord fieldRecord =
-        AvroSchemaEncoder.asTypedRecord(finalSchema, name, key,
-          // its unfortunate that we do it this way - I'd love to not expose the internals of the
-          // record, but eh, what can you do? #startup
-          cast(schemaField.schema().getFields().get(1), item, key));
+        AvroSchemaEncoder.asTypedRecord(finalSchema, name, key, iRecord);
       record.put(name, fieldRecord);
       handledFields.add(key);
       allFields.remove(name);
@@ -105,24 +105,61 @@ public class DynamoAvroRecordDecoder {
       "Got a row for which no alias matches! Row: " + row + ", aliases: " + aliasNames);
   }
 
-  private Object cast(Schema.Field field, Item item, String key) {
-    switch (field.schema().getType()) {
-      case STRING:
-        return item.getString(key);
-      case BYTES:
-        return item.getBinary(key);
-      case INT:
-        return item.getInt(key);
-      case LONG:
-        return item.getLong(key);
-      case FLOAT:
-        return item.getFloat(key);
-      case DOUBLE:
-        return item.getDouble(key);
-      case BOOLEAN:
-        return item.getBOOL(key);
-      default:
-        return null;
+  private class ItemRecord implements Record{
+    private final Item item;
+
+    private ItemRecord(Item item) {
+      this.item = item;
+    }
+
+    @Override
+    public Boolean getBooleanByField(String fieldName) {
+      return item.getBoolean(fieldName);
+    }
+
+    @Override
+    public Integer getIntegerByField(String fieldName) {
+      return item.getInt(fieldName);
+    }
+
+    @Override
+    public Long getLongByFieldName(String fieldName) {
+      return item.getLong(fieldName);
+    }
+
+    @Override
+    public Float getFloatByFieldName(String fieldName) {
+      return item.getFloat(fieldName);
+    }
+
+    @Override
+    public Double getDoubleByFieldName(String fieldName) {
+      return item.getDouble(fieldName);
+    }
+
+    @Override
+    public ByteBuffer getBytesByFieldName(String fieldName) {
+      return item.getByteBuffer(fieldName);
+    }
+
+    @Override
+    public String getStringByField(String fieldName) {
+      return item.getString(fieldName);
+    }
+
+    @Override
+    public Collection<String> getFieldNames() {
+      return item.asMap().keySet();
+    }
+
+    @Override
+    public Iterable<Map.Entry<String, Object>> getFields() {
+      return item.asMap().entrySet();
+    }
+
+    @Override
+    public Object getField(String name) {
+      return item.get(name);
     }
   }
 
