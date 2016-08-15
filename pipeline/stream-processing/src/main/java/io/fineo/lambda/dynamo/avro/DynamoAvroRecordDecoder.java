@@ -9,7 +9,6 @@ import io.fineo.schema.Record;
 import io.fineo.schema.avro.AvroRecordTranslator;
 import io.fineo.schema.avro.AvroSchemaEncoder;
 import io.fineo.schema.avro.SchemaNameUtils;
-import io.fineo.schema.store.SchemaStore;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
@@ -33,8 +32,6 @@ import static io.fineo.lambda.dynamo.Schema.SORT_KEY_NAME;
  * translated into 'customer friendly' alias names via a {@link AvroRecordTranslator}.
  */
 public class DynamoAvroRecordDecoder {
-
-  private final SchemaStore store;
   private final Schema.Parser parser;
 
   private List<String> handledFields = Lists.newArrayList(AvroSchemaEncoder
@@ -42,8 +39,7 @@ public class DynamoAvroRecordDecoder {
     io.fineo.lambda.dynamo.Schema.ID_FIELD);
   private Predicate<Schema.Field> retainedField = field -> !handledFields.contains(field.name());
 
-  public DynamoAvroRecordDecoder(SchemaStore store) {
-    this.store = store;
+  public DynamoAvroRecordDecoder() {
     this.parser = new Schema.Parser();
   }
 

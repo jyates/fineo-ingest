@@ -1,31 +1,13 @@
 package io.fineo.lambda.dynamo.avro;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
-import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
-import com.google.common.base.Joiner;
 import io.fineo.internal.customer.BaseFields;
-import io.fineo.lambda.aws.AwsAsyncRequest;
 import io.fineo.lambda.aws.AwsAsyncSubmitter;
 import io.fineo.lambda.aws.MultiWriteFailures;
-import io.fineo.lambda.dynamo.DynamoExpressionPlaceHolders;
 import io.fineo.lambda.dynamo.DynamoTableCreator;
-import io.fineo.lambda.dynamo.Schema;
-import io.fineo.schema.avro.AvroSchemaEncoder;
-import io.fineo.schema.avro.RecordMetadata;
-import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.commons.lang3.tuple.Pair;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import static io.fineo.lambda.dynamo.avro.DynamoAvroRecordEncoder.convertField;
 
 
 /**
@@ -69,7 +51,11 @@ public class AvroToDynamoWriter {
    */
   public void write(GenericRecord record) {
     DynamoUpdate request = getUpdateForRecord(record);
-    request.submit(this.submitter);
+    try {
+      request.submit(this.submitter);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
   }
 
   public MultiWriteFailures<GenericRecord> flush() {

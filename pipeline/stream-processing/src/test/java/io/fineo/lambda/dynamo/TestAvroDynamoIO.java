@@ -143,6 +143,23 @@ public class TestAvroDynamoIO {
     runner.verifyRecords();
   }
 
+  @Test
+  public void testResendEventDoesNotCauseTwoWrites() throws Exception {
+    SchemaStore store = new SchemaStore(new InMemoryRepository(ValidatorFactory.EMPTY));
+    StoreManager manager = new StoreManager(store);
+    String orgId = "org1", metricName = "metricname", fieldName = "f1";
+    commitSimpleType(manager, orgId, metricName, of(), new Pair<>(fieldName, "INTEGER"));
+
+    List<GenericRecord> records = createRandomRecordForSchema(store, orgId, metricName, 1, 1,
+      fieldName, 1);
+
+    TestRunner runner = new TestRunner(store, orgId, metricName, records);
+    runner.writeRecords();
+    runner.writeRecords();
+    runner.verifyTables();
+    runner.verifyRecords();
+  }
+
   public static List<GenericRecord> createRandomRecordForSchema(SchemaStore store, String orgId,
     String metricType, long startTs, int recordCount, String fieldName, int fieldValue) {
     AvroSchemaEncoder bridge = (new AvroSchemaManager(store, orgId)).encode(metricType);

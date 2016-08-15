@@ -64,7 +64,7 @@ public class AvroDynamoReader {
   public Stream<GenericRecord> scan(String orgId, Metric metric, Range<Instant> range) {
     String canonicalName = metric.getMetadata().getCanonicalName();
     AttributeValue partitionKey = Schema.getPartitionKey(orgId, canonicalName);
-    DynamoAvroRecordDecoder decoder = new DynamoAvroRecordDecoder(store);
+    DynamoAvroRecordDecoder decoder = new DynamoAvroRecordDecoder();
     return scanMetricAlias(range, partitionKey, result -> decoder.decode(orgId, metric, result));
   }
 

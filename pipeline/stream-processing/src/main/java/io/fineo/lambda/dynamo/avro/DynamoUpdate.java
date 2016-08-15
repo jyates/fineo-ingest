@@ -17,11 +17,14 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.UnsupportedEncodingException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
@@ -52,9 +55,12 @@ public class DynamoUpdate {
   }
 
   public void submit(
-    AwsAsyncSubmitter<UpdateItemRequest, UpdateItemResult, GenericRecord> submitter) {
+    AwsAsyncSubmitter<UpdateItemRequest, UpdateItemResult, GenericRecord> submitter)
+    throws UnsupportedEncodingException, NoSuchAlgorithmException {
     RecordMetadata metadata = RecordMetadata.get(record);
     this.fields = metadata.getBaseFields();
+
+    this.id = getId();
 
     UpdateItemRequest baseRequest = new UpdateItemRequest();
     baseRequest.setTableName(table.apply(fields));
@@ -69,15 +75,44 @@ public class DynamoUpdate {
     updater.submit(record, baseRequest.getTableName());
   }
 
+  /**
+   * Generate a unique Id for the current record
+   */
+  private String getId() throws NoSuchAlgorithmException, UnsupportedEncodingException {
+    StringBuffer sb = new StringBuffer(fields.getTimestamp().toString());
+    org.apache.avro.Schema schema = record.getSchema();
+    // collect the values of all the fields
+    schema.getFields().stream()
+          .map(org.apache.avro.Schema.Field::name)
+          .filter(name -> !AvroSchemaEncoder.BASE_FIELDS_KEY.equals(name))
+          .map(name -> {
+            GenericData.Record rec = (GenericData.Record) record.get(name);
+            return rec.get("value");
+          }).forEach(obj -> sb.append(obj.toString()));
+    for (Map.Entry<String, String> e : this.fields.getUnknownFields().entrySet()) {
+      sb.append(e.getKey());
+      sb.append(e.getValue());
+    }
+    return toHexString(MessageDigest.getInstance("MD5").digest(sb.toString().getBytes("UTF-8")));
+  }
+
+  private static String toHexString(byte[] bytes) {
+    StringBuffer hexString = new StringBuffer();
+
+    for (int i = 0; i < bytes.length; i++) {
+      String hex = Integer.toHexString(0xFF & bytes[i]);
+      hexString.append(hex);
+    }
+
+    return hexString.toString();
+  }
+
   private UpdateItemRequest getInitialRequest(UpdateItemRequest baseRequest) {
     this.initialRequest = baseRequest;
 
     List<String> setExpressions = new ArrayList<>();
     Map<String, String> names = new HashMap<>();
     Map<String, AttributeValue> values = new HashMap<>();
-
-    // crypo-strong random generation. Its a bit long, but at least collisions are basically 0.
-    this.id = "i" + UUID.randomUUID().toString();
 
     List<String> conditions = new ArrayList<>();
     // do the actual work of setting values
@@ -87,7 +122,7 @@ public class DynamoUpdate {
     });
 
     // ensure that each of the map fields exists
-    if(conditions.size() > 0) {
+    if (conditions.size() > 0) {
       initialRequest.setConditionExpression(Joiner.on(" AND ").join(conditions));
     }
     return finalizeRequest(initialRequest, names, values, setExpressions);
