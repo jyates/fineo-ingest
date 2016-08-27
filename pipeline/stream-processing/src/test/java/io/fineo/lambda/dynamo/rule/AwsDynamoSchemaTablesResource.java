@@ -5,9 +5,10 @@ import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import io.fineo.etl.FineoProperties;
+import io.fineo.lambda.configure.PropertiesModule;
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
-import io.fineo.lambda.configure.legacy.LambdaModule;
 import io.fineo.lambda.dynamo.LocalDynamoTestUtil;
+import io.fineo.lambda.handle.schema.inject.SchemaStoreModule;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.junit.rules.ExternalResource;
@@ -61,22 +62,6 @@ public class AwsDynamoSchemaTablesResource extends ExternalResource {
 
   public String getTestTableName() {
     return getUtil().getCurrentTestTable();
-  }
-
-  public LambdaClientProperties getClientProperties() throws Exception {
-    Properties props = new Properties();
-    props.put(FineoProperties.DYNAMO_READ_LIMIT, "1");
-    props.put(FineoProperties.DYNAMO_WRITE_LIMIT, "1");
-    props.put(FineoProperties.DYNAMO_SCHEMA_STORE_TABLE, "store");
-    return getClientProperties(props);
-  }
-
-  public LambdaClientProperties getClientProperties(Properties props) throws Exception {
-    getUtil().setConnectionProperties(props);
-    LambdaClientProperties fProps = LambdaClientProperties
-      .create(new LambdaModule(props), dynamoResource.getCredentialsModule(),
-        getDynamoModule());
-    return fProps;
   }
 
   public AbstractModule getDynamoModule() {

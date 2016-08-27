@@ -5,11 +5,11 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.Module;
 import io.fineo.lambda.JsonParser;
 import io.fineo.lambda.configure.KinesisModule;
-import io.fineo.lambda.configure.SchemaStoreModule;
 import io.fineo.lambda.configure.firehose.FirehoseModule;
 import io.fineo.lambda.configure.util.PropertiesLoaderUtil;
 import io.fineo.lambda.handle.LambdaWrapper;
 import io.fineo.lambda.handle.StreamLambdaUtils;
+import io.fineo.lambda.handle.schema.inject.SchemaStoreModule;
 
 import java.io.IOException;
 import java.util.ArrayList;

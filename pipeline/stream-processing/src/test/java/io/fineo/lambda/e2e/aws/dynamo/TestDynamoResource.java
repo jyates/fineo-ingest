@@ -7,10 +7,10 @@ import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
+import com.google.inject.Module;
 import io.fineo.aws.AwsDependentTests;
 import io.fineo.etl.FineoProperties;
 import io.fineo.lambda.configure.PropertiesModule;
-import io.fineo.lambda.configure.SchemaStoreModule;
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import io.fineo.lambda.configure.util.SingleInstanceModule;
 import io.fineo.lambda.dynamo.DynamoTableCreator;
@@ -19,6 +19,8 @@ import io.fineo.lambda.dynamo.Schema;
 import io.fineo.lambda.dynamo.rule.AwsDynamoResource;
 import io.fineo.lambda.dynamo.rule.AwsDynamoSchemaTablesResource;
 import io.fineo.lambda.e2e.manager.collector.FileCollector;
+import io.fineo.lambda.handle.schema.SchemaStoreModuleForTesting;
+import io.fineo.lambda.handle.schema.inject.SchemaStoreModule;
 import io.fineo.lambda.util.run.FutureWaiter;
 import io.fineo.lambda.util.run.ResultWaiter;
 import io.fineo.test.rule.TestOutput;
@@ -29,12 +31,13 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executors;
 
-import static io.fineo.lambda.configure.util.InstanceToNamed.property;
 import static io.fineo.lambda.configure.util.SingleInstanceModule.instanceModule;
 
 @Category(AwsDependentTests.class)
@@ -52,23 +55,24 @@ public class TestDynamoResource {
 
   @Test
   public void testWriteAndCopyToFile() throws Exception {
+    AmazonDynamoDBAsyncClient client = tableResource.getAsyncClient();
+
     Properties props = new Properties();
     String prefix = "test-ingest";
     props.put(FineoProperties.TEST_PREFIX, prefix);
     props.put(FineoProperties.DYNAMO_INGEST_TABLE_PREFIX, prefix);
     props.put(FineoProperties.DYNAMO_SCHEMA_STORE_TABLE, tableResource.getTestTableName());
     props.put(FineoProperties.DYNAMO_TABLE_MANAGER_CACHE_TIME, "10000");
-    LambdaClientProperties clientProperties = tableResource.getClientProperties(props);
+    dynamoResource.getUtil().setConnectionProperties(props);
 
-    AmazonDynamoDBAsyncClient client = tableResource.getAsyncClient();
+    List<Module> modules = new ArrayList<>();
+    modules.add(new SchemaStoreModuleForTesting());
+    modules.add(new PropertiesModule(props));
+    modules.add(tableResource.getDynamoModule());
+    modules.add(dynamoResource.getCredentialsModule());
+    modules.add(instanceModule(new ResultWaiter.ResultWaiterFactory(1000, 100)));
 
-    Injector injector = Guice.createInjector(
-      new SchemaStoreModule(),
-      new PropertiesModule(clientProperties.getRawPropertiesForTesting()),
-      instanceModule(clientProperties),
-      instanceModule(client),
-      instanceModule(new ResultWaiter.ResultWaiterFactory(1000, 100)),
-      new SingleInstanceModule<>(client, AmazonDynamoDBAsyncClient.class));
+    Injector injector = Guice.createInjector(modules);
     DynamoResource dynamo = injector.getInstance(DynamoResource.class);
     ListeningExecutorService exec =
       MoreExecutors.listeningDecorator(Executors.newSingleThreadExecutor());

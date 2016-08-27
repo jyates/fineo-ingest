@@ -33,6 +33,15 @@
       <artifactId>schema-core</artifactId>
     </dependency>
     <dependency>
+      <groupId>io.fineo.schema</groupId>
+      <artifactId>schema-lambda</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.fineo.schema</groupId>
+      <artifactId>schema-lambda</artifactId>
+      <classifier>tests</classifier>
+    </dependency>
+    <dependency>
       <groupId>com.google.inject</groupId>
       <artifactId>guice</artifactId>
     </dependency>

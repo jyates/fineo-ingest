@@ -5,11 +5,9 @@ import com.google.inject.Guice;
 import com.google.inject.Provider;
 import io.fineo.aws.AwsDependentTests;
 import io.fineo.lambda.configure.PropertiesModule;
-import io.fineo.lambda.configure.SchemaStoreModule;
-import io.fineo.lambda.configure.dynamo.DynamoModule;
-import io.fineo.lambda.dynamo.DynamoTestConfiguratorModule;
 import io.fineo.lambda.dynamo.rule.AwsDynamoResource;
 import io.fineo.lambda.dynamo.rule.AwsDynamoSchemaTablesResource;
+import io.fineo.lambda.handle.schema.SchemaStoreModuleForTesting;
 import io.fineo.schema.store.SchemaStore;
 import org.junit.ClassRule;
 import org.junit.Rule;
@@ -48,6 +46,6 @@ public class TestLambdaRawToAvroWithDynamoStore extends TestLambdaRawToAvroWithL
       new PropertiesModule(props),
       dynamoResource.getCredentialsModule(),
       tables.getDynamoModule(),
-      new SchemaStoreModule()).getProvider(SchemaStore.class);
+      new SchemaStoreModuleForTesting()).getProvider(SchemaStore.class);
   }
 }

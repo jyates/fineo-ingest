@@ -2,13 +2,13 @@ package io.fineo.lambda.e2e.manager;
 
 import com.google.inject.Module;
 import io.fineo.lambda.configure.PropertiesModule;
-import io.fineo.lambda.configure.SchemaStoreModule;
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import io.fineo.lambda.configure.util.SingleInstanceModule;
+import io.fineo.lambda.e2e.aws.lambda.LambdaKinesisConnector;
 import io.fineo.lambda.e2e.manager.collector.LoggingCollector;
 import io.fineo.lambda.e2e.manager.collector.OutputCollector;
 import io.fineo.lambda.e2e.util.TestProperties;
-import io.fineo.lambda.e2e.aws.lambda.LambdaKinesisConnector;
+import io.fineo.lambda.handle.schema.inject.SchemaStoreModule;
 import io.fineo.lambda.util.run.ResultWaiter;
 import io.fineo.schema.store.SchemaStore;
 
