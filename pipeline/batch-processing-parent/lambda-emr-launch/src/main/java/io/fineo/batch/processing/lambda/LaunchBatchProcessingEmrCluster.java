@@ -21,7 +21,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * Deploy an EMR Cluster to handle the batch procesing
+ * Deploy an EMR Cluster to handleEvent the batch procesing
  */
 public class LaunchBatchProcessingEmrCluster implements LambdaHandler<Object> {
 

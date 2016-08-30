@@ -1,5 +1,7 @@
 package io.fineo.batch.processing.lambda.sns.local;
 
+import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBMapperConfig;
+import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.events.SNSEvent;
 import com.google.inject.Module;
 import io.fineo.batch.processing.dynamo.IngestManifestModule;
@@ -29,12 +31,18 @@ public class LocalS3BatchUploadTracker
     LambdaWrapper.addBasicProperties(modules, props);
     modules.add(new DynamoModule());
     modules.add(new DynamoRegionConfigurator());
-    modules.add(new IngestManifestModule());
+    modules.add(IngestManifestModule.create(props));
     return modules;
   }
 
+
   @Override
-  public void handle(SNSEvent event) throws IOException {
+  public void handle(SNSEvent event, Context context) throws IOException {
+    handleInternal(event, context);
+  }
+
+  @Override
+  public void handleEvent(SNSEvent event) throws IOException {
     getInstance().handle(event);
   }
 }

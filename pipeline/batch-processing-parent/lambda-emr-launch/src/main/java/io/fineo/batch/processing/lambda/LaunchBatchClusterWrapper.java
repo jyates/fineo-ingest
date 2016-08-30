@@ -1,5 +1,6 @@
 package io.fineo.batch.processing.lambda;
 
+import com.amazonaws.services.lambda.runtime.Context;
 import com.google.inject.Module;
 import io.fineo.lambda.configure.DefaultCredentialsModule;
 import io.fineo.lambda.configure.PropertiesModule;
@@ -26,8 +27,14 @@ public class LaunchBatchClusterWrapper
     super(LaunchBatchProcessingEmrCluster.class, modules);
   }
 
+
   @Override
-  public void handle(Object event) throws IOException {
+  public void handle(Object event, Context context) throws IOException {
+    handleInternal(event, context);
+  }
+
+  @Override
+  public void handleEvent(Object event) throws IOException {
     getInstance().handle(event);
   }
 

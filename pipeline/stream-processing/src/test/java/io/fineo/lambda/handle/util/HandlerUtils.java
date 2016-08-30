@@ -11,7 +11,7 @@ public class HandlerUtils {
   public static Function<KinesisEvent, ?> getHandler(LambdaWrapper<KinesisEvent, ?> lambda) {
     return event -> {
       try {
-        lambda.handle(event);
+        lambda.handleEvent(event);
       } catch (IOException e) {
         throw new RuntimeException(e);
       }

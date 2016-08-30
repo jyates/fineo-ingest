@@ -3,7 +3,10 @@ package io.fineo.batch.processing.dynamo;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBMapper;
 import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBMapperConfig;
+import com.amazonaws.services.dynamodbv2.document.DynamoDB;
+import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
+import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
 import com.google.inject.Inject;
@@ -13,18 +16,45 @@ import com.google.inject.Singleton;
 import com.google.inject.name.Named;
 import io.fineo.lambda.aws.AwsAsyncSubmitter;
 import io.fineo.lambda.configure.NullableNamedInstanceModule;
+import io.fineo.lambda.dynamo.TableUtils;
+
+import java.util.Properties;
+
+import static com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBMapperConfig
+  .TableNameOverride.withTableNameReplacement;
 
 public class IngestManifestModule extends NullableNamedInstanceModule {
 
   public static final String INGEST_MANIFEST_OVERRIDE = "fineo.dynamo.batch-manifest.table";
   public static final String READ_LIMIT = "fineo.dynamo.batch-manifest.limit.read";
   public static final String WRITE_LIMIT = "fineo.dynamo.batch-manifest.limit.write";
+  private boolean createTable;
 
-  public IngestManifestModule() {
+  public static IngestManifestModule create(Properties props) {
+    String override = props.getProperty(IngestManifestModule.INGEST_MANIFEST_OVERRIDE);
+    return override == null ?
+           new IngestManifestModule() :
+           new IngestManifestModule(withTableNameReplacement(override));
+  }
+
+  public static IngestManifestModule createForTesting() {
+    return new IngestManifestModule().createTableForTesting();
+  }
+
+  private IngestManifestModule createTableForTesting() {
+    this.createTable = true;
+    return this;
+  }
+
+  public static IngestManifestModule createForTesting(String override) {
+    return new IngestManifestModule(withTableNameReplacement(override));
+  }
+
+  private IngestManifestModule() {
     this(null);
   }
 
-  public IngestManifestModule(DynamoDBMapperConfig.TableNameOverride override) {
+  private IngestManifestModule(DynamoDBMapperConfig.TableNameOverride override) {
     super(INGEST_MANIFEST_OVERRIDE, override, DynamoDBMapperConfig.TableNameOverride.class);
   }
 
@@ -45,7 +75,7 @@ public class IngestManifestModule extends NullableNamedInstanceModule {
       .withConsistentReads(DynamoDBMapperConfig.ConsistentReads.CONSISTENT)
       .withPaginationLoadingStrategy(DynamoDBMapperConfig.PaginationLoadingStrategy.EAGER_LOADING)
       .withSaveBehavior(DynamoDBMapperConfig.SaveBehavior.APPEND_SET)
-      .withTableNameOverride(override == null? null: override.get()).build());
+      .withTableNameOverride(override == null ? null : override.get()).build());
   }
 
   @Provides
@@ -62,6 +92,24 @@ public class IngestManifestModule extends NullableNamedInstanceModule {
   public IngestManifest getManifest(DynamoDBMapper mapper, AmazonDynamoDBAsyncClient dynamo,
     Provider<ProvisionedThroughput> throughput,
     AwsAsyncSubmitter<UpdateItemRequest, UpdateItemResult, DynamoIngestManifest> submitter) {
-    return new IngestManifest(mapper, dynamo, throughput, submitter);
+    CreateTableRequest create = getCreate(mapper);
+    if (createTable) {
+      ensureTable(create, dynamo, throughput);
+    }
+    return new IngestManifest(mapper, create.getTableName(), submitter);
+  }
+
+  private void ensureTable(CreateTableRequest create, AmazonDynamoDBAsyncClient dynamo,
+    Provider<ProvisionedThroughput> throughput) {
+    try {
+      dynamo.describeTable(create.getTableName());
+    } catch (ResourceNotFoundException e) {
+      create.setProvisionedThroughput(throughput.get());
+      TableUtils.createTable(new DynamoDB(dynamo), create);
+    }
+  }
+
+  private CreateTableRequest getCreate(DynamoDBMapper mapper) {
+    return mapper.generateCreateTableRequest(DynamoIngestManifest.class);
   }
 }

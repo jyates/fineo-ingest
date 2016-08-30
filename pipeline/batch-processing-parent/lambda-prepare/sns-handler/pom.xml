@@ -96,6 +96,10 @@
                 <configuration>
                   <artifactSet>
                     <excludes>
+                      <!-- transitive aws dependencies -->
+                      <exclude>com.amazonaws:aws-java-sdk-cognitoidentity</exclude>
+                      <!-- Use a single logging system under slf4j -->
+                      <exclude>commons-logging:commons-logging</exclude>
                       <!-- Test jars -->
                       <exclude>junit:junit</exclude>
                       <exclude>org.mockito:mockito-all</exclude>

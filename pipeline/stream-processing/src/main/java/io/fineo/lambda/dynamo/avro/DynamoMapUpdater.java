@@ -43,7 +43,7 @@ public class DynamoMapUpdater<T> {
     BiFunction<UpdateItemRequest, UpdateItemResult, UpdateItemRequest> settingMapFieldsRequest,
     AwsAsyncSubmitter<UpdateItemRequest, UpdateItemResult, T> pool) {
     this.initialRequest = initialRequest;
-    // wrap the request handling to ensure that we only handle the update on the right failure msg
+    // wrap the request handling to ensure that we only handleEvent the update on the right failure msg
     this.failedRequestGenerator = failedInitialUpdateGenerator;
     this.settingMapFieldsRequest = settingMapFieldsRequest;
     this.pool = pool;

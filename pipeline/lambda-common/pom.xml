@@ -29,6 +29,13 @@
       <artifactId>jackson-jr-objects</artifactId>
       <version>${jackson-jr.version}</version>
     </dependency>
+    <!-- this is actually pulled in from amazon-kinesis-producer, but we exclude that dependency
+    in sub-projects, so pull it in explicitly -->
+    <dependency>
+      <groupId>commons-io</groupId>
+      <artifactId>commons-io</artifactId>
+      <version>2.4</version>
+    </dependency>
 
     <!-- AWS -->
     <dependency>

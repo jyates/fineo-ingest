@@ -246,7 +246,7 @@ public class TestLambdaRawToAvroWithLocalSchemaStore {
 
     // actually run the test
     for (KinesisEvent event : events) {
-      writer.handle(event);
+      writer.handleEvent(event);
     }
 
     return parsedRequests;

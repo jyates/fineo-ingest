@@ -47,7 +47,7 @@ public class TestLambdaAvroToStorage {
 
     // actually do the write
     LambdaWrapper<KinesisEvent, AvroToStorageHandler> storage = getLambda(records, dynamo);
-    storage.handle(event);
+    storage.handleEvent(event);
 
     // verify that we wrote the record the proper places
     verifyBufferAddedAndFlushed(records, buff);
@@ -92,7 +92,7 @@ public class TestLambdaAvroToStorage {
     // actually do the write
     LambdaWrapper<KinesisEvent, AvroToStorageHandler> storage =
       getLambda(dynamo, manager.archive(), manager.process(), manager.commit());
-    storage.handle(event);
+    storage.handleEvent(event);
 
     // verify that we wrote the record the proper places
     verifyBufferAddedAndFlushed(manager.archive(), malformed);
@@ -127,7 +127,7 @@ public class TestLambdaAvroToStorage {
     // actually do the write
     LambdaWrapper<KinesisEvent, AvroToStorageHandler> storage =
       getLambda(dynamo, manager.archive(), manager.process(), manager.commit());
-    storage.handle(event);
+    storage.handleEvent(event);
 
     // verify that we wrote the record the proper places
     verifyBufferAddedAndFlushed(manager.archive(), buff);

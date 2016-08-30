@@ -24,7 +24,7 @@ public class LocalMockBatchOptions extends BatchOptions {
     private final String path;
 
     public FakeManifest(String path) {
-      super(null, null, null, null);
+      super(null, null, null);
       this.path = path;
     }
 

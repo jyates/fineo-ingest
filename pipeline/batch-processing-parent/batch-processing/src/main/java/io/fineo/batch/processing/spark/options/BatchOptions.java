@@ -14,7 +14,7 @@ import io.fineo.lambda.configure.dynamo.DynamoRegionConfigurator;
 import java.util.Properties;
 
 /**
- * Bean class to handle the actual options for the batch processing
+ * Bean class to handleEvent the actual options for the batch processing
  */
 public class BatchOptions {
 
@@ -37,10 +37,7 @@ public class BatchOptions {
         new DynamoRegionConfigurator(),
         new PropertiesModule(props),
         new DynamoProvisionedThroughputModule(),
-        new IngestManifestModule(),
-        // no table override
-        new NullableNamedInstanceModule<>(IngestManifestModule.INGEST_MANIFEST_OVERRIDE, null,
-          DynamoDBMapperConfig.TableNameOverride.class));
+        IngestManifestModule.create(props));
     }
     return injector.getInstance(IngestManifest.class);
   }

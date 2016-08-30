@@ -1,5 +1,6 @@
 package io.fineo.lambda.handle.staged;
 
+import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.Module;
@@ -41,7 +42,12 @@ public class AvroToStorageWrapper extends LambdaWrapper<KinesisEvent, AvroToStor
   }
 
   @Override
-  public void handle(KinesisEvent event) throws IOException {
+  public void handle(KinesisEvent event, Context context) throws IOException {
+    handleInternal(event, context);
+  }
+
+  @Override
+  public void handleEvent(KinesisEvent event) throws IOException {
     getInstance().handle(event);
   }
 }

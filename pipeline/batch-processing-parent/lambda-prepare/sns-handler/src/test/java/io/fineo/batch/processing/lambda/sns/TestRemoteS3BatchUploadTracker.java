@@ -29,7 +29,7 @@ public class TestRemoteS3BatchUploadTracker extends BaseDynamoTableTest {
   @Test
   public void testLoadModuleNoEvents() throws Exception {
     SNSEvent event = mock(SNSEvent.class);
-    getTracker().handle(event);
+    getTracker().handleEvent(event);
   }
 
   @Test
@@ -44,8 +44,8 @@ public class TestRemoteS3BatchUploadTracker extends BaseDynamoTableTest {
     String file = "s3://some.remote.file";
     when(sns.getMessage()).thenReturn(file);
 
-    // handle the event
-    getTracker().handle(event);
+    // handleEvent the event
+    getTracker().handleEvent(event);
 
     // read the results back out
     Multimap<String, String> files = getManifest();
@@ -73,7 +73,7 @@ public class TestRemoteS3BatchUploadTracker extends BaseDynamoTableTest {
     List<Module> modules = new ArrayList<>();
     modules.add(props());
     modules.addAll(getDynamoModules());
-    modules.add(new IngestManifestModule());
+    modules.add(IngestManifestModule.createForTesting());
     return modules;
   }
 

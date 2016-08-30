@@ -2,19 +2,22 @@ package io.fineo.batch.processing.dynamo;
 
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
-import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBMapper;
-import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
 import com.google.common.collect.Multimap;
+import com.google.inject.Guice;
+import com.google.inject.Module;
 import io.fineo.lambda.aws.AwsAsyncSubmitter;
+import io.fineo.lambda.configure.util.InstanceToNamed;
 import io.fineo.lambda.dynamo.rule.BaseDynamoTableTest;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 import static com.google.common.collect.Lists.newArrayList;
+import static io.fineo.lambda.configure.util.SingleInstanceModule.instanceModule;
 import static org.junit.Assert.assertEquals;
 
 public class TestIngestManifest extends BaseDynamoTableTest {
@@ -124,12 +127,15 @@ public class TestIngestManifest extends BaseDynamoTableTest {
   }
 
   private IngestManifest getNewManifest() {
+    List<Module> modules = new ArrayList<>();
     AmazonDynamoDBAsyncClient client = tables.getAsyncClient();
-
-    DynamoDBMapper mapper = new IngestManifestModule().getMapper(client, null);
-    ProvisionedThroughput throughput = new ProvisionedThroughput(1L, 1L);
+    modules.add(instanceModule(client));
+    modules.add(IngestManifestModule.createForTesting());
+    modules.add(InstanceToNamed.namedInstance(IngestManifestModule.READ_LIMIT, 1L));
+    modules.add(InstanceToNamed.namedInstance(IngestManifestModule.WRITE_LIMIT, 1L));
     AwsAsyncSubmitter<UpdateItemRequest, UpdateItemResult, DynamoIngestManifest> submitter =
       new AwsAsyncSubmitter<>(3, client::updateItemAsync);
-    return new IngestManifest(mapper, client, () -> throughput, submitter);
+    modules.add(instanceModule(submitter));
+    return Guice.createInjector(modules).getInstance(IngestManifest.class);
   }
 }

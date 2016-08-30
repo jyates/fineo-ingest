@@ -86,7 +86,7 @@ public class LocalLambdaRemoteKinesisConnector extends LambdaKinesisConnector<In
     boolean more = true;
     while (!done && more) {
       more = false;
-      // do a pass through the lambdas to see if there is any data to handle
+      // do a pass through the lambdas to see if there is any data to handleEvent
       for (Map.Entry<String, List<IngestUtil.Lambda>> stream : mapping.entrySet()) {
         String streamName = stream.getKey();
         LOG.debug("Reading from stream -> " + streamName);

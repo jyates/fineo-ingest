@@ -3,6 +3,7 @@ package io.fineo.batch.processing.lambda.sns;
 import com.amazonaws.services.lambda.runtime.events.SNSEvent;
 import io.fineo.batch.processing.dynamo.IngestManifest;
 import io.fineo.lambda.handle.LambdaHandler;
+import org.slf4j.MDC;
 
 import java.io.IOException;
 import java.util.List;

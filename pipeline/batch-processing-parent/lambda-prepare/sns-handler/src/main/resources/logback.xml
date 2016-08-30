@@ -5,7 +5,8 @@
       <pattern>%d{yyyy-MM-dd HH:mm:ss} &lt;%X{AWSRequestId}&gt; %-5p %c{3}[%L] - %m%n</pattern>
     </encoder>
   </appender>
-  <root level="TRACE">
+  <logger name="io.fineo" level="TRACE"/>
+  <root level="INFO">
     <appender-ref ref="LAMBDA"/>
   </root>
 </configuration>
