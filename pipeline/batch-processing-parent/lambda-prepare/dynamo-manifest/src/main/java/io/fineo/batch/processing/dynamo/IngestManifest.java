@@ -37,8 +37,6 @@ import static java.util.Arrays.asList;
 public class IngestManifest {
 
   private static final Logger LOG = LoggerFactory.getLogger(IngestManifest.class);
-  public static final String READ_LIMIT = "fineo.dynamo.batch-manifest.limit.read";
-  public static final String WRITE_LIMIT = "fineo.dynamo.batch-manifest.limit.write";
 
   private boolean addMode = true;
   private final AmazonDynamoDBClient client;

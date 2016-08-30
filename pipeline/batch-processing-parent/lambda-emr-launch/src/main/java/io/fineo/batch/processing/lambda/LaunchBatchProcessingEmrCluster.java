@@ -27,8 +27,6 @@ public class LaunchBatchProcessingEmrCluster implements LambdaHandler<Object> {
 
   private static final Logger LOG = LoggerFactory.getLogger(LaunchBatchProcessingEmrCluster.class);
 
-  public static final String SOURCE_JAR_LOCATION_KEY = "fineo.deploy.spark.jar-location";
-
   // IAM roles
   private static final String EXEC_ROLE =
     "arn:aws:iam::766732214526:role/transient-spark-emr-exec-role";
@@ -96,7 +94,7 @@ public class LaunchBatchProcessingEmrCluster implements LambdaHandler<Object> {
     RunJobFlowRequest request = new RunJobFlowRequest()
       .withName("Transient Spark Cluster - " + clusterName)
       .withReleaseLabel(RELEASE_LABEL)
-      .withLogUri("s3://fineo.io/transient-spark-" + clusterName +
+      .withLogUri("s3://logs.fineo.io/transient-spark-" + clusterName +
                   "-" + UUID.randomUUID() + "-" + Instant.now().toEpochMilli())
       .withServiceRole(SERVICE_ROLE)
       .withJobFlowRole(EXEC_ROLE)

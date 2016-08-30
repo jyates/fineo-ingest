@@ -16,9 +16,9 @@ import io.fineo.lambda.configure.NullableNamedInstanceModule;
 
 public class IngestManifestModule extends NullableNamedInstanceModule {
 
-  public static final String INGEST_MANIFEST_OVERRIDE = "fineo.batch-manifest.table-override";
-  private static final String READ_LIMIT = "fineo.dynamo.batch-manifest.limit.read";
-  private static final String WRITE_LIMIT = "fineo.dynamo.batch-manifest.limit.write";
+  public static final String INGEST_MANIFEST_OVERRIDE = "fineo.dynamo.batch-manifest.table";
+  public static final String READ_LIMIT = "fineo.dynamo.batch-manifest.limit.read";
+  public static final String WRITE_LIMIT = "fineo.dynamo.batch-manifest.limit.write";
 
   public IngestManifestModule() {
     this(null);

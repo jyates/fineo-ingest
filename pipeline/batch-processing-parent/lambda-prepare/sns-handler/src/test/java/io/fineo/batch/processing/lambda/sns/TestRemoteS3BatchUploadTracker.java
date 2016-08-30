@@ -79,8 +79,8 @@ public class TestRemoteS3BatchUploadTracker extends BaseDynamoTableTest {
 
   private PropertiesModule props() {
     Properties props = new Properties();
-    props.put(IngestManifest.READ_LIMIT, "1");
-    props.put(IngestManifest.WRITE_LIMIT, "1");
+    props.put(IngestManifestModule.READ_LIMIT, "1");
+    props.put(IngestManifestModule.WRITE_LIMIT, "1");
     return new PropertiesModule(props);
   }
 }

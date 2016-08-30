@@ -16,8 +16,8 @@ public class DynamoProvisionedThroughputModule extends AbstractModule {
 
   @Provides
   @Inject
-  public ProvisionedThroughput getThroughput(@Named("dynamo.read.units") long read,
-    @Named("dynamo.write.units") long write) {
+  public ProvisionedThroughput getThroughput(@Named("fineo.dynamo.batch-manifest.throughput.read") long read,
+    @Named("fineo.dynamo.batch-manifest.throughput.read") long write) {
     return new ProvisionedThroughput(read, write);
   }
 }
