@@ -130,6 +130,55 @@
                       <exclude>io.fineo.etl:spark-common</exclude>
                       <exclude>io.fineo.schema:schema-core:tests</exclude>
                       <exclude>io.fineo.etl.pipeline:pipeline-utils</exclude>
+                      <!-- aws transitive dependencies-->
+                      <exclude>com.amazonaws:aws-java-sdk-elastic*</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-cloud*</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-cognito*</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-marketplace*</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-code*</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-support</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-simpledb</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-simpleworkflow</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-storagegateway</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-route53</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-importexport</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-sts</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-sqs</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-rds</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-redshift</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-glacier</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-iam</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-datapipeline</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-emr</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-ec2</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-sns</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-logs</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-events</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-directconnect</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-ses</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-kinesis</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-opsworks</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-autoscaling</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-sqf-libraries</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-kms</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-config</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-ecs</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-ecr</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-cloudhsm</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-ssm</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-workspaces</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-machinelearning</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-directory</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-efs</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-devicefarm</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-waf</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-inspector</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-iot</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-api-gateway</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-acm</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-gamelift</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-dms</exclude>
+                      <exclude>com.amazonaws:aws-java-sdk-swf-libraries</exclude>
                     </excludes>
                   </artifactSet>
                   <filters>
