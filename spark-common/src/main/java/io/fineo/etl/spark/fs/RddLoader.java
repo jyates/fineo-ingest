@@ -23,9 +23,8 @@ public class RddLoader {
   private final JavaSparkContext context;
   private final Collection<String> rootStrings;
   private FileSystem fs;
-  private Path[] jsonRdds;
+  private JavaPairRDD<String, PortableDataStream>[] rdds;
   private List<Path> sources;
-  private Path[] csvFiles;
 
   public RddLoader(JavaSparkContext context, Collection<String> root) {
     this.context = context;
@@ -40,35 +39,26 @@ public class RddLoader {
       // find all the files under the given root directory
       Path rootPath = fs.resolvePath(new Path(root.getPath()));
       List<Path> sources = new ArrayList<>();
-      List<Path> jsonSource = new ArrayList<>();
-      List<Path> csvSource = new ArrayList<>();
       RemoteIterator<LocatedFileStatus> iter = fs.listFiles(rootPath, true);
       while (iter.hasNext()) {
         LocatedFileStatus status = iter.next();
         if (!status.isDirectory()) {
           sources.add(status.getPath());
-          String path = status.getPath().toString();
-          if(path.endsWith(".csv") || path.endsWith(".csv.gz")){
-            csvSource.add(status.getPath());
-          }else {
-            jsonSource.add(status.getPath());
-          }
         }
       }
 
       // get each file in the staging area
-      this.jsonRdds = jsonSource.toArray(new Path[0]);
-      this.csvFiles = csvSource.toArray(new Path[0]);
+      JavaPairRDD<String, PortableDataStream>[] stringRdds = new JavaPairRDD[sources.size()];
+      for (int i = 0; i < sources.size(); i++) {
+        stringRdds[i] = context.binaryFiles(sources.get(i).toString());
+      }
+      this.rdds = stringRdds;
       this.sources = sources;
     }
   }
 
-  public Path[] getJsonRdds() {
-    return this.jsonRdds;
-  }
-
-  public Path[] getCsvFiles(){
-    return this.csvFiles;
+  public JavaPairRDD<String, PortableDataStream>[] getRdds() {
+    return rdds;
   }
 
   public void archive(String completed) throws IOException {

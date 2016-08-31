@@ -1,6 +1,7 @@
 package io.fineo.batch.processing.spark.write;
 
 import com.google.inject.Guice;
+import io.fineo.batch.processing.spark.options.BatchOptions;
 import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.lambda.configure.DefaultCredentialsModule;
 import io.fineo.lambda.configure.PropertiesModule;
@@ -22,29 +23,18 @@ import static com.google.common.collect.Lists.newArrayList;
  */
 public class DynamoWriter implements VoidFunction<Iterator<GenericRecord>>, Serializable {
 
-  private final Properties props;
+  private final RecordToDynamoHandler handler;
 
-  public DynamoWriter(Properties props) {
-    this.props = props;
+  public DynamoWriter(BatchOptions props) {
+    this.handler = props.getDynamoHandler();
   }
 
   @Override
   public void call(Iterator<GenericRecord> genericRecordIterator) throws Exception {
-    RecordToDynamoHandler handler = getHandler();
     handler.handle(genericRecordIterator);
     MultiWriteFailures<GenericRecord> failed = handler.flush();
     if (failed.any()) {
       throw new RuntimeException("Failed to store some records!" + failed.getActions());
     }
-  }
-
-  public RecordToDynamoHandler getHandler() {
-    return Guice.createInjector(newArrayList(
-      new PropertiesModule(this.props),
-      DefaultCredentialsModule.create(this.props),
-      new DynamoModule(),
-      new AvroToDynamoModule(),
-      new DynamoRegionConfigurator()
-    )).getInstance(RecordToDynamoHandler.class);
   }
 }

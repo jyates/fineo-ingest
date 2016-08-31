@@ -78,7 +78,7 @@ public class SparkETL {
     this.store = store;
     RddLoader loader = new RddLoader(context, newArrayList(opts.source()));
     loader.load();
-    JavaPairRDD<String, PortableDataStream>[] stringRdds = loader.getJsonRdds();
+    JavaPairRDD<String, PortableDataStream>[] stringRdds = loader.getJsonFiles();
     JavaRDD<GenericRecord> records = getRecords(context, stringRdds);
 
     // Convert them into (org, metricId, date) -> records

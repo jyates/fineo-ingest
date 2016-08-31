@@ -50,7 +50,7 @@ public class ITBatchProcessingWithLocalSpark extends BaseITEndToEndAwsServices {
 
   @Test
   public void testHappyPath() throws Exception {
-    String uuid = "integration-test-" + System.currentTimeMillis() + "-";
+    String uuid = "integration-testProcessJson-" + System.currentTimeMillis() + "-";
     Properties props = setProperties(uuid);
 
     // source dir is also the location for the 'archive'
@@ -112,9 +112,9 @@ public class ITBatchProcessingWithLocalSpark extends BaseITEndToEndAwsServices {
   }
 
   @Test
-  @Ignore("Enable this test to check that the job can be kicked off correctly - doesn't use AWS")
+  @Ignore("Enable this testProcessJson to check that the job can be kicked off correctly - doesn't use AWS")
   public void testtmp() throws Exception {
-    String uuid = "integration-test-" + System.currentTimeMillis() + "-";
+    String uuid = "integration-testProcessJson-" + System.currentTimeMillis() + "-";
     Properties props = setProperties(uuid);
 
     LocalMockBatchOptions opts = getOpts(props);

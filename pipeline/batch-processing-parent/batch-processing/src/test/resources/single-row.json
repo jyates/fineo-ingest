@@ -1,0 +1,5 @@
+{
+  "metrictype" : "metric",
+  "timestamp": 1234,
+  "field1": 1
+}

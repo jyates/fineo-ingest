@@ -28,13 +28,10 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
-
-import static com.google.common.collect.Lists.newArrayList;
 
 /**
  * Run the stream processing pipeline in 'batch mode' as a spark job.
@@ -55,7 +52,7 @@ public class BatchProcessor {
       LOG.warn("No input sources found!");
       return;
     }
-    runJob(context, sources.values());
+    runJob(context, sources);
     clearManifest(sources);
   }
 
@@ -72,24 +69,22 @@ public class BatchProcessor {
     return manifest.files();
   }
 
-  private void runJob(JavaSparkContext context, Collection<String> sources)
+  private void runJob(JavaSparkContext context, Multimap<String, String> sources)
     throws IOException, URISyntaxException, ExecutionException, InterruptedException {
     RddLoader loader = new RddLoader(context, sources);
     loader.load();
 
     // convert the records
-    JavaRDD<GenericRecord>[] jsonRecords = parseJson(context, loader.getJsonRdds());
-    JavaRDD<GenericRecord>[] csvRecords = parseCsv(context, loader.getCsvFiles());
-    List<JavaRDD<GenericRecord>> records = newArrayList(jsonRecords);
-    records.addAll(Arrays.asList(csvRecords));
+    List<JavaRDD<GenericRecord>> records = parseJson(context, loader.getJsonFiles());
+    records.addAll(parseCsv(context, loader.getCsvFiles()));
 
     // write the records
     List<JavaFutureAction> actions = new ArrayList<>(records.size() * 2);
     for (JavaRDD<GenericRecord> rdd : records) {
-      actions.add(rdd.foreachPartitionAsync(new DynamoWriter(opts.props())));
+      actions.add(rdd.foreachPartitionAsync(new DynamoWriter(opts)));
       // we write them separately to firehose because we don't have a way of just saving files
       // directly to S3 without them being sequence files
-      actions.add(rdd.foreachPartitionAsync(new StagedFirehoseWriter(opts.props())));
+      actions.add(rdd.foreachPartitionAsync(new StagedFirehoseWriter(opts)));
     }
 
     // wait for all the actions to complete
@@ -98,41 +93,52 @@ public class BatchProcessor {
     }
   }
 
-  private JavaRDD<GenericRecord>[] parseJson(JavaSparkContext context, Path[] files) {
-    JavaRDD<GenericRecord>[] records = new JavaRDD[files.length];
-    for (int i = 0; i < files.length; i++) {
-      JavaPairRDD<String, PortableDataStream>[] stringRdds = loadBytes(context, files);
-      JavaPairRDD<String, PortableDataStream> strings = stringRdds[i];
-      JsonParser parser = new JsonParser();
-      JavaRDD<Map<String, Object>> json = strings.flatMap(tuple -> parser.parse(tuple._2().open()));
-      records[i] = json.map(new JsonRecordConverter(opts.props()));
-      records[i].persist(StorageLevel.MEMORY_AND_DISK());
+  private List<JavaRDD<GenericRecord>> parseJson(JavaSparkContext context,
+    Multimap<String, Path> files) {
+    List<JavaRDD<GenericRecord>> records = new ArrayList<>(files.size());
+    for (Map.Entry<String, Collection<Path>> orgToFile : files.asMap().entrySet()) {
+      for (JavaPairRDD<String, PortableDataStream> rawRdd :
+        loadBytes(context, orgToFile.getValue())) {
+        JsonParser parser = new JsonParser();
+        JavaRDD<Map<String, Object>> json =
+          rawRdd.flatMap(tuple -> parser.parse(tuple._2().open()));
+        JavaRDD<GenericRecord> rdd = json.map(new JsonRecordConverter(orgToFile.getKey(), opts
+          .props()));
+        rdd.persist(StorageLevel.MEMORY_AND_DISK());
+        records.add(rdd);
+      }
     }
+
     return records;
   }
 
-  private JavaPairRDD<String, PortableDataStream>[] loadBytes(JavaSparkContext context, Path[]
-    files){
-    JavaPairRDD<String, PortableDataStream>[] rdds = new JavaPairRDD[files.length];
-    for (int j= 0; j < files.length; j++) {
-      rdds[j] = context.binaryFiles(files[j].toString());
+  private JavaPairRDD<String, PortableDataStream>[] loadBytes(JavaSparkContext context,
+    Collection<Path> files) {
+    JavaPairRDD<String, PortableDataStream>[] rdds = new JavaPairRDD[files.size()];
+    int i = 0;
+    for (Path path : files) {
+      rdds[i++] = context.binaryFiles(path.toString());
     }
     return rdds;
   }
 
-  private JavaRDD<GenericRecord>[] parseCsv(JavaSparkContext context, Path[] csv){
-    JavaRDD<GenericRecord>[] records = new JavaRDD[csv.length];
+  private List<JavaRDD<GenericRecord>> parseCsv(JavaSparkContext context,
+    Multimap<String, Path> files) {
     SQLContext sqlContext = new SQLContext(context);
-    for (int i = 0; i < csv.length; i++) {
-      Path file = csv[i];
-      DataFrame df = sqlContext.read()
-                               .format("com.databricks.spark.csv")
-                               .option("inferSchema", "false")
-                               .option("header", "true")
-                               .load(file.toString());
-      JavaRDD<Row> rows = df.javaRDD();
-      records[i] = rows.map(new RowRecordConverter(opts.props()));
-      records[i].persist(StorageLevel.MEMORY_AND_DISK());
+    List<JavaRDD<GenericRecord>> records = new ArrayList<>(files.size());
+    for (Map.Entry<String, Collection<Path>> orgToFile : files.asMap().entrySet()) {
+      for (Path file : orgToFile.getValue()) {
+        DataFrame df = sqlContext.read()
+                                 .format("com.databricks.spark.csv")
+                                 .option("inferSchema", "false")
+                                 .option("header", "true")
+                                 .load(file.toString());
+        JavaRDD<Row> rows = df.javaRDD();
+        JavaRDD<GenericRecord> rdd =
+          rows.map(new RowRecordConverter(orgToFile.getKey(), opts.props()));
+        rdd.persist(StorageLevel.MEMORY_AND_DISK());
+        records.add(rdd);
+      }
     }
     return records;
   }
