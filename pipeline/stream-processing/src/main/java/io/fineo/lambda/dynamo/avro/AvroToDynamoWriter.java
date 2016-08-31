@@ -32,7 +32,7 @@ import org.apache.avro.generic.GenericRecord;
  * @see DynamoTableCreator for information on table naming
  * </p>
  */
-public class AvroToDynamoWriter {
+public class AvroToDynamoWriter implements IAvroToDynamoWriter {
 
   private final DynamoTableCreator tables;
   private final AwsAsyncSubmitter<UpdateItemRequest, UpdateItemResult, GenericRecord> submitter;
@@ -43,12 +43,7 @@ public class AvroToDynamoWriter {
     this.tables = creator;
   }
 
-  /**
-   * Write the record to dynamo. Completes asynchronously, call {@link #flush()} to ensure all
-   * records finish writing to dynamo. <b>non-blocking, thread-safe</b>.
-   *
-   * @param record record to write to dynamo. Expected to have at least a {@link BaseFields} field
-   */
+  @Override
   public void write(GenericRecord record) {
     DynamoUpdate request = getUpdateForRecord(record);
     try {
@@ -58,6 +53,7 @@ public class AvroToDynamoWriter {
     }
   }
 
+  @Override
   public MultiWriteFailures<GenericRecord> flush() {
     return this.submitter.flush();
   }

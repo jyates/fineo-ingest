@@ -7,7 +7,6 @@ import io.fineo.batch.processing.spark.convert.RowRecordConverter;
 import io.fineo.batch.processing.spark.options.BatchOptions;
 import io.fineo.batch.processing.spark.write.DynamoWriter;
 import io.fineo.batch.processing.spark.write.StagedFirehoseWriter;
-import io.fineo.etl.spark.fs.RddLoader;
 import io.fineo.lambda.JsonParser;
 import io.fineo.lambda.configure.util.PropertiesLoaderUtil;
 import org.apache.avro.generic.GenericRecord;
@@ -71,7 +70,7 @@ public class BatchProcessor {
 
   private void runJob(JavaSparkContext context, Multimap<String, String> sources)
     throws IOException, URISyntaxException, ExecutionException, InterruptedException {
-    RddLoader loader = new RddLoader(context, sources);
+    BatchRddLoader loader = new BatchRddLoader(context, sources);
     loader.load();
 
     // convert the records

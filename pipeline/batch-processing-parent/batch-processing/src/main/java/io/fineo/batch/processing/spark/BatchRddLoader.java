@@ -19,7 +19,7 @@ import java.util.Map;
 /**
  * Load an RDD from files under a specified directory
  */
-public class RddLoader {
+public class BatchRddLoader {
 
   private final JavaSparkContext context;
   private final Multimap<String, String> orgToFile;
@@ -28,7 +28,7 @@ public class RddLoader {
   private Multimap<String, Path> csvFiles = ArrayListMultimap.create();
   private List<Path> sources = new ArrayList<>();
 
-  public RddLoader(JavaSparkContext context, Multimap<String, String> root) {
+  public BatchRddLoader(JavaSparkContext context, Multimap<String, String> root) {
     this.context = context;
     this.orgToFile = root;
   }

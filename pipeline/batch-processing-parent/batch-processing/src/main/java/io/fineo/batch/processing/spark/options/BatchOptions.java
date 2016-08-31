@@ -17,6 +17,7 @@ import io.fineo.lambda.firehose.FirehoseBatchWriter;
 import io.fineo.lambda.handle.staged.FirehosePropertyBridge;
 import io.fineo.lambda.handle.staged.RecordToDynamoHandler;
 
+import java.io.Serializable;
 import java.util.Properties;
 
 import static com.google.common.collect.Lists.newArrayList;
@@ -24,7 +25,7 @@ import static com.google.common.collect.Lists.newArrayList;
 /**
  * Bean class to handleEvent the actual options for the batch processing
  */
-public class BatchOptions {
+public class BatchOptions implements Serializable {
 
   private Properties props;
   private Injector injector;

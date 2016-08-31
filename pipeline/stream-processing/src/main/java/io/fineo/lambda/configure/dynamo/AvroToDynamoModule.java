@@ -11,6 +11,7 @@ import io.fineo.etl.FineoProperties;
 import io.fineo.lambda.dynamo.DynamoTableCreator;
 import io.fineo.lambda.dynamo.DynamoTableTimeManager;
 import io.fineo.lambda.dynamo.avro.AvroToDynamoWriter;
+import io.fineo.lambda.dynamo.avro.IAvroToDynamoWriter;
 
 import java.io.Serializable;
 
@@ -37,7 +38,7 @@ public class AvroToDynamoModule extends AbstractModule implements Serializable {
   @Provides
   @Inject
   @Singleton
-  public AvroToDynamoWriter getDynamoWriter(AmazonDynamoDBAsyncClient client,
+  public IAvroToDynamoWriter getDynamoWriter(AmazonDynamoDBAsyncClient client,
     @Named(FineoProperties.DYNAMO_RETRIES) long retries,
     DynamoTableCreator tables) {
     return new AvroToDynamoWriter(client, retries, tables);
