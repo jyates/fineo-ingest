@@ -4,10 +4,12 @@ import com.amazonaws.services.lambda.runtime.Context;
 import com.google.inject.Module;
 import io.fineo.lambda.configure.DefaultCredentialsModule;
 import io.fineo.lambda.configure.PropertiesModule;
+import io.fineo.lambda.configure.util.InstanceToNamed;
 import io.fineo.lambda.handle.LambdaWrapper;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 import static com.google.common.collect.Lists.newArrayList;
 
@@ -17,7 +19,7 @@ import static com.google.common.collect.Lists.newArrayList;
  * @see LaunchBatchProcessingEmrCluster
  */
 public class LaunchBatchClusterWrapper
-  extends LambdaWrapper<Object, LaunchBatchProcessingEmrCluster> {
+  extends LambdaWrapper<Map<String, Object>, LaunchBatchProcessingEmrCluster> {
 
   public LaunchBatchClusterWrapper() throws IOException {
     this(getModules());
@@ -29,18 +31,19 @@ public class LaunchBatchClusterWrapper
 
 
   @Override
-  public void handle(Object event, Context context) throws IOException {
+  public void handle(Map<String, Object> event, Context context) throws IOException {
     handleInternal(event, context);
   }
 
   @Override
-  public void handleEvent(Object event) throws IOException {
+  public void handleEvent(Map<String, Object> event) throws IOException {
     getInstance().handle(event);
   }
 
   private static List<Module> getModules() throws IOException {
     return newArrayList(
       PropertiesModule.load(),
+      InstanceToNamed.property("aws.region", "us-east-1"),
       new DefaultCredentialsModule(),
       new EmrClientModule()
     );

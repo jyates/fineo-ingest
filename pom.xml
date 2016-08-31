@@ -36,7 +36,7 @@
     <scala.base.version>2.10</scala.base.version>
     <scala.major.version>${scala.base.version}.5</scala.major.version>
     <scala.version-next>2.11</scala.version-next>
-    <spark.version>1.6.1</spark.version>
+    <spark.version>1.6.2</spark.version>
 
     <!-- AWS -->
     <dynamo-local.version>1.10.5.1</dynamo-local.version>
