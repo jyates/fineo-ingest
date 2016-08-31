@@ -145,13 +145,17 @@ public class LaunchBatchProcessingEmrCluster implements LambdaHandler<Map<String
   }
 
   private StepConfig sparkProcessingStep(StepFactory factory, Map<String, Object> overrides) {
+    HadoopJarStepConfig stepConf = new HadoopJarStepConfig()
+      .withJar("command-runner.jar")
+      .withArgs("spark-submit",
+        "--executor-memory","1g",
+        "--deploy-mode", "cluster",
+        "--class", mainClass,
+        getOrDefault(overrides, FINEO_BATCH_CLUSTER_JAR, sourceJar));
     return new StepConfig()
       .withName("Spark Step")
       .withActionOnFailure(ActionOnFailure.TERMINATE_JOB_FLOW)
-      .withHadoopJarStep(factory.newScriptRunnerStep("/home/hadoop/spark/bin/spark-submit",
-        "--deploy-mode", "cluster",
-        "--class", mainClass,
-        getOrDefault(overrides, FINEO_BATCH_CLUSTER_JAR, sourceJar)));
+      .withHadoopJarStep(stepConf);
   }
 
   private StepConfig enableDebugging(StepFactory factory) {
