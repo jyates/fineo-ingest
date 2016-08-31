@@ -2,7 +2,8 @@ package io.fineo.batch.processing.spark;
 
 import com.google.common.collect.Multimap;
 import io.fineo.batch.processing.dynamo.IngestManifest;
-import io.fineo.batch.processing.spark.convert.RecordConverter;
+import io.fineo.batch.processing.spark.convert.JsonRecordConverter;
+import io.fineo.batch.processing.spark.convert.RowRecordConverter;
 import io.fineo.batch.processing.spark.options.BatchOptions;
 import io.fineo.batch.processing.spark.write.DynamoWriter;
 import io.fineo.batch.processing.spark.write.StagedFirehoseWriter;
@@ -16,6 +17,9 @@ import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.input.PortableDataStream;
+import org.apache.spark.sql.DataFrame;
+import org.apache.spark.sql.Row;
+import org.apache.spark.sql.SQLContext;
 import org.apache.spark.storage.StorageLevel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,7 +72,7 @@ public class BatchProcessor {
     throws IOException, URISyntaxException, ExecutionException, InterruptedException {
     RddLoader loader = new RddLoader(context, sources);
     loader.load();
-    JavaPairRDD<String, PortableDataStream>[] stringRdds = loader.getRdds();
+    JavaPairRDD<String, PortableDataStream>[] stringRdds = loader.getJsonRdds();
     // convert the records
     JavaRDD<GenericRecord>[] records = parse(stringRdds);
     // write the records
@@ -92,7 +96,24 @@ public class BatchProcessor {
       JavaPairRDD<String, PortableDataStream> strings = stringRdds[i];
       JsonParser parser = new JsonParser();
       JavaRDD<Map<String, Object>> json = strings.flatMap(tuple -> parser.parse(tuple._2().open()));
-      records[i] = json.map(new RecordConverter(opts.props()));
+      records[i] = json.map(new JsonRecordConverter(opts.props()));
+      records[i].persist(StorageLevel.MEMORY_AND_DISK());
+    }
+    return records;
+  }
+
+  private JavaRDD<GenericRecord>[] parseCsv(JavaSparkContext context, String[] csv){
+    JavaRDD<GenericRecord>[] records = new JavaRDD[csv.length];
+    SQLContext sqlContext = new SQLContext(context);
+    for (int i = 0; i < csv.length; i++) {
+      String file = csv[i];
+      DataFrame df = sqlContext.read()
+                               .format("com.databricks.spark.csv")
+                               .option("inferSchema", "false")
+                               .option("header", "true")
+                               .load(file);
+      JavaRDD<Row> rows = df.javaRDD();
+      records[i] = rows.map(new RowRecordConverter(opts.props()));
       records[i].persist(StorageLevel.MEMORY_AND_DISK());
     }
     return records;

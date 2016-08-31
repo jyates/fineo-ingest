@@ -20,7 +20,8 @@ import java.util.Properties;
  * Convert raw json events into avro typed records. This makes a large amount of database calls,
  * so you should probably checkpoint the RDD after complete to ensure we don't do it multiple times.
  */
-public class RecordConverter implements Function<Map<String, Object>, GenericRecord>, Serializable {
+public abstract class RecordConverter<T>
+  implements Function<T, GenericRecord>, Serializable {
 
   private final Properties props;
   private transient RawJsonToRecordHandler handler;
@@ -31,12 +32,15 @@ public class RecordConverter implements Function<Map<String, Object>, GenericRec
   }
 
   @Override
-  public GenericRecord call(Map<String, Object> json)
+  public GenericRecord call(T obj)
     throws Exception {
     RawJsonToRecordHandler handler = getHandler();
-    handler.handle(json);
+    handler.handle(transform(obj));
     return queue.getRecords().remove();
   }
+
+  protected abstract Map<String, Object> transform(T obj);
+
 
   private RawJsonToRecordHandler getHandler() {
     if (this.handler == null) {

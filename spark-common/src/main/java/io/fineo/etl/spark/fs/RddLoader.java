@@ -23,7 +23,7 @@ public class RddLoader {
   private final JavaSparkContext context;
   private final Collection<String> rootStrings;
   private FileSystem fs;
-  private JavaPairRDD<String, PortableDataStream>[] rdds;
+  private JavaPairRDD<String, PortableDataStream>[] jsonRdds;
   private List<Path> sources;
 
   public RddLoader(JavaSparkContext context, Collection<String> root) {
@@ -52,13 +52,17 @@ public class RddLoader {
       for (int i = 0; i < sources.size(); i++) {
         stringRdds[i] = context.binaryFiles(sources.get(i).toString());
       }
-      this.rdds = stringRdds;
+      this.jsonRdds = stringRdds;
       this.sources = sources;
     }
   }
 
-  public JavaPairRDD<String, PortableDataStream>[] getRdds() {
-    return rdds;
+  public JavaPairRDD<String, PortableDataStream>[] getJsonRdds() {
+    return jsonRdds;
+  }
+
+  public JavaPairRDD<String, PortableDataStream>[] getCsvRdds(){
+    return null;
   }
 
   public void archive(String completed) throws IOException {
