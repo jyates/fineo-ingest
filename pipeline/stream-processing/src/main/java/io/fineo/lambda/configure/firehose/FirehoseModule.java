@@ -9,6 +9,7 @@ import com.google.inject.Singleton;
 import com.google.inject.name.Named;
 import io.fineo.etl.FineoProperties;
 import io.fineo.lambda.firehose.FirehoseBatchWriter;
+import io.fineo.lambda.firehose.IFirehoseBatchWriter;
 
 import java.io.Serializable;
 import java.nio.ByteBuffer;
@@ -49,7 +50,7 @@ public class FirehoseModule extends AbstractModule implements Serializable {
   @Named(FIREHOSE_ARCHIVE_STREAM)
   @Inject
   @Singleton
-  public FirehoseBatchWriter getArchiveWriter(
+  public IFirehoseBatchWriter getArchiveWriter(
     @Named(FIREHOSE_ARCHIVE_FUNCTION) Function<ByteBuffer, ByteBuffer> transform,
     @Named(FIREHOSE_ARCHIVE_STREAM_NAME) String name,
     AmazonKinesisFirehoseAsyncClient firehoseClient) {
@@ -60,7 +61,7 @@ public class FirehoseModule extends AbstractModule implements Serializable {
   @Named(FIREHOSE_MALFORMED_RECORDS_STREAM)
   @Inject
   @Singleton
-  public FirehoseBatchWriter getProcessingErrorWriter(
+  public IFirehoseBatchWriter getProcessingErrorWriter(
     @Named(FIREHOSE_MALFORMED_RECORDS_FUNCTION) Function<ByteBuffer, ByteBuffer> transform,
     @Named(FIREHOSE_MALFORMED_RECORDS_STREAM_NAME) String name,
     AmazonKinesisFirehoseAsyncClient firehoseClient) {
@@ -71,7 +72,7 @@ public class FirehoseModule extends AbstractModule implements Serializable {
   @Named(FIREHOSE_COMMIT_ERROR_STREAM)
   @Inject
   @Singleton
-  public FirehoseBatchWriter getCommitErrorWriter(
+  public IFirehoseBatchWriter getCommitErrorWriter(
     @Named(FIREHOSE_COMMIT_FUNCTION) Function<ByteBuffer, ByteBuffer> transform,
     @Named(FIREHOSE_COMMIT_ERROR_STREAM_NAME) String name,
     AmazonKinesisFirehoseAsyncClient firehoseClient) {

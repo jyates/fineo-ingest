@@ -19,7 +19,7 @@ import java.util.function.Function;
  * Wrapper around a FirehoseBatchWriter to manage things like flushing batches before they get
  * too large, retrying on failed adds, etc. (similar to the Kinesis Producer Library).
  */
-public class FirehoseBatchWriter {
+public class FirehoseBatchWriter implements IFirehoseBatchWriter {
 
   private static final Logger LOG = LoggerFactory.getLogger(FirehoseBatchWriter.class);
   /**
@@ -40,12 +40,14 @@ public class FirehoseBatchWriter {
     FirehoseUtils.checkHoseStatus(client, streamName);
   }
 
+  @Override
   public void addToBatch(ByteBuffer record) {
     batch = flushIfNecessary();
     ByteBuffer data = converter.apply(record);
     batch = addRecordToBatch(batch, data);
   }
 
+  @Override
   public void flush() throws IOException {
     if (LOG.isDebugEnabled()) {
       int malformedBatchSize = batch == null ? 0 : batch.getRecords().size();

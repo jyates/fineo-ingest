@@ -4,7 +4,7 @@ import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
 import com.google.inject.Provider;
 import io.fineo.lambda.FailureHandler;
 import io.fineo.lambda.aws.MultiWriteFailures;
-import io.fineo.lambda.firehose.FirehoseBatchWriter;
+import io.fineo.lambda.firehose.IFirehoseBatchWriter;
 import org.apache.avro.generic.GenericRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,14 +19,14 @@ public abstract class KinesisHandler implements LambdaHandler<KinesisEvent> {
 
   private static final Logger LOG = LoggerFactory.getLogger(KinesisHandler.class);
 
-  private final Provider<FirehoseBatchWriter> archive;
-  private final Provider<FirehoseBatchWriter> processErrors;
-  private final Provider<FirehoseBatchWriter> commitFailures;
+  private final Provider<IFirehoseBatchWriter> archive;
+  private final Provider<IFirehoseBatchWriter> processErrors;
+  private final Provider<IFirehoseBatchWriter> commitFailures;
   private boolean hasProcessingError;
 
-  public KinesisHandler(Provider<FirehoseBatchWriter> archive,
-    Provider<FirehoseBatchWriter> processErrors,
-    Provider<FirehoseBatchWriter> commitFailures) {
+  public KinesisHandler(Provider<IFirehoseBatchWriter> archive,
+    Provider<IFirehoseBatchWriter> processErrors,
+    Provider<IFirehoseBatchWriter> commitFailures) {
     this.archive = archive;
     this.processErrors = processErrors;
     this.commitFailures = commitFailures;

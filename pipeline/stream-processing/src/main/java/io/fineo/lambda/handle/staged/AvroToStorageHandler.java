@@ -7,7 +7,7 @@ import com.google.inject.Provider;
 import com.google.inject.name.Named;
 import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.lambda.dynamo.avro.AvroToDynamoWriter;
-import io.fineo.lambda.firehose.FirehoseBatchWriter;
+import io.fineo.lambda.firehose.IFirehoseBatchWriter;
 import io.fineo.lambda.handle.KinesisHandler;
 import io.fineo.lambda.avro.FirehoseRecordReader;
 import org.apache.avro.generic.GenericRecord;
@@ -46,9 +46,9 @@ public class AvroToStorageHandler extends KinesisHandler {
 
   @Inject
   public AvroToStorageHandler(
-    @Named(FIREHOSE_ARCHIVE_STREAM) Provider<FirehoseBatchWriter> archive,
-    @Named(FIREHOSE_MALFORMED_RECORDS_STREAM) Provider<FirehoseBatchWriter> processErrors,
-    @Named(FIREHOSE_COMMIT_ERROR_STREAM) Provider<FirehoseBatchWriter> commitFailures,
+    @Named(FIREHOSE_ARCHIVE_STREAM) Provider<IFirehoseBatchWriter> archive,
+    @Named(FIREHOSE_MALFORMED_RECORDS_STREAM) Provider<IFirehoseBatchWriter> processErrors,
+    @Named(FIREHOSE_COMMIT_ERROR_STREAM) Provider<IFirehoseBatchWriter> commitFailures,
     RecordToDynamoHandler handler) {
     super(archive, processErrors, commitFailures);
     this.handler = handler;

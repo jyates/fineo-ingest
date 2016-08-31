@@ -2,19 +2,23 @@ package io.fineo.batch.processing.spark;
 
 import io.fineo.aws.AwsDependentTests;
 import io.fineo.etl.FineoProperties;
+import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.lambda.dynamo.avro.AvroToDynamoWriter;
+import io.fineo.lambda.dynamo.avro.IAvroToDynamoWriter;
 import io.fineo.lambda.dynamo.rule.AwsDynamoResource;
 import io.fineo.lambda.dynamo.rule.AwsDynamoTablesResource;
 import io.fineo.lambda.firehose.FirehoseBatchWriter;
 import io.fineo.lambda.handle.staged.RecordToDynamoHandler;
 import io.fineo.spark.rule.LocalSparkRule;
 import io.fineo.test.rule.TestOutput;
+import org.apache.avro.generic.GenericRecord;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.mockito.Mockito;
 
+import java.util.Collections;
 import java.util.Properties;
 
 import static java.lang.String.format;
@@ -47,12 +51,23 @@ public class TestBatchProcessor {
     LocalMockBatchOptions options = new LocalMockBatchOptions(){
       @Override
       public RecordToDynamoHandler getDynamoHandler() {
-        return new RecordToDynamoHandler(new AvroToDynamoWriter())
+        return new RecordToDynamoHandler(new IAvroToDynamoWriter(){
+
+          @Override
+          public void write(GenericRecord record) {
+            System.out.println("Got record: "+record);
+          }
+
+          @Override
+          public MultiWriteFailures<GenericRecord> flush() {
+            return new MultiWriteFailures<>(Collections.EMPTY_LIST);
+          }
+        });
       }
 
       @Override
       public FirehoseBatchWriter getFirehoseWriter() {
-        return firehose;
+        return new FirehoseBatchWriter()
       }
     };
     withInput(options, "single-row.json");

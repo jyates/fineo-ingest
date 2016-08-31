@@ -2,7 +2,7 @@ package io.fineo.batch.processing.spark.write;
 
 import io.fineo.batch.processing.spark.options.BatchOptions;
 import io.fineo.lambda.avro.FirehoseRecordWriter;
-import io.fineo.lambda.firehose.FirehoseBatchWriter;
+import io.fineo.lambda.firehose.IFirehoseBatchWriter;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.spark.api.java.function.VoidFunction;
 
@@ -14,7 +14,7 @@ import java.util.Iterator;
  */
 public class StagedFirehoseWriter implements
                                   VoidFunction<Iterator<GenericRecord>>, Serializable {
-  private final FirehoseBatchWriter writer;
+  private final IFirehoseBatchWriter writer;
 
   public StagedFirehoseWriter(BatchOptions props) {
     this.writer = props.getFirehoseWriter();

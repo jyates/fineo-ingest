@@ -14,6 +14,7 @@ import io.fineo.lambda.configure.dynamo.DynamoRegionConfigurator;
 import io.fineo.lambda.configure.firehose.FirehoseFunctions;
 import io.fineo.lambda.configure.firehose.FirehoseModule;
 import io.fineo.lambda.firehose.FirehoseBatchWriter;
+import io.fineo.lambda.firehose.IFirehoseBatchWriter;
 import io.fineo.lambda.handle.staged.FirehosePropertyBridge;
 import io.fineo.lambda.handle.staged.RecordToDynamoHandler;
 
@@ -61,7 +62,7 @@ public class BatchOptions implements Serializable {
     )).getInstance(RecordToDynamoHandler.class);
   }
 
-  public FirehoseBatchWriter getFirehoseWriter() {
+  public IFirehoseBatchWriter getFirehoseWriter() {
     return Guice.createInjector(newArrayList(
       new PropertiesModule(this.props),
       DefaultCredentialsModule.create(this.props),
