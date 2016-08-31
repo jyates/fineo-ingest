@@ -26,4 +26,8 @@ public class SingleInstanceModule<T> extends AbstractModule implements Serializa
   public static <T> SingleInstanceModule<T> instanceModule(T instance) {
     return new SingleInstanceModule<>(instance);
   }
+
+  public Class<T> getClazz() {
+    return clazz;
+  }
 }

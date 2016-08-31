@@ -13,7 +13,7 @@
     <module>common</module>
     <module>dynamo-common</module>
     <module>spark-common</module>
-    <module>batch-parent</module>
+    <module>batch-etl-parent</module>
     <module>pipeline</module>
   </modules>
 

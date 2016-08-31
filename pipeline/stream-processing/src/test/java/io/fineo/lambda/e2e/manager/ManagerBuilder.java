@@ -108,9 +108,9 @@ public class ManagerBuilder {
       modules.add(awsCredentials);
     }
     addIfNotNull(dynamo, IDynamoResource.class, modules);
-    if(store == null) {
+    if (store == null) {
       addIfNotNull(null, SchemaStore.class, modules, new SchemaStoreModule());
-    }else if(store.isPresent()){
+    } else if (store.isPresent()) {
       addIfNotNull(store.get(), SchemaStore.class, modules);
     }
     addIfNotNull(firehose, IFirehoseResource.class, modules);
@@ -126,7 +126,23 @@ public class ManagerBuilder {
       modules.add(new PropertiesModule(props.getRawPropertiesForTesting()));
     }
 
-    modules.addAll(additionalModules);
+    // removing any previous definitions that we are replacing with the additional modules
+    for (Module m : additionalModules) {
+      if (m instanceof SingleInstanceModule) {
+        Class c = ((SingleInstanceModule) m).getClazz();
+        SingleInstanceModule existing = null;
+        for (Module present : modules) {
+          if (present instanceof SingleInstanceModule &&
+              ((SingleInstanceModule) present).getClazz().equals(c)) {
+            existing = (SingleInstanceModule) present;
+            break;
+          }
+        }
+        modules.remove(existing);
+      }
+      modules.add(m);
+    }
+
     if (collector == null) {
       collector = new LoggingCollector();
     }

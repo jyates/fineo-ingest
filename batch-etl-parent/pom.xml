@@ -10,7 +10,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>io.fineo.etl.batch</groupId>
-  <artifactId>batch-parent</artifactId>
+  <artifactId>batch-etl-parent</artifactId>
   <packaging>pom</packaging>
 
   <modules>
