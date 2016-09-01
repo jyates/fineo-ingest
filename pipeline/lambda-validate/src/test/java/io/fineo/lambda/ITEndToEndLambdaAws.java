@@ -2,13 +2,11 @@ package io.fineo.lambda;
 
 import com.google.inject.Guice;
 import com.google.inject.Injector;
-import com.google.inject.Module;
 import io.fineo.aws.ValidateDeployment;
 import io.fineo.lambda.configure.PropertiesModule;
 import io.fineo.lambda.configure.util.PropertiesLoaderUtil;
 import io.fineo.lambda.e2e.aws.BaseITEndToEndAwsServices;
 import io.fineo.lambda.e2e.util.TestProperties;
-import io.fineo.lambda.e2e.aws.firehose.FirehoseStreams;
 import io.fineo.lambda.resources.RemoteLambdaConnector;
 import io.fineo.lambda.util.LambdaTestUtils;
 import org.junit.Test;
@@ -20,7 +18,6 @@ import java.util.Map;
 import java.util.Properties;
 
 import static io.fineo.lambda.configure.util.InstanceToNamed.namedInstance;
-import static io.fineo.lambda.configure.util.SingleInstanceModule.instanceModule;
 import static java.util.Arrays.asList;
 
 /**

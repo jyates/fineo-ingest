@@ -26,6 +26,10 @@
       <artifactId>schema-core</artifactId>
     </dependency>
     <dependency>
+      <groupId>io.fineo.schema</groupId>
+      <artifactId>schema-lambda</artifactId>
+    </dependency>
+    <dependency>
       <groupId>io.fineo.etl.pipeline</groupId>
       <artifactId>stream-processing</artifactId>
     </dependency>

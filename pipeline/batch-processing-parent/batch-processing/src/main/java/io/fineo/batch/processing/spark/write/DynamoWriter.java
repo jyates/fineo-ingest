@@ -1,20 +1,13 @@
 package io.fineo.batch.processing.spark.write;
 
-import com.google.inject.Guice;
 import io.fineo.batch.processing.spark.options.BatchOptions;
 import io.fineo.lambda.aws.MultiWriteFailures;
-import io.fineo.lambda.configure.DefaultCredentialsModule;
-import io.fineo.lambda.configure.PropertiesModule;
-import io.fineo.lambda.configure.dynamo.AvroToDynamoModule;
-import io.fineo.lambda.configure.dynamo.DynamoModule;
-import io.fineo.lambda.configure.dynamo.DynamoRegionConfigurator;
 import io.fineo.lambda.handle.staged.RecordToDynamoHandler;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.spark.api.java.function.VoidFunction;
 
 import java.io.Serializable;
 import java.util.Iterator;
-import java.util.Properties;
 
 import static com.google.common.collect.Lists.newArrayList;
 

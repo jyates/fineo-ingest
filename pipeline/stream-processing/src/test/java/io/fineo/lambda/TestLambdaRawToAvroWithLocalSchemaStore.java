@@ -12,7 +12,6 @@ import io.fineo.lambda.configure.NullableNamedInstanceModule;
 import io.fineo.lambda.configure.PropertiesModule;
 import io.fineo.lambda.configure.firehose.FirehoseModule;
 import io.fineo.lambda.e2e.state.EndToEndTestRunner;
-import io.fineo.lambda.firehose.FirehoseBatchWriter;
 import io.fineo.lambda.firehose.IFirehoseBatchWriter;
 import io.fineo.lambda.handle.LambdaWrapper;
 import io.fineo.lambda.handle.raw.RawRecordToAvroHandler;
