@@ -104,6 +104,12 @@
       <artifactId>DynamoDBLocal</artifactId>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>io.fineo.schema</groupId>
+      <artifactId>schema-lambda</artifactId>
+      <classifier>tests</classifier>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <profiles>

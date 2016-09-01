@@ -1,0 +1,72 @@
+package io.fineo.batch.processing.spark;
+
+import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.internal.StaticCredentialsProvider;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
+import com.amazonaws.services.dynamodbv2.document.DynamoDB;
+import io.fineo.lambda.dynamo.DynamoTableCreator;
+import io.fineo.lambda.dynamo.DynamoTableTimeManager;
+import io.fineo.lambda.dynamo.avro.AvroToDynamoWriter;
+import io.fineo.lambda.firehose.IFirehoseBatchWriter;
+import io.fineo.lambda.handle.raw.RawJsonToRecordHandler;
+import io.fineo.lambda.handle.staged.RecordToDynamoHandler;
+import io.fineo.lambda.kinesis.IKinesisProducer;
+import io.fineo.schema.aws.dynamodb.DynamoDBRepository;
+import io.fineo.schema.store.SchemaStore;
+import org.schemarepo.ValidatorFactory;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+
+/**
+ *
+ */
+public class LocalSparkOptions extends LocalMockBatchOptions {
+
+  private final String writePrefix;
+  private final String schemaTable;
+  private final String dynamoUrl;
+
+  public LocalSparkOptions(String dynamoUrl, String writePrefix, String schemaTable) {
+    this.dynamoUrl = dynamoUrl;
+    this.writePrefix = writePrefix;
+    this.schemaTable = schemaTable;
+  }
+
+  @Override
+  public RecordToDynamoHandler getDynamoHandler() {
+    AmazonDynamoDBAsyncClient client = getDynamo();
+    return new RecordToDynamoHandler(new AvroToDynamoWriter(client, 1, new DynamoTableCreator
+      (new DynamoTableTimeManager(client, writePrefix), new DynamoDB(client), 1, 1)));
+  }
+
+  @Override
+  public IFirehoseBatchWriter getFirehoseWriter() {
+    return new IFirehoseBatchWriter() {
+
+      @Override
+      public void addToBatch(ByteBuffer record) {
+        System.out.println("Writing batch record with " + record.remaining() + " bytes");
+      }
+
+      @Override
+      public void flush() throws IOException {
+        //noop
+      }
+    };
+  }
+
+  @Override
+  public RawJsonToRecordHandler getRawJsonToRecordHandler(IKinesisProducer queue) {
+    DynamoDBRepository repo = new DynamoDBRepository(ValidatorFactory.EMPTY, getDynamo(),
+      schemaTable);
+    return new RawJsonToRecordHandler("archive", new SchemaStore(repo), queue);
+  }
+
+  private AmazonDynamoDBAsyncClient getDynamo() {
+    StaticCredentialsProvider provider = new StaticCredentialsProvider(new BasicAWSCredentials
+      ("AKIAIZFKPYAKBFDZPAEA",
+        "18S1bF4bpjCKZP2KRgbqOn7xJLDmqmwSXqq5GAWq"));
+    return new AmazonDynamoDBAsyncClient(provider).withEndpoint(dynamoUrl);
+  }
+}

@@ -3,6 +3,7 @@ package io.fineo.batch.processing.spark.write;
 import io.fineo.batch.processing.spark.options.BatchOptions;
 import io.fineo.lambda.avro.FirehoseRecordWriter;
 import io.fineo.lambda.firehose.IFirehoseBatchWriter;
+import io.fineo.lambda.handle.staged.RecordToDynamoHandler;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.spark.api.java.function.VoidFunction;
 
@@ -14,9 +15,11 @@ import java.util.Iterator;
  */
 public class StagedFirehoseWriter implements
                                   VoidFunction<Iterator<GenericRecord>>, Serializable {
-  private final IFirehoseBatchWriter writer;
+  private final BatchOptions props;
+  private transient IFirehoseBatchWriter writer;
 
   public StagedFirehoseWriter(BatchOptions props) {
+    this.props = props;
     this.writer = props.getFirehoseWriter();
   }
 
@@ -24,8 +27,17 @@ public class StagedFirehoseWriter implements
   public void call(Iterator<GenericRecord> records) throws Exception {
     FirehoseRecordWriter map = FirehoseRecordWriter.create();
     while (records.hasNext()) {
-      writer.addToBatch(map.write(records.next()));
+      getHandler().addToBatch(map.write(records.next()));
     }
-    writer.flush();
+    if (this.writer != null) {
+      writer.flush();
+    }
+  }
+
+  private IFirehoseBatchWriter getHandler() {
+    if (this.writer == null) {
+      this.writer = props.getFirehoseWriter();
+    }
+    return this.writer;
   }
 }

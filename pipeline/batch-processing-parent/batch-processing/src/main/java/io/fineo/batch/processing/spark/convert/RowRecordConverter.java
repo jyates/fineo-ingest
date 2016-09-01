@@ -1,5 +1,6 @@
 package io.fineo.batch.processing.spark.convert;
 
+import io.fineo.batch.processing.spark.options.BatchOptions;
 import io.fineo.schema.avro.AvroSchemaEncoder;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.types.StructType;
@@ -18,8 +19,8 @@ public class RowRecordConverter extends RecordConverter<Row> {
 
   private final String orgId;
 
-  public RowRecordConverter(String orgId, Properties props) {
-    super(props);
+  public RowRecordConverter(String orgId, BatchOptions options) {
+    super(options);
     this.orgId = orgId;
   }
 

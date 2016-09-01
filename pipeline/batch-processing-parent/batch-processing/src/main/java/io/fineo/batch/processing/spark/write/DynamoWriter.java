@@ -23,18 +23,26 @@ import static com.google.common.collect.Lists.newArrayList;
  */
 public class DynamoWriter implements VoidFunction<Iterator<GenericRecord>>, Serializable {
 
-  private final RecordToDynamoHandler handler;
+  private final BatchOptions props;
+  private transient RecordToDynamoHandler handler;
 
   public DynamoWriter(BatchOptions props) {
-    this.handler = props.getDynamoHandler();
+    this.props = props;
   }
 
   @Override
   public void call(Iterator<GenericRecord> genericRecordIterator) throws Exception {
-    handler.handle(genericRecordIterator);
+    getHandler().handle(genericRecordIterator);
     MultiWriteFailures<GenericRecord> failed = handler.flush();
     if (failed.any()) {
       throw new RuntimeException("Failed to store some records!" + failed.getActions());
     }
+  }
+
+  private RecordToDynamoHandler getHandler() {
+    if(this.handler == null){
+      this.handler = props.getDynamoHandler();
+    }
+    return this.handler;
   }
 }

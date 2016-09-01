@@ -101,8 +101,7 @@ public class BatchProcessor {
         JsonParser parser = new JsonParser();
         JavaRDD<Map<String, Object>> json =
           rawRdd.flatMap(tuple -> parser.parse(tuple._2().open()));
-        JavaRDD<GenericRecord> rdd = json.map(new JsonRecordConverter(orgToFile.getKey(), opts
-          .props()));
+        JavaRDD<GenericRecord> rdd = json.map(new JsonRecordConverter(orgToFile.getKey(), opts));
         rdd.persist(StorageLevel.MEMORY_AND_DISK());
         records.add(rdd);
       }
@@ -133,8 +132,7 @@ public class BatchProcessor {
                                  .option("header", "true")
                                  .load(file.toString());
         JavaRDD<Row> rows = df.javaRDD();
-        JavaRDD<GenericRecord> rdd =
-          rows.map(new RowRecordConverter(orgToFile.getKey(), opts.props()));
+        JavaRDD<GenericRecord> rdd = rows.map(new RowRecordConverter(orgToFile.getKey(), opts));
         rdd.persist(StorageLevel.MEMORY_AND_DISK());
         records.add(rdd);
       }

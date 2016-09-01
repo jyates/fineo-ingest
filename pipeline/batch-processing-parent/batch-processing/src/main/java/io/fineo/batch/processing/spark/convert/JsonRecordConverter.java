@@ -1,5 +1,6 @@
 package io.fineo.batch.processing.spark.convert;
 
+import io.fineo.batch.processing.spark.options.BatchOptions;
 import io.fineo.schema.avro.AvroSchemaEncoder;
 
 import java.util.Map;
@@ -13,8 +14,8 @@ public class JsonRecordConverter extends RecordConverter<Map<String, Object>>{
 
   private final String orgId;
 
-  public JsonRecordConverter(String orgId, Properties props) {
-    super(props);
+  public JsonRecordConverter(String orgId, BatchOptions options) {
+    super(options);
     this.orgId = orgId;
   }
 
