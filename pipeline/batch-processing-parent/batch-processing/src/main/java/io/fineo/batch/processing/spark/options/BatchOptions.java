@@ -73,7 +73,7 @@ public class BatchOptions implements Serializable {
       DefaultCredentialsModule.create(this.props),
       new FirehoseModule(), new FirehoseFunctions(), new FirehosePropertyBridge()
     )).getInstance(
-      Key.get(FirehoseBatchWriter.class, Names.named(FirehoseModule.FIREHOSE_ARCHIVE_STREAM)));
+      Key.get(IFirehoseBatchWriter.class, Names.named(FirehoseModule.FIREHOSE_ARCHIVE_STREAM)));
   }
 
   public RawJsonToRecordHandler getRawJsonToRecordHandler(IKinesisProducer queue) {

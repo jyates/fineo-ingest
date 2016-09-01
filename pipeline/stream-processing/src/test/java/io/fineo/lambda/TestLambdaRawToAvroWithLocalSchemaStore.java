@@ -13,6 +13,7 @@ import io.fineo.lambda.configure.PropertiesModule;
 import io.fineo.lambda.configure.firehose.FirehoseModule;
 import io.fineo.lambda.e2e.state.EndToEndTestRunner;
 import io.fineo.lambda.firehose.FirehoseBatchWriter;
+import io.fineo.lambda.firehose.IFirehoseBatchWriter;
 import io.fineo.lambda.handle.LambdaWrapper;
 import io.fineo.lambda.handle.raw.RawRecordToAvroHandler;
 import io.fineo.lambda.handle.raw.RawStageWrapper;
@@ -263,11 +264,11 @@ public class TestLambdaRawToAvroWithLocalSchemaStore {
         }
       },
       new NullableNamedInstanceModule<>(FirehoseModule.FIREHOSE_ARCHIVE_STREAM, firehoses.archive(),
-        FirehoseBatchWriter.class),
+        IFirehoseBatchWriter.class),
       new NullableNamedInstanceModule<>(FirehoseModule.FIREHOSE_COMMIT_ERROR_STREAM,
-        firehoses.commit(), FirehoseBatchWriter.class),
+        firehoses.commit(), IFirehoseBatchWriter.class),
       new NullableNamedInstanceModule<>(FirehoseModule.FIREHOSE_MALFORMED_RECORDS_STREAM,
-        firehoses.process(), FirehoseBatchWriter.class),
+        firehoses.process(), IFirehoseBatchWriter.class),
       new MockOnNullInstanceModule<>(producer, IKinesisProducer.class),
       new PropertiesModule(props)));
   }

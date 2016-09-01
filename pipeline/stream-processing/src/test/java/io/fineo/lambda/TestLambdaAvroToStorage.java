@@ -9,6 +9,7 @@ import io.fineo.lambda.configure.NullableNamedInstanceModule;
 import io.fineo.lambda.configure.firehose.FirehoseModule;
 import io.fineo.lambda.dynamo.avro.AvroToDynamoWriter;
 import io.fineo.lambda.firehose.FirehoseBatchWriter;
+import io.fineo.lambda.firehose.IFirehoseBatchWriter;
 import io.fineo.lambda.handle.LambdaWrapper;
 import io.fineo.lambda.handle.staged.AvroToStorageHandler;
 import io.fineo.lambda.handle.staged.AvroToStorageWrapper;
@@ -66,11 +67,11 @@ public class TestLambdaAvroToStorage {
     return new AvroToStorageWrapper(newArrayList(
       new MockOnNullInstanceModule<>(dynamo, AvroToDynamoWriter.class),
       new NullableNamedInstanceModule<>(FirehoseModule.FIREHOSE_ARCHIVE_STREAM, records,
-        FirehoseBatchWriter.class),
+        IFirehoseBatchWriter.class),
       new NullableNamedInstanceModule<>(FirehoseModule.FIREHOSE_MALFORMED_RECORDS_STREAM, malformed,
-        FirehoseBatchWriter.class),
+        IFirehoseBatchWriter.class),
       new NullableNamedInstanceModule<>(FirehoseModule.FIREHOSE_COMMIT_ERROR_STREAM, error,
-        FirehoseBatchWriter.class)));
+        IFirehoseBatchWriter.class)));
   }
 
   @Test

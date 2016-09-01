@@ -2,7 +2,7 @@ package io.fineo.lambda.handle.staged;
 
 import com.google.inject.Inject;
 import io.fineo.lambda.aws.MultiWriteFailures;
-import io.fineo.lambda.dynamo.avro.IAvroToDynamoWriter;
+import io.fineo.lambda.dynamo.avro.AvroToDynamoWriter;
 import org.apache.avro.generic.GenericRecord;
 
 import java.util.Iterator;
@@ -12,10 +12,10 @@ import java.util.Iterator;
  */
 public class RecordToDynamoHandler {
 
-  private final IAvroToDynamoWriter dynamo;
+  private final AvroToDynamoWriter dynamo;
 
   @Inject
-  public RecordToDynamoHandler(IAvroToDynamoWriter dynamo) {
+  public RecordToDynamoHandler(AvroToDynamoWriter dynamo) {
     this.dynamo = dynamo;
   }
 

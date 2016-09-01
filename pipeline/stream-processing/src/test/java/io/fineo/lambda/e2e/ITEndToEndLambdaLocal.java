@@ -28,6 +28,7 @@ import io.fineo.lambda.e2e.state.EndToEndTestBuilder;
 import io.fineo.lambda.e2e.state.EndToEndTestRunner;
 import io.fineo.lambda.e2e.util.IngestUtil;
 import io.fineo.lambda.firehose.FirehoseBatchWriter;
+import io.fineo.lambda.firehose.IFirehoseBatchWriter;
 import io.fineo.lambda.handle.LambdaWrapper;
 import io.fineo.lambda.handle.raw.RawRecordToAvroHandler;
 import io.fineo.lambda.handle.raw.RawStageWrapper;
@@ -187,11 +188,11 @@ public class ITEndToEndLambdaLocal {
 
   public static Module getMockFirehoses(IFirehoseResource firehoses, String stagePrefix) {
     NamedProvider module = new NamedProvider();
-    module.add(FirehoseModule.FIREHOSE_ARCHIVE_STREAM, FirehoseBatchWriter.class,
+    module.add(FirehoseModule.FIREHOSE_ARCHIVE_STREAM, IFirehoseBatchWriter.class,
       () -> firehoses.getWriter(stagePrefix, StreamType.ARCHIVE));
-    module.add(FirehoseModule.FIREHOSE_COMMIT_ERROR_STREAM, FirehoseBatchWriter.class,
+    module.add(FirehoseModule.FIREHOSE_COMMIT_ERROR_STREAM, IFirehoseBatchWriter.class,
       () -> firehoses.getWriter(stagePrefix, StreamType.COMMIT_ERROR));
-    module.add(FirehoseModule.FIREHOSE_MALFORMED_RECORDS_STREAM, FirehoseBatchWriter.class,
+    module.add(FirehoseModule.FIREHOSE_MALFORMED_RECORDS_STREAM, IFirehoseBatchWriter.class,
       () -> firehoses.getWriter(stagePrefix, StreamType.PROCESSING_ERROR));
     return module;
   }
