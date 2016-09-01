@@ -34,12 +34,13 @@ public class BatchRddLoader {
   }
 
   public void load() throws URISyntaxException, IOException {
-    for(Map.Entry<String, Collection<String>> orgFileEntry: orgToFile.asMap().entrySet()) {
+    for (Map.Entry<String, Collection<String>> orgFileEntry : orgToFile.asMap().entrySet()) {
       for (String file : orgFileEntry.getValue()) {
         URI root = new URI(file);
         this.fs = FileSystem.get(root, context.hadoopConfiguration());
 
         // find all the files under the given root directory
+        System.out.println("Working directory:" + fs.getWorkingDirectory());
         Path rootPath = fs.resolvePath(new Path(root.getPath()));
         RemoteIterator<LocatedFileStatus> iter = fs.listFiles(rootPath, true);
         while (iter.hasNext()) {
@@ -62,7 +63,7 @@ public class BatchRddLoader {
     return this.jsonFiles;
   }
 
-  public Multimap<String, Path> getCsvFiles(){
+  public Multimap<String, Path> getCsvFiles() {
     return this.csvFiles;
   }
 
