@@ -37,6 +37,15 @@
       <artifactId>spark-common</artifactId>
     </dependency>
     <dependency>
+      <groupId>com.google.inject</groupId>
+      <artifactId>guice</artifactId>
+      <!-- More work to support correct guicing with lambdas in java8
+        @see https://github.com/google/guice/issues/757
+      -->
+      <classifier>no_aop</classifier>
+      <version>4.0</version>
+    </dependency>
+    <dependency>
       <groupId>com.databricks</groupId>
       <artifactId>spark-csv_${scala.base.version}</artifactId>
       <version>1.4.0</version>
@@ -152,6 +161,11 @@
                       <!-- Spark jars are already on cluster -->
                       <exclude>org.apache.spark:*</exclude>
                       <exclude>org.scala-lang:*</exclude>
+                      <!-- Guice 3.0/4.0 comparability issues with Java8 and lambdas. AoP Guice
+                      seems to be involved in the root issue.
+                       @see https://github.com/google/guice/issues/757
+                       -->
+                      <exclude>aopalliance:aopalliance</exclude>
                       <!-- Test jars -->
                       <exclude>junit:junit</exclude>
                       <exclude>org.mockito:mockito-all</exclude>

@@ -23,7 +23,7 @@ public class RunBatchEmrLocal {
     LaunchBatchProcessingEmrCluster launch = new LaunchBatchProcessingEmrCluster(
       "us-east-1",
       "deploy.fineo.io",
-      "lambda/Batch/2016-08-3114:04:37-0700/processor/batch-processing-2.0-SNAPSHOT-aws.jar",
+      "lambda/Batch/2016-09-0111:18:56-0700/processor/batch-processing-2.0-SNAPSHOT-aws.jar",
       "io.fineo.batch.processing.spark.BatchProcessor",
       "batch-processor",
       client

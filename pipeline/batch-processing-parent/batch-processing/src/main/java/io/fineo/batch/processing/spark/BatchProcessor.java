@@ -25,6 +25,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -138,16 +139,32 @@ public class BatchProcessor {
   }
 
   public static void main(String[] args) throws Exception {
+    System.out.println("--- Starting batch processing ---");
     // parse arguments and load options
     BatchOptions opts = new BatchOptions();
+    System.out.println("--- Created options ---");
     opts.setProps(PropertiesLoaderUtil.load());
+
+    System.out.println("--- Loaded properties ---");
 
     // setup spark
     SparkConf conf = new SparkConf().setAppName(BatchProcessor.class.getName());
+    System.out.println("--- Created conf ---");
     final JavaSparkContext context = new JavaSparkContext(conf);
-
+    System.out.println("--- Created context ---");
     // run the job
     BatchProcessor processor = new BatchProcessor(opts);
-    processor.run(context);
+    System.out.println("--- Created processor--");
+    try {
+      processor.run(context);
+    } catch (Error e) {
+      System.out.println("Got error!");
+      System.out.println(Arrays.toString(e.getStackTrace()));
+      // need to print the trace since Spark is not handling it correctly in 1.6.2
+      e.printStackTrace();
+      System.exit(1000);
+      throw e;
+    }
+    System.out.println("^^^^^ App completed ^^^^^^");
   }
 }
