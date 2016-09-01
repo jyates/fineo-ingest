@@ -3,7 +3,6 @@ package io.fineo.batch.processing.spark;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.amazonaws.services.dynamodbv2.document.DynamoDB;
 import com.amazonaws.services.dynamodbv2.document.Item;
-import com.amazonaws.services.dynamodbv2.document.ScanOutcome;
 import com.amazonaws.services.dynamodbv2.document.Table;
 import com.amazonaws.services.dynamodbv2.document.TableCollection;
 import com.amazonaws.services.dynamodbv2.model.ListTablesResult;
@@ -11,18 +10,14 @@ import com.google.inject.Guice;
 import com.google.inject.Module;
 import io.fineo.aws.AwsDependentTests;
 import io.fineo.etl.FineoProperties;
-import io.fineo.lambda.configure.NullableNamedInstanceModule;
-import io.fineo.lambda.configure.util.SingleInstanceModule;
 import io.fineo.lambda.dynamo.rule.AwsDynamoResource;
 import io.fineo.lambda.dynamo.rule.AwsDynamoTablesResource;
 import io.fineo.lambda.handle.schema.SchemaStoreModuleForTesting;
 import io.fineo.lambda.handle.schema.inject.SchemaStoreModule;
-import io.fineo.schema.exception.SchemaExistsException;
 import io.fineo.schema.store.SchemaStore;
 import io.fineo.schema.store.StoreManager;
 import io.fineo.spark.rule.LocalSparkRule;
 import io.fineo.test.rule.TestOutput;
-import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.ClassRule;
@@ -30,16 +25,17 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 import java.util.Random;
-import java.util.UUID;
 
 import static io.fineo.lambda.configure.util.InstanceToNamed.property;
 import static io.fineo.lambda.configure.util.SingleInstanceModule.instanceModule;
-import static java.lang.String.format;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -62,22 +58,43 @@ public class TestBatchProcessor {
 
   @Test
   public void testProcessJson() throws Exception {
-    processFiles(1, "single-row.json");
+    processFiles(1, json());
   }
 
   @Test
   public void testProcessCsv() throws Exception {
-    processFiles(1, "single-row.csv");
+    processFiles(1, csv());
   }
 
   @Test
   public void testProcessJsonAndCsv() throws Exception {
-    processFiles(2, "single-row.csv", "single-row.json");
+    processFiles(2, csv(), json());
   }
 
   @Test
   public void testReadDifferentOrgFiles() throws Exception {
-    processFiles(2, p("org1", "single-row.csv"), p("org2", "single-row.json"));
+    processFiles(2, p("org1", csv()), p("org2", json()));
+  }
+
+  private String csv() throws IOException {
+    File out = output.newFile();
+    PrintWriter writer = new PrintWriter(out, "UTF-8");
+    writer.println("metrictype,timestamp,field1");
+    writer.println("\"metric\",1235,1");
+    writer.close();
+    return out.toString();
+  }
+
+  private String json() throws IOException {
+    File out = output.newFile();
+    PrintWriter w = new PrintWriter(out, "UTF-8");
+    w.println("{");
+    w.println(" \"metrictype\" : \"metric\",");
+    w.println(" \"timestamp\" : 1234,");
+    w.println(" \"field1\" : 1");
+    w.println("}");
+    w.close();
+    return out.toString();
   }
 
   private <T, V> Pair<T, V> p(T t, V v) {
@@ -109,14 +126,14 @@ public class TestBatchProcessor {
     Arrays.asList(files).stream()
           .map(p -> p.getKey())
           .distinct()
-      .forEach(org ->{
-        try {
-          manager.newOrg(org).newMetric().setDisplayName("metric").newField().withName("field1")
-                 .withType(StoreManager.Type.INTEGER).build().build().commit();
-        }catch(Exception e){
-          throw new RuntimeException("Coudl not create org/metric for: "+org);
-        }
-      });
+          .forEach(org -> {
+            try {
+              manager.newOrg(org).newMetric().setDisplayName("metric").newField().withName("field1")
+                     .withType(StoreManager.Type.INTEGER).build().build().commit();
+            } catch (Exception e) {
+              throw new RuntimeException("Coudl not create org/metric for: " + org);
+            }
+          });
 
 
     LocalSparkOptions options =
@@ -152,11 +169,8 @@ public class TestBatchProcessor {
   private void withInput(LocalMockBatchOptions options,
     Pair<String, String>... fileInTestResources) {
     for (int i = 0; i < fileInTestResources.length; i++) {
-      String name = fileInTestResources[i].getValue();
-      fileInTestResources[i]
-        .setValue(format("pipeline/batch-processing-parent/batch-processing/src/test/resources"
-                         + "/%s", name));
-    }
+        fileInTestResources[i].setValue("file://"+fileInTestResources[i].getValue());
+      }
     options.setInput(fileInTestResources);
   }
 
