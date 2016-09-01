@@ -6,6 +6,7 @@ import com.amazonaws.services.dynamodbv2.document.Item;
 import com.amazonaws.services.dynamodbv2.document.Table;
 import com.amazonaws.services.dynamodbv2.document.TableCollection;
 import com.amazonaws.services.dynamodbv2.model.ListTablesResult;
+import com.google.common.base.Joiner;
 import com.google.inject.Guice;
 import com.google.inject.Module;
 import io.fineo.aws.AwsDependentTests;
@@ -26,13 +27,17 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 import java.util.Random;
+import java.util.function.Consumer;
+import java.util.zip.GZIPOutputStream;
 
 import static io.fineo.lambda.configure.util.InstanceToNamed.property;
 import static io.fineo.lambda.configure.util.SingleInstanceModule.instanceModule;
@@ -58,42 +63,61 @@ public class TestBatchProcessor {
 
   @Test
   public void testProcessJson() throws Exception {
-    processFiles(1, json());
+    processFiles(1, json(false));
+  }
+
+  @Test
+  public void testProcessGzipJson() throws Exception {
+    processFiles(1, json(true));
   }
 
   @Test
   public void testProcessCsv() throws Exception {
-    processFiles(1, csv());
+    processFiles(1, csv(false));
+  }
+
+  @Test
+  public void testProcessGzipCsv() throws Exception {
+    processFiles(1, csv(true));
   }
 
   @Test
   public void testProcessJsonAndCsv() throws Exception {
-    processFiles(2, csv(), json());
+    processFiles(2, csv(false), json(false));
   }
 
   @Test
   public void testReadDifferentOrgFiles() throws Exception {
-    processFiles(2, p("org1", csv()), p("org2", json()));
+    processFiles(2, p("org1", csv(false)), p("org2", json(false)));
   }
 
-  private String csv() throws IOException {
-    File out = output.newFile();
-    PrintWriter writer = new PrintWriter(out, "UTF-8");
-    writer.println("metrictype,timestamp,field1");
-    writer.println("\"metric\",1235,1");
-    writer.close();
-    return out.toString();
+  private String csv(boolean zip) throws IOException {
+    return write("test.csv", zip, writer -> {
+      writer.println("metrictype,timestamp,field1");
+      writer.println("\"metric\",1235,1");
+    });
   }
 
-  private String json() throws IOException {
-    File out = output.newFile();
-    PrintWriter w = new PrintWriter(out, "UTF-8");
-    w.println("{");
-    w.println(" \"metrictype\" : \"metric\",");
-    w.println(" \"timestamp\" : 1234,");
-    w.println(" \"field1\" : 1");
-    w.println("}");
-    w.close();
+  private String json(boolean zip) throws IOException {
+    return write("test.json", zip, w -> {
+      w.println("{"+Joiner.on(",")
+            .join(" \"metrictype\" : \"metric\"",
+              " \"timestamp\" : 1234",
+              " \"field1\" : 1")+"}");
+    });
+  }
+
+  private String write(String name, boolean zip, Consumer<PrintWriter> write) throws IOException {
+    File folder = output.newFolder();
+    if (zip) {
+      name = name + ".gz";
+    }
+    File out = new File(folder, name);
+    try (OutputStream fos = new FileOutputStream(out);
+         OutputStream fos2 = zip ? new GZIPOutputStream(fos) : fos;
+         PrintWriter w = new PrintWriter(fos2)) {
+      write.accept(w);
+    }
     return out.toString();
   }
 
@@ -169,8 +193,8 @@ public class TestBatchProcessor {
   private void withInput(LocalMockBatchOptions options,
     Pair<String, String>... fileInTestResources) {
     for (int i = 0; i < fileInTestResources.length; i++) {
-        fileInTestResources[i].setValue("file://"+fileInTestResources[i].getValue());
-      }
+      fileInTestResources[i].setValue("file://" + fileInTestResources[i].getValue());
+    }
     options.setInput(fileInTestResources);
   }
 

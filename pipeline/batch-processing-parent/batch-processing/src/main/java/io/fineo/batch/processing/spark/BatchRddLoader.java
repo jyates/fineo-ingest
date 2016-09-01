@@ -66,24 +66,4 @@ public class BatchRddLoader {
   public Multimap<String, Path> getCsvFiles() {
     return this.csvFiles;
   }
-
-  public void archive(String completed) throws IOException {
-    Path archive = new Path(completed, Long.toString(System.currentTimeMillis()));
-    boolean success = fs.mkdirs(archive);
-    if (!success) {
-      if (!fs.exists(archive)) {
-        throw new IOException("Could not create completed archive directory:" + archive);
-      }
-    }
-    for (Path source : sources) {
-      Path target = new Path(archive, source.getName());
-      if (!fs.rename(source, target)) {
-        throw new IOException("Could not archive " + source + " -> " + target);
-      }
-    }
-  }
-
-  public FileSystem getFs() {
-    return this.fs;
-  }
 }

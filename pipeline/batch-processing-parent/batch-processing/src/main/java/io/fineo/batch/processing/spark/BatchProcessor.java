@@ -2,12 +2,10 @@ package io.fineo.batch.processing.spark;
 
 import com.google.common.collect.Multimap;
 import io.fineo.batch.processing.dynamo.IngestManifest;
-import io.fineo.batch.processing.spark.convert.JsonRecordConverter;
 import io.fineo.batch.processing.spark.convert.RowRecordConverter;
 import io.fineo.batch.processing.spark.options.BatchOptions;
 import io.fineo.batch.processing.spark.write.DynamoWriter;
 import io.fineo.batch.processing.spark.write.StagedFirehoseWriter;
-import io.fineo.lambda.JsonParser;
 import io.fineo.lambda.configure.util.PropertiesLoaderUtil;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.hadoop.fs.Path;
@@ -95,13 +93,12 @@ public class BatchProcessor {
   private List<JavaRDD<GenericRecord>> parseJson(JavaSparkContext context,
     Multimap<String, Path> files) {
     List<JavaRDD<GenericRecord>> records = new ArrayList<>(files.size());
+    SQLContext sqlContext = new SQLContext(context);
     for (Map.Entry<String, Collection<Path>> orgToFile : files.asMap().entrySet()) {
-      for (JavaPairRDD<String, PortableDataStream> rawRdd :
-        loadBytes(context, orgToFile.getValue())) {
-        JsonParser parser = new JsonParser();
-        JavaRDD<Map<String, Object>> json =
-          rawRdd.flatMap(tuple -> parser.parse(tuple._2().open()));
-        JavaRDD<GenericRecord> rdd = json.map(new JsonRecordConverter(orgToFile.getKey(), opts));
+      for (Path file : orgToFile.getValue()) {
+        DataFrame df = sqlContext.read().json(file.toString());
+        JavaRDD<Row> rows = df.javaRDD();
+        JavaRDD<GenericRecord> rdd = rows.map(new RowRecordConverter(orgToFile.getKey(), opts));
         rdd.persist(StorageLevel.MEMORY_AND_DISK());
         records.add(rdd);
       }
