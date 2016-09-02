@@ -1,6 +1,7 @@
 package io.fineo.batch.processing.spark;
 
 import com.google.common.collect.Multimap;
+import io.fineo.batch.processing.dynamo.FailedIngestFile;
 import io.fineo.batch.processing.dynamo.IngestManifest;
 import io.fineo.batch.processing.spark.convert.RowRecordConverter;
 import io.fineo.batch.processing.spark.options.BatchOptions;
@@ -38,6 +39,7 @@ public class BatchProcessor {
 
   private static final Logger LOG = LoggerFactory.getLogger(BatchProcessor.class);
   private final BatchOptions opts;
+  private IngestManifest manifest;
 
   public BatchProcessor(BatchOptions opts) {
     this.opts = opts;
@@ -53,26 +55,30 @@ public class BatchProcessor {
       return;
     }
     System.out.println("----Running job");
-    runJob(context, sources);
+    BatchRddLoader loader = runJob(context, sources);
     System.out.println("----clearing manifest");
-    clearManifest(sources);
+    clearManifest(sources, loader.getFilesThatFailedToLoad());
   }
 
-  private void clearManifest(Multimap<String, String> sources) {
+  private void clearManifest(Multimap<String, String> sources, List<FailedIngestFile>
+    filesThatFailedToLoad) {
     IngestManifest manifest = opts.getManifest();
     for (Map.Entry<String, Collection<String>> files : sources.asMap().entrySet()) {
       manifest.remove(files.getKey(), files.getValue());
+    }
+    for(FailedIngestFile failure: filesThatFailedToLoad) {
+      manifest.addFailure(failure);
     }
     manifest.flush();
   }
 
   private Multimap<String, String> loadManifest() {
-    IngestManifest manifest = opts.getManifest();
+    this.manifest = opts.getManifest();
     System.out.println("---Got manifest");
     return manifest.files();
   }
 
-  private void runJob(JavaSparkContext context, Multimap<String, String> sources)
+  private BatchRddLoader runJob(JavaSparkContext context, Multimap<String, String> sources)
     throws IOException, URISyntaxException, ExecutionException, InterruptedException {
     BatchRddLoader loader = new BatchRddLoader(context, sources);
     System.out.println("Got batch loader");
@@ -100,6 +106,7 @@ public class BatchProcessor {
       action.get();
     }
     System.out.println("All records processed");
+    return loader;
   }
 
   private List<JavaRDD<GenericRecord>> parseJson(JavaSparkContext context,

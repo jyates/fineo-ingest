@@ -16,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static com.google.common.collect.Lists.newArrayList;
@@ -46,13 +47,24 @@ public class IngestManifest {
   }
 
   public void add(String orgId, String s3location) {
+    DynamoIngestManifest manifest = manifest(orgId);
+    manifest.getFiles().add(s3location);
+  }
+
+  public void addFailure(FailedIngestFile failure) {
+    DynamoIngestManifest manifest = manifest(failure.getOrg());
+    List<String> messages = manifest.getErrors();
+    messages.add(failure.getFile() + " - " + failure.getMessage());
+  }
+
+  private DynamoIngestManifest manifest(String orgId) {
     DynamoIngestManifest manifest = manifests.get(orgId);
     if (manifest == null) {
       manifest = new DynamoIngestManifest();
       manifest.setOrgID(orgId);
       manifests.put(orgId, manifest);
     }
-    manifest.getFiles().add(s3location);
+    return manifest;
   }
 
   public void flush() {
