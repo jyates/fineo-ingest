@@ -27,10 +27,22 @@
     <dependency>
       <groupId>io.fineo.etl.pipeline</groupId>
       <artifactId>stream-processing</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>com.google.inject</groupId>
+          <artifactId>guice</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>io.fineo.etl.pipeline.batch</groupId>
       <artifactId>dynamo-manifest</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>com.google.inject</groupId>
+          <artifactId>guice</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>io.fineo.etl</groupId>
@@ -103,6 +115,12 @@
       <artifactId>stream-processing</artifactId>
       <classifier>tests</classifier>
       <scope>test</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>com.google.inject</groupId>
+          <artifactId>guice</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>io.fineo.etl.pipeline</groupId>
@@ -115,6 +133,12 @@
       <artifactId>dynamo-common</artifactId>
       <classifier>tests</classifier>
       <scope>test</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>com.google.inject</groupId>
+          <artifactId>guice</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>com.amazonaws</groupId>
@@ -126,6 +150,12 @@
       <artifactId>schema-lambda</artifactId>
       <classifier>tests</classifier>
       <scope>test</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>com.google.inject</groupId>
+          <artifactId>guice</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
   </dependencies>
 
@@ -166,6 +196,7 @@
                        @see https://github.com/google/guice/issues/757
                        -->
                       <exclude>aopalliance:aopalliance</exclude>
+                      <exclude>com.google.inject:guice:jar:4.0</exclude>
                       <!-- Test jars -->
                       <exclude>junit:junit</exclude>
                       <exclude>org.mockito:mockito-all</exclude>
@@ -257,6 +288,12 @@
                       </manifestEntries>
                     </transformer>
                   </transformers>
+                  <relocations>
+                    <relocation>
+                      <pattern>com.google.inject</pattern>
+                      <shadedPattern>io.fineo.com.google.inject</shadedPattern>
+                    </relocation>
+                  </relocations>
                 </configuration>
               </execution>
             </executions>

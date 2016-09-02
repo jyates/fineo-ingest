@@ -43,6 +43,8 @@ public class BatchOptions implements Serializable {
   }
 
   public IngestManifest getManifest() {
+    System.out.println("Have properties: ");
+    props.list(System.out);
     if (this.injector == null) {
       this.injector = Guice.createInjector(
         new DefaultCredentialsModule(),
@@ -52,6 +54,7 @@ public class BatchOptions implements Serializable {
         new DynamoProvisionedThroughputModule(),
         IngestManifestModule.create(props));
     }
+    System.out.println("---Got injector");
     return injector.getInstance(IngestManifest.class);
   }
 

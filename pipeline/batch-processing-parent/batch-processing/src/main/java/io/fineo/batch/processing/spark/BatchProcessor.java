@@ -45,12 +45,16 @@ public class BatchProcessor {
 
   public void run(JavaSparkContext context)
     throws IOException, URISyntaxException, ExecutionException, InterruptedException {
+    System.out.println("---Running processor");
     Multimap<String, String> sources = loadManifest();
+    System.out.println("--- Got potential sources");
     if (sources.size() == 0) {
       LOG.warn("No input sources found!");
       return;
     }
+    System.out.println("----Running job");
     runJob(context, sources);
+    System.out.println("----clearing manifest");
     clearManifest(sources);
   }
 
@@ -64,17 +68,22 @@ public class BatchProcessor {
 
   private Multimap<String, String> loadManifest() {
     IngestManifest manifest = opts.getManifest();
+    System.out.println("---Got manifest");
     return manifest.files();
   }
 
   private void runJob(JavaSparkContext context, Multimap<String, String> sources)
     throws IOException, URISyntaxException, ExecutionException, InterruptedException {
     BatchRddLoader loader = new BatchRddLoader(context, sources);
+    System.out.println("Got batch loader");
     loader.load();
+    System.out.println("Loaded batch");
 
     // convert the records
     List<JavaRDD<GenericRecord>> records = parseJson(context, loader.getJsonFiles());
+    System.out.println("Parsed json");
     records.addAll(parseCsv(context, loader.getCsvFiles()));
+    System.out.println("Parsed csv");
 
     // write the records
     List<JavaFutureAction> actions = new ArrayList<>(records.size() * 2);
@@ -84,11 +93,13 @@ public class BatchProcessor {
       // directly to S3 without them being sequence files
       actions.add(rdd.foreachPartitionAsync(new StagedFirehoseWriter(opts)));
     }
+    System.out.println("Processing records");
 
     // wait for all the actions to complete
     for (JavaFutureAction action : actions) {
       action.get();
     }
+    System.out.println("All records processed");
   }
 
   private List<JavaRDD<GenericRecord>> parseJson(JavaSparkContext context,
