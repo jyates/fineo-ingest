@@ -4,6 +4,8 @@ package io.fineo.batch.processing.dynamo;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.Multimap;
 import com.google.inject.Guice;
 import com.google.inject.Module;
 import io.fineo.lambda.aws.AwsAsyncSubmitter;
@@ -14,6 +16,7 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static io.fineo.lambda.configure.util.SingleInstanceModule.instanceModule;
@@ -115,11 +118,45 @@ public class TestIngestManifest extends BaseDynamoTableTest {
     assertReadFiles("file2");
   }
 
+  @Test
+  public void testRemoveFilesAndUpdateErrors() throws Exception {
+    IngestManifest manifest = getNewManifest();
+    String org = "org1";
+    manifest.add(org, "file1");
+    manifest.add(org, "file2");
+    manifest.add(org, "file3");
+    manifest.flush();
+
+    manifest.remove(org, "file1", "file3");
+    FailedIngestFile fail = new FailedIngestFile(org, "file1", "f");
+    manifest.addFailure(fail);
+    manifest.flush();
+
+    assertReadFiles("file2");
+    assertFailures(fail);
+
+    // tried the file again, and it failed hard again
+    manifest.files();// force a load
+    FailedIngestFile fail2 = new FailedIngestFile(org, "file1", "f2");
+    manifest.addFailure(fail2);
+    manifest.flush();
+
+    assertFailures(fail, fail2);
+  }
+
   private void assertReadFiles(String... files) {
     List<String> actual = newArrayList(getNewManifest().files().values());
     Collections.sort(actual);
     List<String> expected = newArrayList(files);
     assertEquals("Wrong values read! Got: " + expected + ", actual: " + actual, expected, actual);
+  }
+
+  private void assertFailures(FailedIngestFile... allFailures) {
+    Multimap<String, FailedIngestFile> expected = ArrayListMultimap.create();
+    for (FailedIngestFile f : allFailures) {
+      expected.put(f.getOrg(), f);
+    }
+    assertEquals(expected, getNewManifest().failures(true));
   }
 
   private IngestManifest getNewManifest() {

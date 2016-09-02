@@ -2,14 +2,19 @@ package io.fineo.batch.processing.spark;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.amazonaws.services.dynamodbv2.document.DynamoDB;
-import com.amazonaws.services.dynamodbv2.document.Item;
 import com.amazonaws.services.dynamodbv2.document.Table;
 import com.amazonaws.services.dynamodbv2.document.TableCollection;
 import com.amazonaws.services.dynamodbv2.model.ListTablesResult;
 import com.google.common.base.Joiner;
+import com.google.common.base.Supplier;
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.Multimap;
 import com.google.inject.Guice;
 import com.google.inject.Module;
 import io.fineo.aws.AwsDependentTests;
+import io.fineo.batch.processing.dynamo.FailedIngestFile;
+import io.fineo.batch.processing.dynamo.IngestManifest;
+import io.fineo.batch.processing.dynamo.IngestManifestModule;
 import io.fineo.etl.FineoProperties;
 import io.fineo.lambda.dynamo.rule.AwsDynamoResource;
 import io.fineo.lambda.dynamo.rule.AwsDynamoTablesResource;
@@ -37,13 +42,16 @@ import java.util.List;
 import java.util.Properties;
 import java.util.Random;
 import java.util.function.Consumer;
+import java.util.stream.StreamSupport;
 import java.util.zip.GZIPOutputStream;
 
+import static io.fineo.lambda.configure.util.InstanceToNamed.namedInstance;
 import static io.fineo.lambda.configure.util.InstanceToNamed.property;
 import static io.fineo.lambda.configure.util.SingleInstanceModule.instanceModule;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Batch processor testing against local resources
@@ -91,6 +99,19 @@ public class TestBatchProcessor {
     processFiles(2, p("org1", csv(false)), p("org2", json(false)));
   }
 
+  @Test
+  public void testFailToReadFile() throws Exception {
+    String file = "not/a/file.json", org = "org";
+    LocalSparkOptions options = processFiles(0, p(org, file));
+    IngestManifest manifest = options.getManifest();
+    assertTrue("Manifest not empty, still has: " + manifest.files(), manifest.files().isEmpty());
+    Multimap<String, FailedIngestFile> failures = ArrayListMultimap.create();
+    FailedIngestFile fail =
+      new FailedIngestFile(org, "file://" + file, "File /a/file.json does not exist");
+    failures.put(org, fail);
+    assertEquals(failures, manifest.failures(false));
+  }
+
   private String csv(boolean zip) throws IOException {
     return write("test.csv", zip, writer -> {
       writer.println("metrictype,timestamp,field1");
@@ -100,10 +121,10 @@ public class TestBatchProcessor {
 
   private String json(boolean zip) throws IOException {
     return write("test.json", zip, w -> {
-      w.println("{"+Joiner.on(",")
-            .join(" \"metrictype\" : \"metric\"",
-              " \"timestamp\" : 1234",
-              " \"field1\" : 1")+"}");
+      w.println("{" + Joiner.on(",")
+                            .join(" \"metrictype\" : \"metric\"",
+                              " \"timestamp\" : 1234",
+                              " \"field1\" : 1") + "}");
     });
   }
 
@@ -133,7 +154,8 @@ public class TestBatchProcessor {
     processFiles(numRows, mapped.toArray(new Pair[0]));
   }
 
-  private void processFiles(int numRows, Pair<String, String>... files) throws Exception {
+  private LocalSparkOptions processFiles(int numRows, Pair<String, String>... files)
+    throws Exception {
     int uuid = new Random().nextInt(100000);
     String dataTablePrefix = uuid + "-test-storage";
     String schemaStoreTable = uuid + "-test-schemaStore";
@@ -143,8 +165,7 @@ public class TestBatchProcessor {
     List<Module> modules = new ArrayList<>();
     modules.add(new SchemaStoreModuleForTesting());
     modules.add(instanceModule(tables.getAsyncClient()));
-    modules.add(property(SchemaStoreModule.DYNAMO_SCHEMA_STORE_TABLE,
-      schemaStoreTable));
+    modules.add(property(SchemaStoreModule.DYNAMO_SCHEMA_STORE_TABLE, schemaStoreTable));
     SchemaStore store = Guice.createInjector(modules).getInstance(SchemaStore.class);
     StoreManager manager = new StoreManager(store);
     Arrays.asList(files).stream()
@@ -159,10 +180,8 @@ public class TestBatchProcessor {
             }
           });
 
-
     LocalSparkOptions options =
-      new LocalSparkOptions(dynamo.getUtil().getUrl(), dataTablePrefix,
-        schemaStoreTable);
+      new LocalSparkOptions(dynamo.getUtil().getUrl(), dataTablePrefix, schemaStoreTable);
     withInput(options, files);
 
     BatchProcessor processor = new BatchProcessor(options);
@@ -182,15 +201,17 @@ public class TestBatchProcessor {
         break;
       }
     }
-    assertNotNull("No data table found!", table);
-    int count = 0;
-    for (Item item : table.scan()) {
-      count++;
+    if (numRows > 0) {
+      assertNotNull("No data table found!", table);
+      long count = StreamSupport.stream(table.scan().spliterator(), false).count();
+      assertEquals("Wrong number of rows in the data table", numRows, count);
+    } else {
+      assertNull("Shouldn't have written any data, but found data table: " + table, table);
     }
-    assertEquals("Wrong number of rows in the data table", numRows, count);
+    return options;
   }
 
-  private void withInput(LocalMockBatchOptions options,
+  private void withInput(LocalSparkOptions options,
     Pair<String, String>... fileInTestResources) {
     for (int i = 0; i < fileInTestResources.length; i++) {
       fileInTestResources[i].setValue("file://" + fileInTestResources[i].getValue());

@@ -12,6 +12,7 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -56,10 +57,10 @@ public class BatchRddLoader {
         try {
           Path rootPath = fs.resolvePath(new Path(root.getPath()));
           iter = fs.listFiles(rootPath, true);
-        } catch (AmazonS3Exception e) {
+        } catch (AmazonS3Exception | FileNotFoundException e) {
           failedToLoad
-            .add(new FailedIngestFile(org, root.toString(), e.getMessage()));
-          LOG.warn("Failed to load file: {} for org {} because {}", root, org, e);
+            .add(new FailedIngestFile(org, file, e.getMessage()));
+          LOG.warn("Failed to load file: {} for org '{}'", root, org, e);
           continue;
         }
         while (iter.hasNext()) {

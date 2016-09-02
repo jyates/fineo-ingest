@@ -48,7 +48,9 @@ public class BatchProcessor {
   public void run(JavaSparkContext context)
     throws IOException, URISyntaxException, ExecutionException, InterruptedException {
     System.out.println("---Running processor");
-    Multimap<String, String> sources = loadManifest();
+    // singleton instance
+    IngestManifest manifest = opts.getManifest();
+    Multimap<String, String> sources = manifest.files();
     System.out.println("--- Got potential sources");
     if (sources.size() == 0) {
       LOG.warn("No input sources found!");
@@ -57,17 +59,18 @@ public class BatchProcessor {
     System.out.println("----Running job");
     BatchRddLoader loader = runJob(context, sources);
     System.out.println("----clearing manifest");
-    clearManifest(sources, loader.getFilesThatFailedToLoad());
+    clearManifest(manifest, sources, loader.getFilesThatFailedToLoad());
   }
 
-  private void clearManifest(Multimap<String, String> sources, List<FailedIngestFile>
-    filesThatFailedToLoad) {
-    IngestManifest manifest = opts.getManifest();
+  private void clearManifest(IngestManifest manifest, Multimap<String, String> sources,
+    List<FailedIngestFile>
+      filesThatFailedToLoad) {
     for (Map.Entry<String, Collection<String>> files : sources.asMap().entrySet()) {
       manifest.remove(files.getKey(), files.getValue());
     }
     for(FailedIngestFile failure: filesThatFailedToLoad) {
       manifest.addFailure(failure);
+      manifest.remove(failure.getOrg(), failure.getFile());
     }
     manifest.flush();
   }

@@ -32,11 +32,6 @@ import static com.google.common.collect.Lists.newArrayList;
 public class BatchOptions implements Serializable {
 
   private Properties props;
-  private Injector injector;
-
-  public Properties props() {
-    return props;
-  }
 
   public void setProps(Properties props) {
     this.props = props;
@@ -44,16 +39,12 @@ public class BatchOptions implements Serializable {
 
   public IngestManifest getManifest() {
     props.list(System.out);
-    if (this.injector == null) {
-      this.injector = Guice.createInjector(
-        new DefaultCredentialsModule(),
-        new DynamoModule(),
-        new DynamoRegionConfigurator(),
-        new PropertiesModule(props),
-        IngestManifestModule.create(props));
-    }
-    System.out.println("---Got injector");
-    return injector.getInstance(IngestManifest.class);
+    return Guice.createInjector(
+      new DefaultCredentialsModule(),
+      new DynamoModule(),
+      new DynamoRegionConfigurator(),
+      new PropertiesModule(props),
+      IngestManifestModule.create(props)).getInstance(IngestManifest.class);
   }
 
   public RecordToDynamoHandler getDynamoHandler() {

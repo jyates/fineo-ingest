@@ -4,9 +4,10 @@ import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBAttribute;
 import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBHashKey;
 import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBTable;
 
-import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static io.fineo.batch.processing.dynamo.DynamoIngestManifest.DEFAULT_NAME;
@@ -17,8 +18,8 @@ public class DynamoIngestManifest {
   public static final String DEFAULT_NAME = "unspecified-manifest-table-name";
 
   private String orgID;
-  private Set<String> files = new HashSet<>();
-  private List<String> errors = new ArrayList<>();
+  private Set<String> files;
+  private Map<String, List<String>> errors = new HashMap<>();
 
   @DynamoDBHashKey(attributeName="id")
   public String getOrgID() {
@@ -37,11 +38,11 @@ public class DynamoIngestManifest {
   }
 
   @DynamoDBAttribute
-  public void setErrorMessage(List<String> errors){
+  public void setErrors(Map<String, List<String>> errors){
     this.errors = errors;
   }
 
-  public List<String> getErrors() {
+  public Map<String, List<String>> getErrors() {
     return errors;
   }
 
