@@ -57,11 +57,6 @@ public class LocalMockBatchOptions extends BatchOptions {
     }
 
     @Override
-    public void load() {
-      //noop
-    }
-
-    @Override
     public void flush() {
       //
     }

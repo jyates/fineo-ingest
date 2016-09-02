@@ -60,9 +60,7 @@ public class TestRemoteS3BatchUploadTracker extends BaseDynamoTableTest {
 
   private Multimap<String, String> getManifest() {
     Injector inject = Guice.createInjector(getModules());
-    IngestManifest manifest = inject.getInstance(IngestManifest.class);
-    manifest.load();
-    return manifest.files();
+    return inject.getInstance(IngestManifest.class).files();
   }
 
   private RemoteS3BatchUploadTracker getTracker() {

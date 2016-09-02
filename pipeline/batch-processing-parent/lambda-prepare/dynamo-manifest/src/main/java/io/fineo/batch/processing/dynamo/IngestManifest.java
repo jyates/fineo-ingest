@@ -39,6 +39,7 @@ public class IngestManifest {
   private final DynamoDBMapper mapper;
 
   public IngestManifest(DynamoDBMapper mapper, String tableName, AwsAsyncSubmitter submitter) {
+    LOG.info("Ingest manifest table: {}", tableName);
     this.mapper = mapper;
     this.table = tableName;
     this.async = submitter;
@@ -89,7 +90,17 @@ public class IngestManifest {
     }
   }
 
-  public void load() {
+  public Multimap<String, String> files() {
+    this.load();
+    Multimap<String, String> files = ArrayListMultimap.create();
+    for (DynamoIngestManifest manifest : manifests.values()) {
+      LOG.warn("Jesse - Got manifest: " + manifest.getFiles());
+      files.putAll(manifest.getOrgID(), manifest.getFiles());
+    }
+    return files;
+  }
+
+  private void load() {
     try {
       PaginatedList<DynamoIngestManifest> loaded =
         this.mapper.parallelScan(DynamoIngestManifest.class,
@@ -97,15 +108,8 @@ public class IngestManifest {
       loaded.stream().forEach(manifest -> manifests.put(manifest.getOrgID(), manifest));
     } catch (ResourceNotFoundException e) {
       LOG.warn("Ingest manifest table " + table + " does not exist!");
+      throw new RuntimeException(e);
     }
-  }
-
-  public Multimap<String, String> files() {
-    Multimap<String, String> files = ArrayListMultimap.create();
-    for (DynamoIngestManifest manifest : manifests.values()) {
-      files.putAll(manifest.getOrgID(), manifest.getFiles());
-    }
-    return files;
   }
 
   public void remove(String org, String... files) {

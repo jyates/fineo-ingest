@@ -15,28 +15,33 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 /**
  * Load an RDD from files under a specified directory
  */
 public class BatchRddLoader {
-
+  public static final String S3_TYPE_PREFIX = "s3://";
   private final JavaSparkContext context;
-  private final Multimap<String, String> orgToFile;
+  private final Multimap<String, String> orgToFiles;
   private FileSystem fs;
   private Multimap<String, Path> jsonFiles = ArrayListMultimap.create();
   private Multimap<String, Path> csvFiles = ArrayListMultimap.create();
   private List<Path> sources = new ArrayList<>();
 
-  public BatchRddLoader(JavaSparkContext context, Multimap<String, String> root) {
+  public BatchRddLoader(JavaSparkContext context, Multimap<String, String> orgToFiles) {
     this.context = context;
-    this.orgToFile = root;
+    this.orgToFiles = orgToFiles;
   }
 
   public void load() throws URISyntaxException, IOException {
-    for (Map.Entry<String, Collection<String>> orgFileEntry : orgToFile.asMap().entrySet()) {
+    for (Map.Entry<String, Collection<String>> orgFileEntry : orgToFiles.asMap().entrySet()) {
       for (String file : orgFileEntry.getValue()) {
         URI root = new URI(file);
+        if(!root.isAbsolute()){
+          root = new URI(S3_TYPE_PREFIX + file);
+        }
+
         this.fs = FileSystem.get(root, context.hadoopConfiguration());
 
         // find all the files under the given root directory

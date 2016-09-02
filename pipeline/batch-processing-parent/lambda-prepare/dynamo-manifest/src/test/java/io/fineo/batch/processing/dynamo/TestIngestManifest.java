@@ -4,7 +4,6 @@ package io.fineo.batch.processing.dynamo;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
-import com.google.common.collect.Multimap;
 import com.google.inject.Guice;
 import com.google.inject.Module;
 import io.fineo.lambda.aws.AwsAsyncSubmitter;
@@ -117,10 +116,7 @@ public class TestIngestManifest extends BaseDynamoTableTest {
   }
 
   private void assertReadFiles(String... files) {
-    IngestManifest read = getNewManifest();
-    read.load();
-    Multimap<String, String> readFiles = read.files();
-    List<String> actual = newArrayList(readFiles.values());
+    List<String> actual = newArrayList(getNewManifest().files().values());
     Collections.sort(actual);
     List<String> expected = newArrayList(files);
     assertEquals("Wrong values read! Got: " + expected + ", actual: " + actual, expected, actual);
