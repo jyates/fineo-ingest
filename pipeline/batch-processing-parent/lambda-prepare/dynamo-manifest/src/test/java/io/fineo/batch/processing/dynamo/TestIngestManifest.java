@@ -16,11 +16,11 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static io.fineo.lambda.configure.util.SingleInstanceModule.instanceModule;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class TestIngestManifest extends BaseDynamoTableTest {
 
@@ -82,6 +82,21 @@ public class TestIngestManifest extends BaseDynamoTableTest {
     IngestManifest manifest = getNewManifest();
     manifest.remove("org", "file");
     manifest.flush();
+  }
+
+  @Test
+  public void testRemoveAllFiles() throws Exception {
+    IngestManifest manifest = getNewManifest();
+    String org = "org1";
+    manifest.add(org, "file1");
+    manifest.flush();
+
+    manifest = getNewManifest();
+    manifest.remove(org, "file1");
+    manifest.flush();
+
+    manifest = getNewManifest();
+    assertTrue(manifest.files().isEmpty());
   }
 
   @Test
