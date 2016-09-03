@@ -12,10 +12,8 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.hadoop.fs.Path;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaFutureAction;
-import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.input.PortableDataStream;
 import org.apache.spark.sql.DataFrame;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SQLContext;
@@ -127,16 +125,6 @@ public class BatchProcessor {
     }
 
     return records;
-  }
-
-  private JavaPairRDD<String, PortableDataStream>[] loadBytes(JavaSparkContext context,
-    Collection<Path> files) {
-    JavaPairRDD<String, PortableDataStream>[] rdds = new JavaPairRDD[files.size()];
-    int i = 0;
-    for (Path path : files) {
-      rdds[i++] = context.binaryFiles(path.toString());
-    }
-    return rdds;
   }
 
   private List<JavaRDD<GenericRecord>> parseCsv(JavaSparkContext context,

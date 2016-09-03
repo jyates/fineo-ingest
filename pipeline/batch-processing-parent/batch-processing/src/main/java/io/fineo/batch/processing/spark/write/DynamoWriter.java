@@ -9,8 +9,6 @@ import org.apache.spark.api.java.function.VoidFunction;
 import java.io.Serializable;
 import java.util.Iterator;
 
-import static com.google.common.collect.Lists.newArrayList;
-
 /**
  * Write the records to dynamo
  */
