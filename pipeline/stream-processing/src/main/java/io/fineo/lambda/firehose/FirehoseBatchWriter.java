@@ -26,11 +26,13 @@ public class FirehoseBatchWriter implements IFirehoseBatchWriter {
    * 10 less than the 'max' just to ensure we don't write over
    */
   public static final int MAX_BATCH_THRESHOLD = 490;
+  private static final long MAX_BATCH_BYTES = 4000000;
 
   private final Function<ByteBuffer, ByteBuffer> converter;
   private final AmazonKinesisFirehoseClient client;
   private final String streamName;
   private PutRecordBatchRequest batch = null;
+  private long currentPendingBytes;
 
   public FirehoseBatchWriter(String name, AmazonKinesisFirehoseClient client,
     Function<ByteBuffer, ByteBuffer> converter) {
@@ -50,10 +52,10 @@ public class FirehoseBatchWriter implements IFirehoseBatchWriter {
   @Override
   public void flush() throws IOException {
     if (LOG.isDebugEnabled()) {
-      int malformedBatchSize = batch == null ? 0 : batch.getRecords().size();
-      LOG.debug(
-        "writing out " + malformedBatchSize + " records to " + this.streamName);
+      LOG.debug("Firehosing out {} records ({} bytes) to {}", (batch == null ? 0 : batch
+        .getRecords().size()), currentPendingBytes, this.streamName);
     }
+    this.currentPendingBytes = 0;
     writeBatch(this.batch);
   }
 
@@ -63,7 +65,9 @@ public class FirehoseBatchWriter implements IFirehoseBatchWriter {
    * @return the current batch or <tt>null</tt> if the batch has been flushed
    */
   private PutRecordBatchRequest flushIfNecessary() {
-    if (batch != null && batch.getRecords().size() >= MAX_BATCH_THRESHOLD) {
+    if (batch != null &&
+        (batch.getRecords().size() >= MAX_BATCH_THRESHOLD ||
+         currentPendingBytes > MAX_BATCH_BYTES)) {
       writeBatch(batch);
       return null;
     }
@@ -76,6 +80,7 @@ public class FirehoseBatchWriter implements IFirehoseBatchWriter {
         .withDeliveryStreamName(this.streamName)
         .withRecords(Lists.newArrayList());
     }
+    currentPendingBytes += data.remaining();
     batch.getRecords().add(new Record().withData(data));
     return batch;
   }
