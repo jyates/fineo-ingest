@@ -116,6 +116,7 @@ public class LaunchBatchProcessingEmrCluster implements LambdaHandler<Map<String
       .withJobFlowRole(EXEC_ROLE)
       .withInstances(instances)
       .withSteps(steps)
+      .withVisibleToAllUsers(false)
       .withApplications(new Application().withName("Spark"));
 
     emr.withRegion(RegionUtils.getRegion(region));
