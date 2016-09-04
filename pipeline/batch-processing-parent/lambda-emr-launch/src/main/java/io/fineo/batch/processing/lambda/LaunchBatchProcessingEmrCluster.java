@@ -37,7 +37,7 @@ public class LaunchBatchProcessingEmrCluster implements LambdaHandler<Map<String
 
   // IAM roles
   private static final String EXEC_ROLE = // role for actually doing the work on the cluster
-    "transient-spark-emr-exec-role"; // yeah, just the name, not the arn. Not sure why.
+    "Fineo-BatchIngest"; // yeah, just the name, not the arn. Not sure why.
   private static final String SERVICE_ROLE = // role that EMR assumes to _manage_ the cluster
     "arn:aws:iam::766732214526:role/transient-spark-emr-service-role";
 

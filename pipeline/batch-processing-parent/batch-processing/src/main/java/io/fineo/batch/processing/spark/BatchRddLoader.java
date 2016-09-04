@@ -57,9 +57,12 @@ public class BatchRddLoader {
         try {
           Path rootPath = fs.resolvePath(new Path(root.getPath()));
           iter = fs.listFiles(rootPath, true);
-        } catch (AmazonS3Exception | FileNotFoundException e) {
-          failedToLoad
-            .add(new FailedIngestFile(org, file, e.getMessage()));
+        } catch (Exception e){
+          // really terrible to catch the raw exception, but can't seem to find the jars for the
+          // proper handling of
+          // com.amazon.ws.emr.hadoop.fs.shaded.com.amazonaws.services.s3.model.AmazonS3Exception
+          //... so we just wrap it all up.
+          failedToLoad.add(new FailedIngestFile(org, file, e.getMessage()));
           LOG.warn("Failed to load file: {} for org '{}'", root, org, e);
           continue;
         }
