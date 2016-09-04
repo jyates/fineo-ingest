@@ -33,7 +33,7 @@ public class TestMalformedFirehoseFunction {
     assertTrue(data != out);
     assertEquals(data, out);
 
-    func = getFunc(inject, FirehoseModule.FIREHOSE_COMMIT_FUNCTION);
+    func = getFunc(inject, FirehoseModule.FIREHOSE_COMMIT_ERROR_FUNCTION);
     out = func.apply(data);
     assertTrue(data != out);
     assertEquals(data, out);

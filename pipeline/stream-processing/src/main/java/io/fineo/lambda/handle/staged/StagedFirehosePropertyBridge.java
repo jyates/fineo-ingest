@@ -33,19 +33,19 @@ public class StagedFirehosePropertyBridge extends AbstractModule {
   }
 
   public StagedFirehosePropertyBridge withArchive() {
-    this.bindings.add(new Pair<>(ArchiveName.class, FIREHOSE_STAGED_ARCHIVE_NAME_KEY));
+    this.bindings.add(new Pair<>(ArchiveName.class, FirehoseModule.FIREHOSE_ARCHIVE_STREAM_NAME));
     return this;
   }
 
   public StagedFirehosePropertyBridge withMalformed() {
     this.bindings
-      .add(new Pair<>(MalformedName.class, FIREHOSE_STAGED_MALFORMED_NAME_KEY));
+      .add(new Pair<>(MalformedName.class, FirehoseModule.FIREHOSE_MALFORMED_RECORDS_STREAM_NAME));
     return this;
   }
 
   public StagedFirehosePropertyBridge withError() {
     this.bindings
-      .add(new Pair<>(ErrorName.class, FIREHOSE_STAGED_ERROR_NAME_KEY));
+      .add(new Pair<>(ErrorName.class, FirehoseModule.FIREHOSE_COMMIT_ERROR_STREAM_NAME));
     return this;
   }
 
@@ -60,7 +60,7 @@ public class StagedFirehosePropertyBridge extends AbstractModule {
     private final String name;
 
     @Inject
-    public ArchiveName(@Named(FirehoseModule.FIREHOSE_ARCHIVE_STREAM_NAME) String name) {
+    public ArchiveName(@Named(FIREHOSE_STAGED_ARCHIVE_NAME_KEY) String name) {
       this.name = name;
     }
 
@@ -74,8 +74,7 @@ public class StagedFirehosePropertyBridge extends AbstractModule {
     private final String name;
 
     @Inject
-    public MalformedName(
-      @Named(FirehoseModule.FIREHOSE_MALFORMED_RECORDS_STREAM_NAME) String name) {
+    public MalformedName(@Named(FIREHOSE_STAGED_MALFORMED_NAME_KEY) String name) {
       this.name = name;
     }
 
@@ -89,7 +88,7 @@ public class StagedFirehosePropertyBridge extends AbstractModule {
     private final String name;
 
     @Inject
-    public ErrorName(@Named(FirehoseModule.FIREHOSE_COMMIT_ERROR_STREAM_NAME) String name) {
+    public ErrorName(@Named(FIREHOSE_STAGED_ERROR_NAME_KEY) String name) {
       this.name = name;
     }
 

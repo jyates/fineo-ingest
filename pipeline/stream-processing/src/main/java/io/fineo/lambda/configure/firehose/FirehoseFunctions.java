@@ -26,7 +26,7 @@ public class FirehoseFunctions extends AbstractModule implements Serializable {
                     .toInstance(archive);
     bind(byteFunc()).annotatedWith(Names.named(FirehoseModule.FIREHOSE_MALFORMED_RECORDS_FUNCTION))
                     .toInstance(malformed);
-    bind(byteFunc()).annotatedWith(Names.named(FirehoseModule.FIREHOSE_COMMIT_FUNCTION))
+    bind(byteFunc()).annotatedWith(Names.named(FirehoseModule.FIREHOSE_COMMIT_ERROR_FUNCTION))
                     .toInstance(commit);
   }
 

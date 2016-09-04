@@ -60,7 +60,10 @@ public class BatchOptions implements Serializable {
     return Guice.createInjector(newArrayList(
       new PropertiesModule(this.props),
       DefaultCredentialsModule.create(this.props),
-      new FirehoseModule(), new FirehoseFunctions(), new StagedFirehosePropertyBridge().withArchive()
+      new FirehoseFunctions(),
+      // just load the archive functions - errors we just fail the job for right now
+      new FirehoseModule().withArchive(),
+      new StagedFirehosePropertyBridge().withArchive()
     )).getInstance(
       Key.get(IFirehoseBatchWriter.class, Names.named(FirehoseModule.FIREHOSE_ARCHIVE_STREAM)));
   }
