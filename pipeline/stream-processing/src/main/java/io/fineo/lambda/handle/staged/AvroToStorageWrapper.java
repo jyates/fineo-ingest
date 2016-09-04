@@ -36,7 +36,7 @@ public class AvroToStorageWrapper extends LambdaWrapper<KinesisEvent, AvroToStor
 
     //firehose
     modules.add(new FirehoseModule());
-    modules.add(new FirehosePropertyBridge());
+    modules.add(new StagedFirehosePropertyBridge().withAllBindings());
     modules.add(new FirehoseFunctions());
     return modules;
   }

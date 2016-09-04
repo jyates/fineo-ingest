@@ -1,7 +1,6 @@
 package io.fineo.batch.processing.spark.options;
 
 import com.google.inject.Guice;
-import com.google.inject.Injector;
 import com.google.inject.Key;
 import com.google.inject.name.Names;
 import io.fineo.batch.processing.dynamo.IngestManifest;
@@ -17,7 +16,7 @@ import io.fineo.lambda.configure.util.SingleInstanceModule;
 import io.fineo.lambda.firehose.IFirehoseBatchWriter;
 import io.fineo.lambda.handle.raw.RawJsonToRecordHandler;
 import io.fineo.lambda.handle.schema.inject.SchemaStoreModule;
-import io.fineo.lambda.handle.staged.FirehosePropertyBridge;
+import io.fineo.lambda.handle.staged.StagedFirehosePropertyBridge;
 import io.fineo.lambda.handle.staged.RecordToDynamoHandler;
 import io.fineo.lambda.kinesis.IKinesisProducer;
 
@@ -61,7 +60,7 @@ public class BatchOptions implements Serializable {
     return Guice.createInjector(newArrayList(
       new PropertiesModule(this.props),
       DefaultCredentialsModule.create(this.props),
-      new FirehoseModule(), new FirehoseFunctions(), new FirehosePropertyBridge()
+      new FirehoseModule(), new FirehoseFunctions(), new StagedFirehosePropertyBridge().withArchive()
     )).getInstance(
       Key.get(IFirehoseBatchWriter.class, Names.named(FirehoseModule.FIREHOSE_ARCHIVE_STREAM)));
   }
