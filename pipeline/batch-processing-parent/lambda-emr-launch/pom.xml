@@ -31,6 +31,14 @@
       <artifactId>aws-java-sdk-emr</artifactId>
       <version>${aws-java-sdk.version}</version>
     </dependency>
+
+    <!-- Test Dependencies -->
+    <dependency>
+      <groupId>io.fineo.etl.pipeline.batch</groupId>
+      <artifactId>dynamo-manifest</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <profiles>
