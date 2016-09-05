@@ -45,7 +45,7 @@ public class SchemaUtil {
     RecordMetadata metadata = RecordMetadata.get(record);
 
     this.clerk = new StoreClerk(store, metadata.getOrgID());
-    this.metricId = metadata.getOrgID();
+    this.metricId = metadata.getMetricCanonicalType();
   }
 
   public String getCanonicalFieldName(String aliasName) {

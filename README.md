@@ -67,8 +67,7 @@ when you run the tests, then Spark will write some output data to that directory
 ### Failing tests with Dynamo
 
 DynamoDB Local requires copying the dependent jars to the target/ directory. Many child projects 
-already have this enabled, but you may need to add the additional flag:
-```-Dlocal-dynamo``` to ensure artifacts are copied.
-
+already have this enabled, so all you need to do is:
+```mvn install```
 Running the copy is necessary whenever you do a clean (or the first time building). Most projects
  will make the copy themselves naturally.

@@ -6,6 +6,7 @@ import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
 import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
+import com.amazonaws.services.dynamodbv2.model.ResourceInUseException;
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
@@ -15,6 +16,7 @@ import java.util.List;
 
 /**
  * Manages creating the actual Dynamo tables, if they don't exist.
+ *
  * @see DynamoTableNameParts for information on table naming conventions
  */
 public class DynamoTableCreator {
@@ -57,8 +59,13 @@ public class DynamoTableCreator {
     LOG.info("Creating table: " + fullTableName);
     baseRequest.setTableName(fullTableName);
 
-    Table t= TableUtils.createTable(dynamo, baseRequest);
-    // save a network lookup later for this table
-    manager.updateTableReference(t);
+    try {
+      Table t = TableUtils.createTable(dynamo, baseRequest);
+      // save a network lookup later for this table
+      manager.updateTableReference(t);
+    } catch (ResourceInUseException e) {
+      // it was already created...
+    }
+
   }
 }

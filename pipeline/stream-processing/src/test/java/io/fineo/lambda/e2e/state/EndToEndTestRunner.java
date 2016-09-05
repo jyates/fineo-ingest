@@ -60,7 +60,7 @@ public class EndToEndTestRunner {
            .filter(entry -> {
              try {
                return clerk.getMetricForUserNameOrAlias(metricType)
-                           .getCanonicalNameFromUserFieldName(entry.getKey()) != null;
+                           .getCanonicalNameFromUserFieldName(entry.getKey()) == null;
              } catch (SchemaNotFoundException e1) {
                throw new RuntimeException(e1);
              }
@@ -72,7 +72,7 @@ public class EndToEndTestRunner {
                  metricBuilder.newField().withType("BYTES").withName(entry.getKey()).build();
                  return;
                } else if (clazz.equals("INTEGER")) {
-                 metricBuilder.newField().withType("INGTEGER").withName(entry.getKey()).build();
+                 metricBuilder.newField().withType("INTEGER").withName(entry.getKey()).build();
                  return;
                }
                Schema.Type type = Schema.Type.valueOf(clazz);
