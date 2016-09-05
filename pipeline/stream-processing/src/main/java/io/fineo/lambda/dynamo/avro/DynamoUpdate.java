@@ -7,7 +7,6 @@ import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
 import com.google.common.base.Joiner;
 import io.fineo.internal.customer.BaseFields;
 import io.fineo.lambda.aws.AwsAsyncSubmitter;
-import io.fineo.lambda.dynamo.DynamoExpressionPlaceHolders;
 import io.fineo.lambda.dynamo.Schema;
 import io.fineo.schema.avro.RecordMetadata;
 import io.fineo.schema.store.AvroSchemaProperties;
@@ -27,6 +26,7 @@ import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
+import static com.google.common.collect.Lists.newArrayList;
 import static io.fineo.lambda.dynamo.DynamoExpressionPlaceHolders.asExpressionAttributeValue;
 import static io.fineo.lambda.dynamo.DynamoExpressionPlaceHolders.asExpressionName;
 import static io.fineo.lambda.dynamo.avro.DynamoAvroRecordEncoder.convertField;
@@ -49,9 +49,9 @@ import static java.lang.String.format;
  * <p>
  * The process of how we implement the write is a bit arduous. It proceeds roughly like this:
  * <ol>
- *   <li>Attempt to update an entry in the map</li>
- *   <li>That fails, attempt to create the map with the item being the only thing there</li>
- *   <lo>That fails, reattempt to update the map - someone beat us there.</lo>
+ * <li>Attempt to update an entry in the map</li>
+ * <li>That fails, attempt to create the map with the item being the only thing there</li>
+ * <lo>That fails, reattempt to update the map - someone beat us there.</lo>
  * </ol>
  * Naturally, there are a host of possible errors, so we have to sure to catch the right one and
  * then implement the correct error handling based on what step/condition actually failed.
@@ -73,6 +73,10 @@ public class DynamoUpdate {
   private String id;
   private UpdateItemRequest initialRequest;
   private BaseFields fields;
+  private List<String> internalFields = newArrayList(
+    Schema.METRIC_ORIGINAL_ALIAS_FIELD,
+    Schema.WRITE_TIME_FIELD
+  );
 
   public DynamoUpdate(GenericRecord record, Function<BaseFields, String> tableGetter) {
     this.record = record;
@@ -132,25 +136,27 @@ public class DynamoUpdate {
     return hexString.toString();
   }
 
+  /**
+   * Initial request assumes that we have already created this row previous, so we are just
+   * attempting to set map conditions (in some caes, that may be a bad assumption, but this gets
+   * us somewhere).
+   */
   private UpdateItemRequest getInitialRequest(UpdateItemRequest baseRequest) {
     this.initialRequest = baseRequest;
 
-    List<String> setExpressions = new ArrayList<>();
-    Map<String, String> names = new HashMap<>();
-    Map<String, AttributeValue> values = new HashMap<>();
-
+    UpdateState state = new UpdateState();
     List<String> conditions = new ArrayList<>();
     // do the actual work of setting values
     handleValues((name, value) -> {
-      setSimpleAttribute(name, value, names, values, setExpressions);
-      conditions.add(format("attribute_exists(%s)", name));
+      setSimpleAttribute(name, value, state);
+      conditions.add(format("attribute_exists(%s)", state.getNameAlias(name)));
     });
 
     // ensure that each of the map fields exists
     if (conditions.size() > 0) {
       initialRequest.setConditionExpression(Joiner.on(" AND ").join(conditions));
     }
-    return finalizeRequest(initialRequest, names, values, setExpressions);
+    return finalizeRequest(initialRequest, state);
   }
 
   private UpdateItemRequest getMapSetterRequest(UpdateItemRequest prevRequest) {
@@ -158,27 +164,21 @@ public class DynamoUpdate {
     request.setTableName(prevRequest.getTableName());
     request.setKey(prevRequest.getKey());
 
-    Map<String, String> names = new HashMap<>();
-    Map<String, AttributeValue> values = new HashMap<>();
-
     // create a map with the expected value for each field. If there are concurrent attempt here,
     // one of them will win and one of them will not be set (unless there is split dynamo logic,
     // in which case, both of them could succeed).
-    List<String> setExpressions = new ArrayList<>();
+    UpdateState state = new UpdateState();
     handleValues((name, value) -> {
       // the simple name/value gets transformed into a map expression of {id -> value}
-      String mapAlias = asExpressionName(name);
-      names.put(mapAlias, name);
-      String valueAlias = DynamoExpressionPlaceHolders.asExpressionAttributeValue(name + "_value");
       Map<String, AttributeValue> map = new HashMap<>();
       map.put(id, value);
       AttributeValue mapValue = new AttributeValue().withM(map);
-      values.put(valueAlias, mapValue);
-      setExpressions.add(format("%s = if_not_exists(%s, %s)", mapAlias, mapAlias, valueAlias));
+      String valueAlias = state.attributeName(name + "_value", mapValue);
+      String mapAlias = state.asNameAlias(name);
+      state.withExpression(format("%s = if_not_exists(%s, %s)", mapAlias, mapAlias, valueAlias));
     });
     request.withReturnValues(ReturnValue.UPDATED_NEW);
-    LOG.debug("Setting maps with names: {}", names);
-    return finalizeRequest(request, names, values, setExpressions);
+    return finalizeRequest(request, state);
   }
 
   /**
@@ -190,20 +190,15 @@ public class DynamoUpdate {
     UpdateItemRequest request = new UpdateItemRequest();
     request.setKey(previous.getKey());
 
-    Map<String, String> names = new HashMap<>();
-    request.setExpressionAttributeNames(names);
-    Map<String, AttributeValue> values = new HashMap<>();
-    request.setExpressionAttributeValues(values);
-
+    UpdateState state = new UpdateState();
     Map<String, AttributeValue> previousUpdates = result.getAttributes();
-    List<String> expressions = new ArrayList<>();
     boolean[] set = new boolean[]{true};
     handleValues((name, value) -> {
       AttributeValue mapVal = previousUpdates.get(name);
       AttributeValue storedValue = mapVal.getM().get(id);
       if (storedValue == null) {
         set[0] = false;
-        setSimpleAttribute(name, value, names, values, expressions);
+        setSimpleAttribute(name, value, state);
       } else if (!storedValue.equals(value)) {
         throw new RuntimeException("Got an existing value for id: " + id + ", but it doesn't match "
                                    + "the attribute we were trying to set!");
@@ -215,7 +210,11 @@ public class DynamoUpdate {
       return null;
     }
 
-    return finalizeRequest(request, names, values, expressions);
+    return finalizeRequest(request, state);
+  }
+
+  private UpdateItemRequest finalizeRequest(UpdateItemRequest request, UpdateState state) {
+    return finalizeRequest(request, state.names, state.values, state.expressions);
   }
 
   private UpdateItemRequest finalizeRequest(UpdateItemRequest request, Map<String, String> names,
@@ -250,19 +249,11 @@ public class DynamoUpdate {
     return request;
   }
 
-  private void setSimpleAttribute(String name, AttributeValue value, Map<String, String> names,
-    Map<String, AttributeValue> values, List<String> set) {
-    String aliasName = asExpressionName(name);
-    names.put(aliasName, name);
-    // convert the name into a unique value so we can get an ExpressionAttributeValue
-    String attributeName = asExpressionAttributeValue(name);
-    while (values.containsKey(attributeName)) {
-      attributeName += "a";
-    }
-    values.put(attributeName, value);
-    String rowIdName = asExpressionName(id);
-    names.put(rowIdName, id);
-    set.add(format("%s.%s = %s", aliasName, rowIdName, attributeName));
+  private void setSimpleAttribute(String name, AttributeValue value, UpdateState state) {
+    String aliasName = state.asNameAlias(name);
+    String attributeName = state.attributeName(value);
+    String rowIdName = state.asNameAlias(id);
+    state.withExpression(format("%s.%s = %s", aliasName, rowIdName, attributeName));
   }
 
   private boolean handleValues(BiConsumer<String, AttributeValue> handler) {
@@ -272,6 +263,11 @@ public class DynamoUpdate {
       handler.accept(name, new AttributeValue(value));
       hasFields[0] = true;
     });
+
+    // other base fields that we want to track
+    handler.accept(Schema.METRIC_ORIGINAL_ALIAS_FIELD, new AttributeValue(fields.getAliasName()));
+    handler.accept(Schema.WRITE_TIME_FIELD,
+      new AttributeValue().withN(fields.getWriteTime().toString()));
 
     // for each field in the record, add it to the update, skipping the 'base fields' field,
     // since we handled that separately above
@@ -292,5 +288,43 @@ public class DynamoUpdate {
 
   private static AttributeValue getPartitionKey(RecordMetadata metadata) {
     return Schema.getPartitionKey(metadata.getOrgID(), metadata.getMetricCanonicalType());
+  }
+
+  private class UpdateState {
+    private Map<String, String> names = new HashMap<>();
+    private Map<String, AttributeValue> values = new HashMap<>();
+    private List<String> expressions = new ArrayList<>();
+
+    public String asNameAlias(String name) {
+      String alias = asExpressionName(name);
+      names.put(alias, name);
+      return alias;
+    }
+
+    public String attributeName(String name, AttributeValue value) {
+      String attributeName = asExpressionAttributeValue(name);
+      while (values.containsKey(attributeName)) {
+        attributeName += "a";
+      }
+      values.put(attributeName, value);
+      return attributeName;
+    }
+
+    public String attributeName(AttributeValue value) {
+      return attributeName(value.toString(), value);
+    }
+
+    public void withExpression(String expression) {
+      this.expressions.add(expression);
+    }
+
+    public String getNameAlias(String originalName) {
+      return names.entrySet().stream()
+                  .filter(entry -> entry.getValue().equals(originalName))
+                  .map(e -> e.getKey())
+                  .findFirst()
+                  .orElseThrow(() -> new IllegalStateException(
+                    format("No dynamo alias created for %s", originalName)));
+    }
   }
 }

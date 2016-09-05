@@ -34,6 +34,16 @@ public class Schema {
   public static final String SORT_KEY_NAME = "_fts";
 
   /**
+   * Time that the record was written
+   */
+  public static final String WRITE_TIME_FIELD = "_fwt";
+
+  /**
+   * Original alias for the metric that was written
+   */
+  public static final String METRIC_ORIGINAL_ALIAS_FIELD = "_foa";
+
+  /**
    * Id field used to collect the ids used to handle overlapping events at the same time
    */
   public static final String ID_FIELD = "_fid";

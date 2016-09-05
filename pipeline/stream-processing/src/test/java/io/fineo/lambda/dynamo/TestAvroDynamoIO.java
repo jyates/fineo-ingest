@@ -310,7 +310,7 @@ public class TestAvroDynamoIO {
             }
           }
           assertTrue("Missing record: " + expected + " from actual records. Seems to have a "
-                     + "non-matching record also present in actual: " + actualRecs, found);
+                     + "non-matching record also present in actual: \n" + actualRecs, found);
         }
       }
     }
@@ -328,14 +328,9 @@ public class TestAvroDynamoIO {
         return false;
       }
 
-      // we don't store the alias field in the record, so we can't exactly match the base fields.
-      // Instead, we have to verify them by hand
       BaseFields actualBase = actualMeta.getBaseFields();
       BaseFields expectedBase = expectedMeta.getBaseFields();
-      if (!expectedBase.getTimestamp().equals(actualBase.getTimestamp())) {
-        return false;
-      }
-      if (!expectedBase.getUnknownFields().equals(actualBase.getUnknownFields())) {
+      if(!expectedBase.equals(actualBase)){
         return false;
       }
 
