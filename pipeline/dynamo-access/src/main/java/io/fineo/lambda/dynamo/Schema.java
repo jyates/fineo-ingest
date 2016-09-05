@@ -11,6 +11,8 @@ import org.apache.commons.lang3.tuple.Pair;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.google.common.collect.Lists.newArrayList;
+
 /**
  * Helper methods for translation to/from Avro and the Dynamo table schema
  * <p>
@@ -47,6 +49,17 @@ public class Schema {
    * Id field used to collect the ids used to handle overlapping events at the same time
    */
   public static final String ID_FIELD = "_fid";
+
+  /**
+   * Exposed so the readerator has a simple map of excluded fields
+   */
+  public static List<String> INTERNAL_FIELDS = newArrayList(
+    PARTITION_KEY_NAME,
+    SORT_KEY_NAME,
+    WRITE_TIME_FIELD,
+    METRIC_ORIGINAL_ALIAS_FIELD,
+    ID_FIELD
+  );
 
   private static final Pair<List<KeySchemaElement>, List<AttributeDefinition>> SCHEMA;
 
