@@ -20,10 +20,11 @@ import io.fineo.schema.MapRecord;
 import io.fineo.schema.Pair;
 import io.fineo.schema.avro.RecordMetadata;
 import io.fineo.schema.exception.SchemaNotFoundException;
-import io.fineo.schema.store.AvroSchemaEncoder;
+import io.fineo.schema.store.AvroSchemaEncoderFactory;
 import io.fineo.schema.store.AvroSchemaProperties;
 import io.fineo.schema.store.SchemaStore;
 import io.fineo.schema.store.SchemaTestUtils;
+import io.fineo.schema.store.StoreClerk;
 import io.fineo.schema.store.StoreManager;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
@@ -160,8 +161,9 @@ public class TestAvroDynamoIO {
   }
 
   public static List<GenericRecord> createRandomRecordForSchema(SchemaStore store, String orgId,
-    String metricType, long startTs, int recordCount, String fieldName, int fieldValue) {
-    AvroSchemaEncoder bridge = new StoreManager(store).getEncoder(orgId, metricType);
+    String metricType, long startTs, int recordCount, String fieldName, int fieldValue)
+    throws SchemaNotFoundException {
+    AvroSchemaEncoderFactory bridge = new StoreClerk(store, orgId).getEncoderFactory();
     ArrayList records = new ArrayList(recordCount);
 
     for (int i = 0; i < recordCount; ++i) {
@@ -169,7 +171,7 @@ public class TestAvroDynamoIO {
       MapRecord record = new MapRecord(fields);
       fields.put(fieldName, fieldValue);
 
-      records.add(bridge.encode(record));
+      records.add(bridge.getEncoder(record).encode());
     }
 
     return records;

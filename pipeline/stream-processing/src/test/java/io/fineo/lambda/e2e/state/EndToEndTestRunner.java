@@ -1,15 +1,16 @@
 package io.fineo.lambda.e2e.state;
 
 import com.google.common.base.Preconditions;
-import io.fineo.internal.customer.Metadata;
-import io.fineo.internal.customer.Metric;
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import io.fineo.lambda.e2e.validation.EndToEndValidator;
 import io.fineo.lambda.util.IResourceManager;
-import io.fineo.schema.avro.AvroSchemaEncoder;
-import io.fineo.schema.avro.SchemaTestUtils;
-import io.fineo.schema.store.SchemaBuilder;
+import io.fineo.schema.exception.SchemaNotFoundException;
+import io.fineo.schema.exception.SchemaTypeNotFoundException;
+import io.fineo.schema.store.AvroSchemaProperties;
 import io.fineo.schema.store.SchemaStore;
+import io.fineo.schema.store.SchemaTestUtils;
+import io.fineo.schema.store.StoreClerk;
+import io.fineo.schema.store.StoreManager;
 import org.apache.avro.Schema;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -41,54 +42,57 @@ public class EndToEndTestRunner {
 
   public static void updateSchemaStore(SchemaStore store, Map<String, Object> event)
     throws Exception {
-    String orgId = (String) event.get(AvroSchemaEncoder.ORG_ID_KEY);
-    String metricType = (String) event.get(AvroSchemaEncoder.ORG_METRIC_TYPE_KEY);
+    String orgId = (String) event.get(AvroSchemaProperties.ORG_ID_KEY);
+    String metricType = (String) event.get(AvroSchemaProperties.ORG_METRIC_TYPE_KEY);
     Preconditions.checkArgument(orgId != null && metricType != null);
     // collect the fields that are not the base fields
-    List<String> otherFields = event.keySet().stream().filter(AvroSchemaEncoder
+    List<String> otherFields = event.keySet().stream().filter(AvroSchemaProperties
       .IS_BASE_FIELD.negate()).collect(Collectors.toList());
     try {
       SchemaTestUtils.addNewOrg(store, orgId, metricType, otherFields.toArray(new String[0]));
     } catch (IllegalStateException e) {
-      // need to update the schema for the org
-      Metadata metadata = store.getOrgMetadata(orgId);
-      Metric metric = store.getMetricMetadataFromAlias(metadata, metricType);
-      SchemaBuilder builder = SchemaBuilder.create();
-      SchemaBuilder.MetricBuilder metricBuilder = builder.updateOrg(metadata).updateSchema(metric);
+      StoreManager manager = new StoreManager(store);
+      StoreClerk clerk = new StoreClerk(store, orgId);
+      StoreManager.OrganizationBuilder builder = manager.updateOrg(orgId);
+      StoreManager.MetricBuilder metricBuilder = builder.updateMetric(metricType);
       event.entrySet().stream().sequential()
-           .filter(entry -> AvroSchemaEncoder.IS_BASE_FIELD.negate().test(entry.getKey()))
-           .filter(entry -> !collectMapListValues(metric.getMetadata().getCanonicalNamesToAliases())
-             .contains(entry.getKey()))
-           .forEach(entry -> {
-             String clazz = entry.getValue().getClass().getSimpleName().toUpperCase();
-             if (clazz.equals("BYTE[]")) {
-               metricBuilder.withBytes(entry.getKey()).asField();
-               return;
-             } else if (clazz.equals("INTEGER")) {
-               metricBuilder.withInt(entry.getKey()).asField();
-               return;
+           .filter(entry -> AvroSchemaProperties.IS_BASE_FIELD.negate().test(entry.getKey()))
+           .filter(entry -> {
+             try {
+               return clerk.getMetricForUserNameOrAlias(metricType)
+                           .getCanonicalNameFromUserFieldName(entry.getKey()) != null;
+             } catch (SchemaNotFoundException e1) {
+               throw new RuntimeException(e1);
              }
-             Schema.Type type = Schema.Type.valueOf(clazz);
-             switch (type) {
-               case BOOLEAN:
-                 metricBuilder.withBoolean(entry.getKey()).asField();
+           })
+           .forEach(entry -> {
+             try {
+               String clazz = entry.getValue().getClass().getSimpleName().toUpperCase();
+               if (clazz.equals("BYTE[]")) {
+                 metricBuilder.newField().withType("BYTES").withName(entry.getKey()).build();
                  return;
-               case LONG:
-                 metricBuilder.withLong(entry.getKey()).asField();
+               } else if (clazz.equals("INTEGER")) {
+                 metricBuilder.newField().withType("INGTEGER").withName(entry.getKey()).build();
                  return;
-               case FLOAT:
-                 metricBuilder.withFloat(entry.getKey()).asField();
-                 return;
-               case DOUBLE:
-                 metricBuilder.withDouble(entry.getKey()).asField();
-                 return;
-               case STRING:
-                 metricBuilder.withString(entry.getKey()).asField();
-                 return;
+               }
+               Schema.Type type = Schema.Type.valueOf(clazz);
+               switch (type) {
+                 case BOOLEAN:
+                 case LONG:
+                 case FLOAT:
+                 case DOUBLE:
+                 case STRING:
+                   metricBuilder.newField().withType(type.getName()).withName(entry.getKey())
+                                .build();
+                   return;
+               }
+             } catch (SchemaTypeNotFoundException e1) {
+               e1.printStackTrace();
              }
            });
 
-      store.updateOrgMetric(metricBuilder.build().build(), metric);
+      metricBuilder.build();
+      builder.commit();
     }
   }
 

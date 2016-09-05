@@ -1,7 +1,6 @@
 package io.fineo.etl.spark.read;
 
 import io.fineo.etl.spark.SparkETL;
-import io.fineo.schema.avro.AvroSchemaEncoder;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.hadoop.fs.FileStatus;
@@ -15,16 +14,13 @@ import org.apache.spark.sql.SQLContext;
 
 import java.io.IOException;
 import java.sql.Date;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-import static io.fineo.schema.avro.AvroSchemaEncoder.*;
-import static java.util.stream.Collectors.toList;
+import static io.fineo.schema.store.AvroSchemaProperties.TIMESTAMP_KEY;
 
 /**
  * Helper class to load data frames for spark

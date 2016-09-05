@@ -50,7 +50,7 @@ public class RawJsonToRecordHandler {
     LOG.trace("Got the encoder");
 
     // write the record to a ByteBuffer
-    GenericRecord outRecord = bridge.encode(new MapRecord(values));
+    GenericRecord outRecord = bridge.encode();
 //    LOG.trace("Encoded the record {}", outRecord);
     // add the record
     this.convertedRecords.add(stream, orgId, outRecord);

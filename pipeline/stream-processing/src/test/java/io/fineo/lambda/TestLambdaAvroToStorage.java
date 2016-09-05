@@ -17,7 +17,7 @@ import io.fineo.lambda.handle.LambdaWrapper;
 import io.fineo.lambda.handle.staged.AvroToStorageHandler;
 import io.fineo.lambda.handle.staged.AvroToStorageWrapper;
 import io.fineo.lambda.util.LambdaTestUtils;
-import io.fineo.schema.avro.SchemaTestUtils;
+import io.fineo.schema.store.SchemaTestUtils;
 import org.apache.avro.generic.GenericRecord;
 import org.junit.Test;
 import org.mockito.Mockito;

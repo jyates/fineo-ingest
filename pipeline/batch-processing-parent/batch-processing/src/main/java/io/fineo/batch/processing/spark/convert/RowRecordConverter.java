@@ -1,13 +1,12 @@
 package io.fineo.batch.processing.spark.convert;
 
 import io.fineo.batch.processing.spark.options.BatchOptions;
-import io.fineo.schema.avro.AvroSchemaEncoder;
+import io.fineo.schema.store.AvroSchemaProperties;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.types.StructType;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Properties;
 
 /**
  * Convert a dataframe Row into a json-like map[String, Object] and then passes it to the
@@ -27,7 +26,7 @@ public class RowRecordConverter extends RecordConverter<Row> {
   @Override
   protected Map<String, Object> transform(Row row) {
     Map<String, Object> values = new HashMap<>(row.size());
-    values.put(AvroSchemaEncoder.ORG_ID_KEY, orgId);
+    values.put(AvroSchemaProperties.ORG_ID_KEY, orgId);
     StructType schema = row.schema();
     for (String name : schema.fieldNames()) {
       values.put(name, row.get(row.fieldIndex(name)));

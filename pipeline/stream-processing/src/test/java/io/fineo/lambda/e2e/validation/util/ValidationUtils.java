@@ -2,12 +2,12 @@ package io.fineo.lambda.e2e.validation.util;
 
 import com.google.common.collect.Lists;
 import io.fineo.lambda.e2e.state.EventFormTracker;
-import io.fineo.lambda.util.LambdaTestUtils;
 import io.fineo.lambda.util.IResourceManager;
+import io.fineo.lambda.util.LambdaTestUtils;
 import io.fineo.lambda.util.SchemaUtil;
-import io.fineo.schema.avro.AvroSchemaEncoder;
 import io.fineo.schema.avro.RecordMetadata;
 import io.fineo.schema.avro.TestRecordMetadata;
+import io.fineo.schema.store.AvroSchemaProperties;
 import io.fineo.schema.store.SchemaStore;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
@@ -50,7 +50,7 @@ public class ValidationUtils {
   public static Stream<Map.Entry<String, Object>> filterJson(Map<String, Object> json) {
     return json.entrySet()
                .stream()
-               .filter(entry -> AvroSchemaEncoder.IS_BASE_FIELD.negate().test(entry.getKey()));
+               .filter(entry -> AvroSchemaProperties.IS_BASE_FIELD.negate().test(entry.getKey()));
   }
 
   public static void verifyRecordMatchesJson(SchemaStore store, Map<String, Object> json,
@@ -60,7 +60,7 @@ public class ValidationUtils {
     filterJson(json).forEach(entry -> {
       // search through each of the aliases to find a matching name in the record
       String aliasName = entry.getKey();
-      String cname = schema.getCanonicalName(aliasName);
+      String cname = schema.getCanonicalFieldName(aliasName);
       // its an unknown field, so make sure its present
       if (cname == null) {
         RecordMetadata metadata = RecordMetadata.get(record);

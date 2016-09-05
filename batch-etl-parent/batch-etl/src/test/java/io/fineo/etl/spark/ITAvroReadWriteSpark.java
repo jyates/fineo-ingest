@@ -5,15 +5,17 @@ import io.fineo.etl.spark.options.ETLOptions;
 import io.fineo.etl.spark.read.DataFrameLoader;
 import io.fineo.etl.spark.read.PartitionKey;
 import io.fineo.etl.spark.util.FieldTranslatorFactory;
-import io.fineo.internal.customer.Metadata;
-import io.fineo.internal.customer.Metric;
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
+import io.fineo.lambda.e2e.ITEndToEndLambdaLocal;
 import io.fineo.lambda.e2e.state.E2ETestState;
 import io.fineo.lambda.e2e.state.EndToEndTestRunner;
-import io.fineo.lambda.e2e.ITEndToEndLambdaLocal;
-import io.fineo.lambda.util.LambdaTestUtils;
 import io.fineo.lambda.util.IResourceManager;
+import io.fineo.lambda.util.LambdaTestUtils;
+import io.fineo.schema.MapRecord;
+import io.fineo.schema.exception.SchemaNotFoundException;
+import io.fineo.schema.store.AvroSchemaEncoderFactory;
 import io.fineo.schema.store.SchemaStore;
+import io.fineo.schema.store.StoreClerk;
 import io.fineo.spark.rule.LocalSparkRule;
 import io.fineo.test.rule.TestOutput;
 import org.apache.commons.io.FileUtils;
@@ -29,6 +31,8 @@ import org.junit.After;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import scala.collection.JavaConversions;
 
 import java.io.File;
@@ -51,10 +55,10 @@ import java.util.stream.Collectors;
 import static com.google.common.collect.Lists.newArrayList;
 import static io.fineo.etl.FineoProperties.STAGED_PREFIX;
 import static io.fineo.lambda.configure.legacy.StreamType.ARCHIVE;
-import static io.fineo.schema.avro.AvroSchemaEncoder.IS_BASE_FIELD;
-import static io.fineo.schema.avro.AvroSchemaEncoder.ORG_ID_KEY;
-import static io.fineo.schema.avro.AvroSchemaEncoder.ORG_METRIC_TYPE_KEY;
-import static io.fineo.schema.avro.AvroSchemaEncoder.TIMESTAMP_KEY;
+import static io.fineo.schema.store.AvroSchemaProperties.IS_BASE_FIELD;
+import static io.fineo.schema.store.AvroSchemaProperties.ORG_ID_KEY;
+import static io.fineo.schema.store.AvroSchemaProperties.ORG_METRIC_TYPE_KEY;
+import static io.fineo.schema.store.AvroSchemaProperties.TIMESTAMP_KEY;
 import static org.junit.Assert.assertEquals;
 
 /**
@@ -62,7 +66,7 @@ import static org.junit.Assert.assertEquals;
  */
 public class ITAvroReadWriteSpark {
 
-  private static final Log LOG = LogFactory.getLog(ITAvroReadWriteSpark.class);
+  private static final Logger LOG = LoggerFactory.getLogger(ITAvroReadWriteSpark.class);
   private static final String DIR_PROPERTY = "fineo.spark.dir";
   private static final Comparator<Map<String, Object>> EVENT_SORTER = (m1, m2) -> -(
     (Long) m1.get(TIMESTAMP_KEY)).compareTo((Long) m2.get(TIMESTAMP_KEY));
@@ -324,15 +328,19 @@ public class ITAvroReadWriteSpark {
       Map<String, Object> event = events[i];
       LOG.info("\t Raw => " + event);
       String orgID = (String) event.get(ORG_ID_KEY);
-      Metadata orgMeta = store.getOrgMetadata(orgID);
-      Metric metric = store.getMetricMetadataFromAlias(orgMeta,
-        (String) event.get(ORG_METRIC_TYPE_KEY));
-      LOG.info("\t Org => " + orgMeta);
-      LOG.info("\t Metric => " + metric);
+      StoreClerk clerk = new StoreClerk(store, orgID);
+      try {
+        AvroSchemaEncoderFactory.RecordMetric rm =
+          clerk.getEncoderFactory().getMetricForRecord(new MapRecord(event));
+        LOG.info("\t Alias: '{}', Metric => {}", rm.metricAlias, rm.metric.getUnderlyingMetric());
+      } catch (SchemaNotFoundException e) {
+        LOG.error("Failed to load schema during logging!", e);
+      }
     }
   }
 
-  private Map<String, Object> translate(Map<String, Object> msg, SchemaStore store) {
+  private Map<String, Object> translate(Map<String, Object> msg, SchemaStore store)
+    throws SchemaNotFoundException {
     FieldTranslatorFactory factory = new FieldTranslatorFactory(store);
     FieldTranslatorFactory.FieldTranslator translator = translator(msg, factory);
     Map<String, Object> fields = new HashMap<>();
@@ -344,7 +352,7 @@ public class ITAvroReadWriteSpark {
   }
 
   public FieldTranslatorFactory.FieldTranslator translator(Map<String, Object> event,
-    FieldTranslatorFactory factory) {
+    FieldTranslatorFactory factory) throws SchemaNotFoundException {
     String orgId = (String) event.get(ORG_ID_KEY);
     String metricAlias = (String) event.get(ORG_METRIC_TYPE_KEY);
     return factory.translate(orgId, metricAlias);
@@ -396,7 +404,13 @@ public class ITAvroReadWriteSpark {
     verifyMappedEvents(rows,
       Arrays.asList(json)
             .stream()
-            .map(event -> translate(event, store))
+            .map(event -> {
+              try {
+                return translate(event, store);
+              } catch (SchemaNotFoundException e) {
+                throw new RuntimeException(e);
+              }
+            })
             .sorted(EVENT_SORTER)
             .collect(Collectors.toList())
             .toArray(new HashMap[0]));

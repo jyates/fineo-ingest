@@ -10,7 +10,6 @@ import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.name.Named;
 import io.fineo.etl.FineoProperties;
-import io.fineo.internal.customer.Metric;
 import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import io.fineo.lambda.dynamo.DynamoTableTimeManager;
 import io.fineo.lambda.dynamo.Range;
@@ -22,6 +21,7 @@ import io.fineo.lambda.util.run.FutureWaiter;
 import io.fineo.lambda.util.run.ResultWaiter;
 import io.fineo.schema.avro.RecordMetadata;
 import io.fineo.schema.store.SchemaStore;
+import io.fineo.schema.store.StoreClerk;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -154,7 +154,8 @@ public class DynamoResource implements AwsResource {
       .getTableNames(), 2, tablesResult.getTableNames().size());
 
     AvroDynamoReader reader = new AvroDynamoReader(getStore(), dynamo, manager);
-    Metric metric = getStore().getMetricMetadata(metadata);
+    StoreClerk clerk = new StoreClerk(getStore(), metadata.getOrgID());
+    StoreClerk.Metric metric = clerk.getMetricForCanonicalName(metadata.getMetricCanonicalType());
     long ts = metadata.getBaseFields().getTimestamp();
     Range<Instant> range = Range.of(ts, ts + 1);
     ResultWaiter<List<GenericRecord>> waiter =

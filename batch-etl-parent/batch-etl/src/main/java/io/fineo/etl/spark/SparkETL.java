@@ -8,7 +8,6 @@ import io.fineo.etl.spark.fs.RddLoader;
 import io.fineo.etl.spark.options.ETLOptions;
 import io.fineo.etl.spark.options.OptionsHandler;
 import io.fineo.etl.spark.util.AvroSparkUtils;
-import io.fineo.internal.customer.Metric;
 import io.fineo.lambda.configure.PropertiesModule;
 import io.fineo.lambda.configure.dynamo.DynamoModule;
 import io.fineo.lambda.configure.dynamo.DynamoRegionConfigurator;
@@ -16,6 +15,7 @@ import io.fineo.lambda.configure.util.PropertiesLoaderUtil;
 import io.fineo.lambda.handle.schema.inject.SchemaStoreModule;
 import io.fineo.schema.avro.RecordMetadata;
 import io.fineo.schema.store.SchemaStore;
+import io.fineo.schema.store.StoreClerk;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.spark.SparkConf;
@@ -38,6 +38,7 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -47,10 +48,10 @@ import java.util.stream.Stream;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static io.fineo.etl.spark.util.AvroSparkUtils.getSparkType;
-import static io.fineo.schema.avro.AvroSchemaEncoder.BASE_FIELDS_KEY;
-import static io.fineo.schema.avro.AvroSchemaEncoder.ORG_ID_KEY;
-import static io.fineo.schema.avro.AvroSchemaEncoder.ORG_METRIC_TYPE_KEY;
-import static io.fineo.schema.avro.AvroSchemaEncoder.TIMESTAMP_KEY;
+import static io.fineo.schema.store.AvroSchemaProperties.BASE_FIELDS_KEY;
+import static io.fineo.schema.store.AvroSchemaProperties.ORG_ID_KEY;
+import static io.fineo.schema.store.AvroSchemaProperties.ORG_METRIC_TYPE_KEY;
+import static io.fineo.schema.store.AvroSchemaProperties.TIMESTAMP_KEY;
 import static java.util.stream.Collectors.toList;
 import static org.apache.spark.sql.types.DataTypes.createStructField;
 import static org.apache.spark.sql.types.DataTypes.createStructType;
@@ -151,15 +152,19 @@ public class SparkETL {
       JavaRDD<GenericRecord> grouped = getRddByKey(keyToRecord, type);
       String org = type.getOrgId();
       String metricId = type.getMetricId();
-      Metric metric = store.getMetricMetadata(org, metricId);
-      String schemaString = metric.getMetricSchema();
+      StoreClerk clerk = new StoreClerk(store, org);
+      StoreClerk.Metric metric = clerk.getMetricForCanonicalName(metricId);
+      String schemaString = metric.getUnderlyingMetric().getMetricSchema();
       // parser keeps state and we redefine the logical name, so we need to create a new Parser
       // each time
       Schema.Parser parser = new Schema.Parser();
       Schema parsed = parser.parse(schemaString);
+      Map<String, List<String>> fieldAliasMap = new HashMap<>();
+      metric.getUserVisibleFields().stream().forEach(field -> {
+        fieldAliasMap.put(field.getCname(), field.getAliases());
+      });
       Map<String, List<String>> canonicalToAliases = AvroSparkUtils
-        .removeUnserializableAvroTypesFromMap(
-          metric.getMetadata().getCanonicalNamesToAliases());
+        .removeUnserializableAvroTypesFromMap(fieldAliasMap);
       JavaRDD<Row> rows =
         grouped.map(new RowConverter(schemaString, canonicalToAliases, org, metricId));
       schemas.add(new Tuple2<>(type, new Tuple2<>(rows, mapSchemaToStruct(parsed))));

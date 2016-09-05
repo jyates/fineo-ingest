@@ -19,8 +19,8 @@ import io.fineo.lambda.handle.raw.RawStageWrapper;
 import io.fineo.lambda.kinesis.IKinesisProducer;
 import io.fineo.lambda.kinesis.KinesisProducer;
 import io.fineo.lambda.util.LambdaTestUtils;
-import io.fineo.schema.avro.AvroSchemaEncoder;
 import io.fineo.schema.avro.TestRecordMetadata;
+import io.fineo.schema.store.AvroSchemaProperties;
 import io.fineo.schema.store.SchemaStore;
 import io.fineo.lambda.avro.FirehoseRecordReader;
 import io.fineo.lambda.avro.FirehoseRecordWriter;
@@ -179,7 +179,7 @@ public class TestLambdaRawToAvroWithLocalSchemaStore {
     Random random = new Random(seed);
     // randomly remove either the org key or the metric type key, creating a 'broken' event
     String[] fields =
-      new String[]{AvroSchemaEncoder.ORG_ID_KEY, AvroSchemaEncoder.ORG_METRIC_TYPE_KEY};
+      new String[]{AvroSchemaProperties.ORG_ID_KEY, AvroSchemaProperties.ORG_METRIC_TYPE_KEY};
     for (Map<String, Object> map : events) {
       map.remove(fields[random.nextInt(2)]);
     }

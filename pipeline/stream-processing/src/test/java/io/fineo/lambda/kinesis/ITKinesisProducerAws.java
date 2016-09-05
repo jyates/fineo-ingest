@@ -10,7 +10,7 @@ import io.fineo.lambda.util.AwsTestRule;
 import io.fineo.lambda.util.LambdaTestUtils;
 import io.fineo.lambda.util.run.FutureWaiter;
 import io.fineo.lambda.util.run.ResultWaiter;
-import io.fineo.schema.avro.SchemaTestUtils;
+import io.fineo.schema.store.SchemaTestUtils;
 import org.apache.avro.generic.GenericRecord;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;

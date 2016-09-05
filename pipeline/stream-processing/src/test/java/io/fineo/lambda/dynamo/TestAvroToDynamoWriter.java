@@ -1,35 +1,24 @@
 package io.fineo.lambda.dynamo;
 
-import com.amazonaws.handlers.AsyncHandler;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.amazonaws.services.dynamodbv2.document.DynamoDB;
 import com.amazonaws.services.dynamodbv2.model.ListTablesResult;
 import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
-import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
-import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
 import com.google.common.collect.Lists;
 import io.fineo.aws.AwsDependentTests;
 import io.fineo.aws.rule.AwsCredentialResource;
 import io.fineo.lambda.FailureHandler;
 import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.lambda.dynamo.avro.AvroToDynamoWriter;
-import io.fineo.schema.Pair;
-import io.fineo.schema.avro.SchemaTestUtils;
-import io.fineo.schema.store.SchemaStore;
-import io.fineo.schema.store.StoreManager;
+import io.fineo.schema.store.SchemaTestUtils;
 import org.apache.avro.generic.GenericRecord;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.mockito.Mockito;
-import org.schemarepo.InMemoryRepository;
-import org.schemarepo.ValidatorFactory;
 
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.CountDownLatch;
 
-import static com.google.common.collect.ImmutableList.of;
-import static io.fineo.schema.store.TestSchemaManager.commitSimpleType;
 import static junit.framework.TestCase.assertTrue;
 import static org.junit.Assert.assertEquals;
 

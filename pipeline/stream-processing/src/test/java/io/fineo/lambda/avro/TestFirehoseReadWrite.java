@@ -1,6 +1,6 @@
 package io.fineo.lambda.avro;
 
-import io.fineo.schema.avro.SchemaTestUtils;
+import io.fineo.schema.store.SchemaTestUtils;
 import org.apache.avro.file.CodecFactory;
 import org.apache.avro.file.SeekableByteArrayInput;
 import org.apache.avro.generic.GenericRecord;
@@ -22,7 +22,6 @@ import static com.google.common.collect.Lists.newArrayList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 /**
  * Verify that the {@link FirehoseRecordWriter} and {@link FirehoseRecordReader} work together
