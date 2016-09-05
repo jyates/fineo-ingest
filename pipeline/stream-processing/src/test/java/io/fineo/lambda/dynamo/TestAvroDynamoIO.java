@@ -18,11 +18,12 @@ import io.fineo.lambda.dynamo.rule.AwsDynamoResource;
 import io.fineo.lambda.dynamo.rule.AwsDynamoTablesResource;
 import io.fineo.schema.MapRecord;
 import io.fineo.schema.Pair;
-import io.fineo.schema.avro.AvroSchemaEncoder;
-import io.fineo.schema.avro.AvroSchemaManager;
 import io.fineo.schema.avro.RecordMetadata;
-import io.fineo.schema.avro.SchemaTestUtils;
+import io.fineo.schema.exception.SchemaNotFoundException;
+import io.fineo.schema.store.AvroSchemaEncoder;
+import io.fineo.schema.store.AvroSchemaProperties;
 import io.fineo.schema.store.SchemaStore;
+import io.fineo.schema.store.SchemaTestUtils;
 import io.fineo.schema.store.StoreManager;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
@@ -47,7 +48,7 @@ import java.util.stream.Stream;
 
 import static com.google.common.collect.ImmutableList.of;
 import static io.fineo.lambda.configure.util.SingleInstanceModule.instanceModule;
-import static io.fineo.schema.avro.SchemaTestUtils.getBaseFields;
+import static io.fineo.schema.store.SchemaTestUtils.getBaseFields;
 import static io.fineo.schema.store.TestSchemaManager.commitSimpleType;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -160,7 +161,7 @@ public class TestAvroDynamoIO {
 
   public static List<GenericRecord> createRandomRecordForSchema(SchemaStore store, String orgId,
     String metricType, long startTs, int recordCount, String fieldName, int fieldValue) {
-    AvroSchemaEncoder bridge = (new AvroSchemaManager(store, orgId)).encode(metricType);
+    AvroSchemaEncoder bridge = new StoreManager(store).getEncoder(orgId, metricType);
     ArrayList records = new ArrayList(recordCount);
 
     for (int i = 0; i < recordCount; ++i) {
@@ -270,12 +271,17 @@ public class TestAvroDynamoIO {
       assertEquals(this.tableCount, tables.getTableNames().size());
     }
 
-    public void verifyRecords() {
-      verifyRecords((reader, orgId, orgMetricType, range) ->
-        reader.scanMetricAlias(orgId, orgMetricType, range));
+    public void verifyRecords() throws SchemaNotFoundException {
+      verifyRecords((reader, orgId, orgMetricType, range) -> {
+        try {
+          return reader.scanMetricAlias(orgId, orgMetricType, range);
+        } catch (SchemaNotFoundException e) {
+          throw new RuntimeException(e);
+        }
+      });
     }
 
-    public void verifyRecords(Reader recordReader) {
+    public void verifyRecords(Reader recordReader) throws SchemaNotFoundException {
       // ensure that the record we wrote matches what we created
       List<GenericRecord> records =
         recordReader.read(reader, org, metric, range).collect(Collectors.toList());
@@ -334,7 +340,7 @@ public class TestAvroDynamoIO {
       // verify the non-base fields match
       Schema schema = expectedMeta.getMetricSchema();
       return schema.getFields().stream()
-                   .filter(field -> !field.name().equals(AvroSchemaEncoder.BASE_FIELDS_KEY))
+                   .filter(field -> !field.name().equals(AvroSchemaProperties.BASE_FIELDS_KEY))
                    .map(field -> {
                      String name = field.name();
                      return expected.get(name).equals(actual.get(name));
@@ -366,6 +372,6 @@ public class TestAvroDynamoIO {
   @FunctionalInterface
   private interface Reader {
     Stream<GenericRecord> read(AvroDynamoReader reader, String orgId, String orgMetricType,
-      Range<Instant> range);
+      Range<Instant> range) throws SchemaNotFoundException;
   }
 }
