@@ -36,7 +36,9 @@ import io.fineo.lambda.handle.staged.AvroToStorageWrapper;
 import io.fineo.lambda.handle.util.HandlerUtils;
 import io.fineo.lambda.kinesis.IKinesisProducer;
 import io.fineo.lambda.util.LambdaTestUtils;
+import io.fineo.schema.store.AvroSchemaProperties;
 import io.fineo.schema.store.SchemaStore;
+import io.fineo.schema.store.StoreManager;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.Test;
@@ -87,6 +89,32 @@ public class ITEndToEndLambdaLocal {
     Map<String, Object> second = new HashMap<>(event);
     second.put("anotherField", 1);
     run(state, second);
+    state.getRunner().cleanup();
+  }
+
+  @Test
+  public void testCustomMetricKey() throws Exception {
+    String org = "orgid", metric = "metricname", field = "fieldname";
+    String customKey = "somekey";
+
+    // create the schema for the org
+    E2ETestState state = prepareTest();
+    SchemaStore store = state.getResources().getStore();
+    StoreManager manager = new StoreManager(store);
+    manager.newOrg(org)
+           .newMetric().setDisplayName(metric).addKeyAliases(customKey)
+           .newField().withName(field).withType(StoreManager.Type.BOOLEAN).build()
+           .build().commit();
+
+    // simple event
+    Map<String, Object> event = new HashMap<>();
+    event.put(AvroSchemaProperties.ORG_ID_KEY, org);
+    event.put(customKey, metric);
+    event.put(AvroSchemaProperties.TIMESTAMP_KEY, 1234);
+    event.put(field, true);
+
+    // do the actual running
+    run(state, event, false);
     state.getRunner().cleanup();
   }
 
@@ -240,9 +268,19 @@ public class ITEndToEndLambdaLocal {
   }
 
   public static void run(E2ETestState state, Map<String, Object> json) throws Exception {
+    run(state, json, true);
+  }
+
+  public static void run(E2ETestState state, Map<String, Object> json, boolean registerEvent)
+    throws
+    Exception {
     EndToEndTestRunner runner = state.getRunner();
     runner.setup();
-    runner.run(json);
+    if (registerEvent) {
+      runner.run(json);
+    } else {
+      runner.send(json);
+    }
     runner.validate();
   }
 }
