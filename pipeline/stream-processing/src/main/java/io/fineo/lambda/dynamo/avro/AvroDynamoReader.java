@@ -8,13 +8,13 @@ import com.amazonaws.services.dynamodbv2.document.spec.ScanSpec;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.google.common.collect.Iterables;
 import com.google.inject.Inject;
-import io.fineo.internal.customer.Metric;
 import io.fineo.lambda.dynamo.DynamoTableTimeManager;
 import io.fineo.lambda.dynamo.Iterators;
 import io.fineo.lambda.dynamo.Range;
 import io.fineo.lambda.dynamo.Schema;
-import io.fineo.schema.avro.AvroSchemaManager;
+import io.fineo.schema.exception.SchemaNotFoundException;
 import io.fineo.schema.store.SchemaStore;
+import io.fineo.schema.store.StoreClerk;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
@@ -55,14 +55,14 @@ public class AvroDynamoReader {
   }
 
   public Stream<GenericRecord> scanMetricAlias(String orgId, String aliasMetricName,
-    Range<Instant> range) {
-    AvroSchemaManager manager = new AvroSchemaManager(store, orgId);
-    Metric metric = manager.getMetricInfo(aliasMetricName);
+    Range<Instant> range) throws SchemaNotFoundException {
+    StoreClerk clerk = new StoreClerk(store, orgId);
+    StoreClerk.Metric metric = clerk.getMetricForUserNameOrAlias(aliasMetricName);
     return scan(orgId, metric, range);
   }
 
-  public Stream<GenericRecord> scan(String orgId, Metric metric, Range<Instant> range) {
-    String canonicalName = metric.getMetadata().getCanonicalName();
+  public Stream<GenericRecord> scan(String orgId, StoreClerk.Metric metric, Range<Instant> range) {
+    String canonicalName = metric.getMetricId();
     AttributeValue partitionKey = Schema.getPartitionKey(orgId, canonicalName);
     DynamoAvroRecordDecoder decoder = new DynamoAvroRecordDecoder();
     return scanMetricAlias(range, partitionKey, result -> decoder.decode(orgId, metric, result));
@@ -78,7 +78,7 @@ public class AvroDynamoReader {
     List<Iterable<Item>> iters = new ArrayList<>();
     String startPartition = stringPartitionKey.getS();
     String stop = startPartition + "0";
-    String start = startPartition.substring(0, startPartition.length() -1);
+    String start = startPartition.substring(0, startPartition.length() - 1);
     Function<Range<Instant>, Long> sortStart =
       // read prefix has to start *before* the desired read
       r -> Long.parseLong(Schema.getSortKey(range.getStart().toEpochMilli()).getN()) - 1;

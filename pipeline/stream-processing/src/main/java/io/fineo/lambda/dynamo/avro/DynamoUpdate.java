@@ -9,8 +9,8 @@ import io.fineo.internal.customer.BaseFields;
 import io.fineo.lambda.aws.AwsAsyncSubmitter;
 import io.fineo.lambda.dynamo.DynamoExpressionPlaceHolders;
 import io.fineo.lambda.dynamo.Schema;
-import io.fineo.schema.avro.AvroSchemaEncoder;
 import io.fineo.schema.avro.RecordMetadata;
+import io.fineo.schema.store.AvroSchemaProperties;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.lang3.tuple.Pair;
@@ -21,7 +21,6 @@ import java.io.UnsupportedEncodingException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,7 +33,33 @@ import static io.fineo.lambda.dynamo.avro.DynamoAvroRecordEncoder.convertField;
 import static java.lang.String.format;
 
 /**
- * Do the actual work of making an update for a single generic record
+ * Update a single row in dynamo with a single record.
+ * <p>
+ * This is actually more complex than it sounds because dynamo only has a single view of a row,
+ * not multiple versions as with Cassandra/HBase. Thus, we need to implement versioning on our
+ * own. This is done with two things:
+ * <ol>
+ * <li>set of metrics ids</li>
+ * <li>map for each metric field from id -> value</li>
+ * </ol>
+ * On read we can then undo the mapping from id -> values. Its assumed this is all
+ * semi-transactional because it happens in the same row. Either the ID and its added is added on
+ * merge (eventual consistency) or its not present.
+ * </p>
+ * <p>
+ * The process of how we implement the write is a bit arduous. It proceeds roughly like this:
+ * <ol>
+ *   <li>Attempt to update an entry in the map</li>
+ *   <li>That fails, attempt to create the map with the item being the only thing there</li>
+ *   <lo>That fails, reattempt to update the map - someone beat us there.</lo>
+ * </ol>
+ * Naturally, there are a host of possible errors, so we have to sure to catch the right one and
+ * then implement the correct error handling based on what step/condition actually failed.
+ * </p>
+ * The state-machine update logic is handled in the {@link DynamoMapUpdater}, though the actual
+ * work of <i>how</i> each step proceeds is handled here (via lambda method references).
+ *
+ * @see DynamoMapUpdater
  */
 public class DynamoUpdate {
 
@@ -84,7 +109,7 @@ public class DynamoUpdate {
     // collect the values of all the fields
     schema.getFields().stream()
           .map(org.apache.avro.Schema.Field::name)
-          .filter(name -> !AvroSchemaEncoder.BASE_FIELDS_KEY.equals(name))
+          .filter(name -> !AvroSchemaProperties.BASE_FIELDS_KEY.equals(name))
           .map(name -> {
             GenericData.Record rec = (GenericData.Record) record.get(name);
             return rec.get("value");
@@ -251,7 +276,7 @@ public class DynamoUpdate {
     // for each field in the record, add it to the update, skipping the 'base fields' field,
     // since we handled that separately above
     record.getSchema().getFields().stream()
-          .filter(field -> !field.name().equals(AvroSchemaEncoder.BASE_FIELDS_KEY))
+          .filter(field -> !field.name().equals(AvroSchemaProperties.BASE_FIELDS_KEY))
           .forEach(field -> {
             hasFields[0] = true;
             Pair<String, AttributeValue> attribute =

@@ -4,11 +4,12 @@ import com.amazonaws.services.dynamodbv2.document.Item;
 import com.amazonaws.util.Base64;
 import com.google.common.collect.Lists;
 import io.fineo.internal.customer.BaseFields;
-import io.fineo.internal.customer.Metric;
+import io.fineo.internal.customer.FieldMetadata;
 import io.fineo.schema.Record;
-import io.fineo.schema.avro.AvroRecordTranslator;
-import io.fineo.schema.avro.AvroSchemaEncoder;
 import io.fineo.schema.avro.SchemaNameUtils;
+import io.fineo.schema.store.AvroSchemaEncoder;
+import io.fineo.schema.store.AvroSchemaProperties;
+import io.fineo.schema.store.StoreClerk;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
@@ -29,12 +30,12 @@ import static io.fineo.lambda.dynamo.Schema.SORT_KEY_NAME;
 
 /**
  * Decode a Dynamo row into a {@link GenericRecord} that can then be
- * translated into 'customer friendly' alias names via a {@link AvroRecordTranslator}.
+ * translated into 'customer friendly' alias names via a AvroRecordTranslator.
  */
 public class DynamoAvroRecordDecoder {
   private final Schema.Parser parser;
 
-  private List<String> handledFields = Lists.newArrayList(AvroSchemaEncoder
+  private List<String> handledFields = Lists.newArrayList(AvroSchemaProperties
       .BASE_FIELDS_KEY, io.fineo.lambda.dynamo.Schema.PARTITION_KEY_NAME, SORT_KEY_NAME,
     io.fineo.lambda.dynamo.Schema.ID_FIELD);
   private Predicate<Schema.Field> retainedField = field -> !handledFields.contains(field.name());
@@ -43,13 +44,13 @@ public class DynamoAvroRecordDecoder {
     this.parser = new Schema.Parser();
   }
 
-  public List<GenericRecord> decode(String orgId, Metric metric, Item item) {
+  public List<GenericRecord> decode(String orgId, StoreClerk.Metric metric, Item item) {
     String schemaName =
-      SchemaNameUtils.getCustomerSchemaFullName(orgId, metric.getMetadata().getCanonicalName());
+      SchemaNameUtils.getCustomerSchemaFullName(orgId, metric.getMetricId());
 
     Schema schema = parser.getTypes().get(schemaName);
     if (schema == null) {
-      schema = parser.parse(metric.getMetricSchema());
+      schema = parser.parse(metric.getUnderlyingMetric().getMetricSchema());
     }
 
     // extract the base fields
@@ -63,22 +64,23 @@ public class DynamoAvroRecordDecoder {
     return records;
   }
 
-  private GenericRecord parseRecord(Schema schema, Metric metric, long ts, Item item, String id) {
+  private GenericRecord parseRecord(Schema schema, StoreClerk.Metric metric, long ts, Item item, String id) {
     BaseFields base = new BaseFields();
     base.setTimestamp(ts);
 
     GenericData.Record record = new GenericData.Record(schema);
-    record.put(AvroSchemaEncoder.BASE_FIELDS_KEY, base);
+    record.put(AvroSchemaProperties.BASE_FIELDS_KEY, base);
 
     Set<String> allFields = new HashSet<>();
     allFields.addAll(item.asMap().keySet());
-    Map<String, List<String>> namesToAliases = metric.getMetadata().getCanonicalNamesToAliases();
+    Map<String, FieldMetadata> namesToAliases = metric.getUnderlyingMetric().getMetadata()
+                                                      .getFields();
 
     // set the remaining fields
     final Schema finalSchema = schema;
     schema.getFields().stream().filter(retainedField).forEach(schemaField -> {
       String name = schemaField.name();
-      List<String> aliases = namesToAliases.get(name);
+      List<String> aliases = namesToAliases.get(name).getFieldAliases();
       String key = findKey(item, aliases);
 
       GenericRecord fieldRecord =

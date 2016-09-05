@@ -20,7 +20,7 @@ import static io.fineo.lambda.dynamo.avro.DynamoUpdate.FAILED_INITIAL_UPDATE_MES
 /**
  * Handle the state machine logic and exception handling required to implement the the actual
  * dynamo update. There is some coupling between this and {@link DynamoUpdate} due to the nature
- * of the exceptions that are thrown. We expect there to be a Condtional exception on the initial
+ * of the exceptions that are thrown. We expect there to be a Conditional exception on the initial
  * request if some maps are not present and a service exception if we get to a point where we
  * reach server that has old state and no new map.
  */

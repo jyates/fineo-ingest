@@ -5,7 +5,8 @@ import com.google.inject.name.Named;
 import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.lambda.kinesis.IKinesisProducer;
 import io.fineo.schema.MapRecord;
-import io.fineo.schema.avro.AvroSchemaEncoder;
+import io.fineo.schema.store.AvroSchemaEncoder;
+import io.fineo.schema.store.AvroSchemaProperties;
 import io.fineo.schema.store.SchemaStore;
 import org.apache.avro.generic.GenericRecord;
 import org.slf4j.Logger;
@@ -42,7 +43,7 @@ public class RawJsonToRecordHandler {
     // this is an ugly reach into the bridge logic for the org ID, specially as we pull it out
     // when we create the schema bridge, but that requires a bit more refactoring than I want
     // to do right now for the schema bridge. Maybe an easy improvement later.
-    String orgId = record.getStringByField(AvroSchemaEncoder.ORG_ID_KEY);
+    String orgId = record.getStringByField(AvroSchemaProperties.ORG_ID_KEY);
     // sometimes this throws illegal argument, e.g. record not valid, so we fall back on the
     // error handler
     AvroSchemaEncoder bridge = AvroSchemaEncoder.create(store, record);
