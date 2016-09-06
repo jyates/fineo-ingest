@@ -39,6 +39,7 @@ import io.fineo.lambda.util.LambdaTestUtils;
 import io.fineo.schema.store.AvroSchemaProperties;
 import io.fineo.schema.store.SchemaStore;
 import io.fineo.schema.store.StoreManager;
+import io.fineo.schema.store.timestamp.MultiPatternTimestampParser;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.Test;
@@ -53,6 +54,7 @@ import java.util.Map;
 import java.util.Properties;
 
 import static com.google.common.collect.Lists.newArrayList;
+import static com.google.common.collect.Maps.newHashMap;
 import static io.fineo.etl.FineoProperties.KINESIS_PARSED_RAW_OUT_STREAM_NAME;
 import static io.fineo.etl.FineoProperties.RAW_PREFIX;
 import static io.fineo.etl.FineoProperties.STAGED_PREFIX;
@@ -115,6 +117,41 @@ public class ITEndToEndLambdaLocal {
 
     // do the actual running
     run(state, event, false);
+    state.getRunner().cleanup();
+  }
+
+  @Test
+  public void testTestCustomTimestampAliasAndFormat() throws Exception {
+    final String fixedTsString = "Tue, 06 Sep 2016 19:00:46 GMT";
+    final long fixedTs = 1473188446000l;
+
+    String timestampAlias = "tsAlias";
+    String org = "orgid", metric = "metricname", field = "fieldname";
+
+    // create the schema for the org
+    E2ETestState state = prepareTest();
+    SchemaStore store = state.getResources().getStore();
+    StoreManager manager = new StoreManager(store);
+    manager.newOrg(org)
+           .newMetric().setDisplayName(metric)
+           .withTimestampFormat(MultiPatternTimestampParser.TimeFormats.RFC_1123_DATE_TIME.name())
+           .newField().withName(field).withType(StoreManager.Type.BOOLEAN).build()
+           .build().commit();
+    manager.updateOrg(org)
+           .updateMetric(metric).addFieldAlias(AvroSchemaProperties.TIMESTAMP_KEY, timestampAlias)
+           .build().commit();
+
+    Map<String, Object> event = new HashMap<>();
+    event.put(AvroSchemaProperties.ORG_ID_KEY, org);
+    event.put(AvroSchemaProperties.ORG_METRIC_TYPE_KEY, metric);
+    event.put(timestampAlias, fixedTsString);
+    event.put(field, true);
+
+    Map<String, Object> expectedOut = newHashMap(event);
+    expectedOut.remove(timestampAlias);
+    expectedOut.put(AvroSchemaProperties.TIMESTAMP_KEY, fixedTs);
+
+    run(state, event, expectedOut, false);
     state.getRunner().cleanup();
   }
 
@@ -272,14 +309,19 @@ public class ITEndToEndLambdaLocal {
   }
 
   public static void run(E2ETestState state, Map<String, Object> json, boolean registerEvent)
-    throws
-    Exception {
+    throws Exception {
+    run(state, json, json, registerEvent);
+  }
+
+  public static void run(E2ETestState state, Map<String, Object> json, Map<String, Object>
+    expected, boolean registerEvent)
+    throws Exception {
     EndToEndTestRunner runner = state.getRunner();
     runner.setup();
     if (registerEvent) {
       runner.run(json);
     } else {
-      runner.send(json);
+      runner.send(json, expected);
     }
     runner.validate();
   }

@@ -1,7 +1,6 @@
 package io.fineo.lambda.dynamo.avro;
 
 import com.amazonaws.services.dynamodbv2.document.Item;
-import com.amazonaws.util.Base64;
 import io.fineo.internal.customer.BaseFields;
 import io.fineo.internal.customer.FieldMetadata;
 import io.fineo.schema.Record;
@@ -21,7 +20,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.function.Predicate;
 
 import static com.google.common.collect.Lists.newArrayList;
@@ -144,64 +142,6 @@ public class DynamoAvroRecordDecoder {
       "Got a row for which no alias matches! Row: " + row + ", aliases: " + aliasNames);
   }
 
-  private class ItemRecord implements Record {
-    private final Item item;
-
-    private ItemRecord(Item item) {
-      this.item = item;
-    }
-
-    @Override
-    public Boolean getBooleanByField(String fieldName) {
-      return item.getBoolean(fieldName);
-    }
-
-    @Override
-    public Integer getIntegerByField(String fieldName) {
-      return item.getInt(fieldName);
-    }
-
-    @Override
-    public Long getLongByFieldName(String fieldName) {
-      return item.getLong(fieldName);
-    }
-
-    @Override
-    public Float getFloatByFieldName(String fieldName) {
-      return item.getFloat(fieldName);
-    }
-
-    @Override
-    public Double getDoubleByFieldName(String fieldName) {
-      return item.getDouble(fieldName);
-    }
-
-    @Override
-    public ByteBuffer getBytesByFieldName(String fieldName) {
-      return item.getByteBuffer(fieldName);
-    }
-
-    @Override
-    public String getStringByField(String fieldName) {
-      return item.getString(fieldName);
-    }
-
-    @Override
-    public Collection<String> getFieldNames() {
-      return item.asMap().keySet();
-    }
-
-    @Override
-    public Iterable<Map.Entry<String, Object>> getFields() {
-      return item.asMap().entrySet();
-    }
-
-    @Override
-    public Object getField(String name) {
-      return item.get(name);
-    }
-  }
-
   private class IdSpecificItemRecord implements Record {
     private final String id;
     private final Item item;
@@ -254,12 +194,12 @@ public class DynamoAvroRecordDecoder {
 
     @Override
     public Iterable<Map.Entry<String, Object>> getFields() {
-      return null;
+      throw new UnsupportedOperationException();
     }
 
     @Override
     public Object getField(String name) {
-      return null;
+      return item.getMap(name).get(id);
     }
   }
 
@@ -286,10 +226,4 @@ public class DynamoAvroRecordDecoder {
 //      return stringEncode.apply(value.getB());
 //    throw new IllegalArgumentException("All attribute fields are null!");
 //  }
-
-  private Function<ByteBuffer, String> stringEncode = buffer -> {
-    byte[] actual = new byte[buffer.remaining()];
-    buffer.get(actual);
-    return Base64.encodeAsString(actual);
-  };
 }

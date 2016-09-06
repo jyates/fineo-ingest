@@ -11,6 +11,7 @@ public class EventFormTracker {
   private byte[] sent;
   private Map<String, Object> json;
   private GenericRecord avro;
+  private Map<String, Object> expected;
 
   public void sent(byte[] send) {
     this.sent = send;
@@ -34,5 +35,13 @@ public class EventFormTracker {
 
   public void setRecord(GenericRecord record) {
     this.avro = record;
+  }
+
+  public void expect(Map<String, Object> expectedOut) {
+    this.expected = expectedOut;
+  }
+
+  public Map<String, Object> getExpected() {
+    return expected;
   }
 }

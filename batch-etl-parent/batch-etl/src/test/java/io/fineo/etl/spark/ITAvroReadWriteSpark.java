@@ -91,7 +91,7 @@ public class ITAvroReadWriteSpark {
     File ingest = folder.newFolder("ingest");
     File archive = folder.newFolder("completed");
     Pair<E2ETestState, ETLOptions> ran = run(ingest, archive, null);
-    verifyETLOutput(ran, ran.getLeft().getRunner().getProgress().getJson());
+    verifyETLOutput(ran, ran.getLeft().getRunner().getProgress().getExpected());
   }
 
   @Test

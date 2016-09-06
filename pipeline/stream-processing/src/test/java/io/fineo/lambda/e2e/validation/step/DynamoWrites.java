@@ -16,6 +16,6 @@ public class DynamoWrites extends ValidationStep {
     EventFormTracker progress) {
     // verify that we wrote the right things to DynamoDB
     RecordMetadata metadata = RecordMetadata.get(progress.getAvro());
-    manager.verifyDynamoWrites(metadata, progress.getJson());
+    manager.verifyDynamoWrites(metadata, progress.getExpected());
   }
 }

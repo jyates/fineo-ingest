@@ -15,6 +15,7 @@
   </appender>
   <logger name="io.fineo.lambda.aws" level="TRACE"/>
   <logger name="io.fineo.lambda.dynamo.avro" level="TRACE"/>
+  <logger name="io.fineo.lambda.e2e.validation" level="TRACE"/>
   <root level="INFO">
     <appender-ref ref="LAMBDA"/>
   </root>

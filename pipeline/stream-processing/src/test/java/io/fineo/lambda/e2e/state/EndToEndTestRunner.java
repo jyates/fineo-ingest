@@ -112,7 +112,7 @@ public class EndToEndTestRunner {
 
   public void run(Map<String, Object> json) throws Exception {
     register(json);
-    send(json);
+    send(json, json);
   }
 
   public void register(Map<String, Object> json) throws Exception {
@@ -121,7 +121,12 @@ public class EndToEndTestRunner {
   }
 
   public void send(Map<String, Object> json) throws Exception {
+    send(json, json);
+  }
+
+  public void send(Map<String, Object> json, Map<String, Object> expectedOut) throws Exception {
     progress.sending(json);
+    progress.expect(expectedOut);
     this.progress.sent(this.manager.send(json));
     this.status.sent();
   }

@@ -80,9 +80,9 @@ public class ValidationUtils {
     LOG.info("Record matches JSON!");
   }
 
-  public static void verifyAvroRecordsFromStream(IResourceManager manager, EventFormTracker progress,
-    String stream, Supplier<BlockingQueue<List<ByteBuffer>>> bytes, int timeout)
-    throws IOException, InterruptedException {
+  public static void verifyAvroRecordsFromStream(IResourceManager manager,
+    EventFormTracker progress, String stream, Supplier<BlockingQueue<List<ByteBuffer>>> bytes,
+    int timeout) throws IOException, InterruptedException {
     BlockingQueue<List<ByteBuffer>> queue = bytes.get();
     List<ByteBuffer> parsedBytes = new ArrayList<>();
     List<ByteBuffer> elem;
@@ -92,12 +92,12 @@ public class ValidationUtils {
     // read the parsed avro records
     List<GenericRecord> parsedRecords = LambdaTestUtils.readRecords(combine(parsedBytes));
     assertEquals("[" + stream + "] Got unexpected number of records: " +
-                 (parsedRecords.isEmpty() ? "<empty>": parsedRecords), 1, parsedRecords.size());
+                 (parsedRecords.isEmpty() ? "<empty>" : parsedRecords), 1, parsedRecords.size());
     GenericRecord record = parsedRecords.get(0);
 
     // org/schema naming
     TestRecordMetadata.verifyRecordMetadataMatchesExpectedNaming(record);
-    verifyRecordMatchesJson(manager.getStore(), progress.getJson(), record);
+    verifyRecordMatchesJson(manager.getStore(), progress.getExpected(), record);
     progress.setRecord(record);
   }
 }
