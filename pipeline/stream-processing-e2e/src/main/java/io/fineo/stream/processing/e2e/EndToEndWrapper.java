@@ -20,9 +20,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
-import static io.fineo.lambda.configure.util.InstanceToNamed.property;
-import static java.lang.String.format;
-
 public class EndToEndWrapper {
 
   public static void main(String[] args) throws Exception {
