@@ -39,7 +39,7 @@ public class LaunchBatchProcessingEmrCluster implements LambdaHandler<Map<String
   private static final String EXEC_ROLE = // role for actually doing the work on the cluster
     "Fineo-BatchIngest"; // yeah, just the name, not the arn. Not sure why.
   private static final String SERVICE_ROLE = // role that EMR assumes to _manage_ the cluster
-    "arn:aws:iam::766732214526:role/transient-spark-emr-service-role";
+    "arn:aws:iam::766732214526:role/emr-batch-ingest";
 
   // EC2 Settings
   private static final String RELEASE_LABEL = "emr-4.7.2";
