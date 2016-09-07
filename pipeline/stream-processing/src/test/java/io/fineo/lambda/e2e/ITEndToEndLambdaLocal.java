@@ -104,7 +104,8 @@ public class ITEndToEndLambdaLocal {
     SchemaStore store = state.getResources().getStore();
     StoreManager manager = new StoreManager(store);
     manager.newOrg(org)
-           .newMetric().setDisplayName(metric).addKeyAliases(customKey)
+           .withMetricKeys(customKey)
+           .newMetric().setDisplayName(metric)
            .newField().withName(field).withType(StoreManager.Type.BOOLEAN).build()
            .build().commit();
 
