@@ -222,6 +222,13 @@
                       </excludes>
                     </filter>
                   </filters>
+                  <relocations>
+                    <!-- Shade our guice -->
+                    <relocation>
+                      <pattern>com.google.inject</pattern>
+                      <shadedPattern>io.fineo.com.google.inject</shadedPattern>
+                    </relocation>
+                  </relocations>
                   <transformers>
                     <transformer
                        implementation="org.apache.maven.plugins.shade.resource.IncludeResourceTransformer">

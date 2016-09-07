@@ -114,7 +114,11 @@
                 <configuration>
                   <artifactSet>
                   <includes>
+                    <include>io.fineo.lambda:*</include>
                     <include>io.fineo.schema:*</include>
+                    <include>io.fineo.etl:*</include>
+                    <include>io.fineo.etl.pipeline:*</include>
+
                     <include>org.apache.avro:avro</include>
                     <include>org.codehaus.jackson:*</include>
                     <include>com.thoughtworks.paranamer:paranamer</include>
@@ -126,8 +130,6 @@
                     <include>com.fasterxml.jackson.dataformat:jackson-dataformat-cbor</include>
                     <include>com.google.guava:guava</include>
 
-                    <include>io.fineo.etl.pipeline:*</include>
-                    <include>io.fineo.etl:*</include>
                     <include>com.fasterxml.jackson.jr:jackson-jr-objects</include>
                     <include>com.google.inject:guice</include>
                     <include>javax.inject:javax.inject</include>
