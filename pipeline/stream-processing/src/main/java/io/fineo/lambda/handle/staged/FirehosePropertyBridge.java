@@ -28,7 +28,7 @@ public class FirehosePropertyBridge extends AbstractModule {
   @Provides
   @Named(FirehoseModule.FIREHOSE_COMMIT_ERROR_STREAM_NAME)
   public String getFirehoseCommitErrorName(
-    @Named("fineo.firehose.staged.error.commit") String name) {
+    @Named("fineo.firehose.staged.malformed") String name) {
     return name;
   }
 }
