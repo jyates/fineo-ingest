@@ -288,12 +288,6 @@
                       </manifestEntries>
                     </transformer>
                   </transformers>
-                  <relocations>
-                    <relocation>
-                      <pattern>com.google.inject</pattern>
-                      <shadedPattern>io.fineo.com.google.inject</shadedPattern>
-                    </relocation>
-                  </relocations>
                 </configuration>
               </execution>
             </executions>

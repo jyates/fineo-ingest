@@ -12,18 +12,20 @@ import io.fineo.lambda.configure.dynamo.DynamoModule;
 import io.fineo.lambda.configure.dynamo.DynamoRegionConfigurator;
 import io.fineo.lambda.configure.firehose.FirehoseFunctions;
 import io.fineo.lambda.configure.firehose.FirehoseModule;
+import io.fineo.lambda.configure.util.InstanceToNamed;
 import io.fineo.lambda.configure.util.SingleInstanceModule;
 import io.fineo.lambda.firehose.IFirehoseBatchWriter;
 import io.fineo.lambda.handle.raw.RawJsonToRecordHandler;
 import io.fineo.lambda.handle.schema.inject.SchemaStoreModule;
-import io.fineo.lambda.handle.staged.StagedFirehosePropertyBridge;
 import io.fineo.lambda.handle.staged.RecordToDynamoHandler;
+import io.fineo.lambda.handle.staged.StagedFirehosePropertyBridge;
 import io.fineo.lambda.kinesis.IKinesisProducer;
 
 import java.io.Serializable;
 import java.util.Properties;
 
 import static com.google.common.collect.Lists.newArrayList;
+import static io.fineo.etl.FineoProperties.KINESIS_PARSED_RAW_OUT_STREAM_NAME;
 
 /**
  * Bean class to handleEvent the actual options for the batch processing
@@ -72,6 +74,8 @@ public class BatchOptions implements Serializable {
     return Guice.createInjector(
       new PropertiesModule(this.props),
       DefaultCredentialsModule.create(this.props),
+      // override the property - we don't actually care where it writes, it all goes to the queue
+      InstanceToNamed.property(KINESIS_PARSED_RAW_OUT_STREAM_NAME, "raw-archive"),
       new DynamoModule(),
       new DynamoRegionConfigurator(),
       new SchemaStoreModule(),
