@@ -138,7 +138,7 @@ public class DynamoUpdate {
 
   /**
    * Initial request assumes that we have already created this row previous, so we are just
-   * attempting to set map conditions (in some caes, that may be a bad assumption, but this gets
+   * attempting to set map conditions (in some cases, that may be a bad assumption, but this gets
    * us somewhere).
    */
   private UpdateItemRequest getInitialRequest(UpdateItemRequest baseRequest) {

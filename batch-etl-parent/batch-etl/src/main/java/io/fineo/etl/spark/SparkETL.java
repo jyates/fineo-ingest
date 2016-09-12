@@ -47,6 +47,7 @@ import java.util.Set;
 import java.util.stream.Stream;
 
 import static com.google.common.collect.Lists.newArrayList;
+import static io.fineo.etl.spark.fs.RddUtils.getRddByKey;
 import static io.fineo.etl.spark.util.AvroSparkUtils.getSparkType;
 import static io.fineo.schema.store.AvroSchemaProperties.BASE_FIELDS_KEY;
 import static io.fineo.schema.store.AvroSchemaProperties.ORG_ID_KEY;
@@ -239,10 +240,6 @@ public class SparkETL {
     return schema.getFields()
                  .stream().sequential()
                  .filter(field -> !field.name().equals(BASE_FIELDS_KEY));
-  }
-
-  private <A, B> JavaRDD getRddByKey(JavaPairRDD<A, Iterable<B>> pairRDD, A key) {
-    return pairRDD.filter(v -> v._1().equals(key)).values().flatMap(tuples -> tuples);
   }
 
   public static void main(String[] args) throws URISyntaxException, IOException {

@@ -33,6 +33,7 @@ import static io.fineo.etl.FineoProperties.KINESIS_PARSED_RAW_OUT_STREAM_NAME;
 public class BatchOptions implements Serializable {
 
   private Properties props;
+  private String errorDirectory;
 
   public void setProps(Properties props) {
     this.props = props;
@@ -81,5 +82,9 @@ public class BatchOptions implements Serializable {
       new SchemaStoreModule(),
       new SingleInstanceModule<>(queue, IKinesisProducer.class)
     ).getInstance(RawJsonToRecordHandler.class);
+  }
+
+  public String getErrorDirectory() {
+    return errorDirectory;
   }
 }

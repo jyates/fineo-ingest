@@ -9,6 +9,8 @@ protocol Lambda{
 
   // A malformed record instance
   record Malformed {
+    string org;
+    string message;
     bytes recordContent;
   }
 }
