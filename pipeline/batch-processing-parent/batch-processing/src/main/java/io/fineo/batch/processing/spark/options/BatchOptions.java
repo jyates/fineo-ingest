@@ -18,7 +18,7 @@ import io.fineo.lambda.firehose.IFirehoseBatchWriter;
 import io.fineo.lambda.handle.raw.RawJsonToRecordHandler;
 import io.fineo.lambda.handle.schema.inject.SchemaStoreModule;
 import io.fineo.lambda.handle.staged.RecordToDynamoHandler;
-import io.fineo.lambda.handle.staged.StagedFirehosePropertyBridge;
+import io.fineo.lambda.handle.staged.FirehosePropertyBridge;
 import io.fineo.lambda.kinesis.IKinesisProducer;
 
 import java.io.Serializable;
@@ -65,7 +65,7 @@ public class BatchOptions implements Serializable {
       new FirehoseFunctions(),
       // just load the archive functions - errors we just fail the job for right now
       new FirehoseModule().withArchive(),
-      new StagedFirehosePropertyBridge().withArchive()
+      new FirehosePropertyBridge().withArchive()
     )).getInstance(
       Key.get(IFirehoseBatchWriter.class, Names.named(FirehoseModule.FIREHOSE_ARCHIVE_STREAM)));
   }

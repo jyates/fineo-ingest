@@ -20,30 +20,30 @@ import java.util.List;
  * This bridge supports the 'staged data' lambda stage
  * </p>
  */
-public class StagedFirehosePropertyBridge extends AbstractModule {
+public class FirehosePropertyBridge extends AbstractModule {
 
-  public static final String FIREHOSE_STAGED_ARCHIVE_NAME_KEY = "fineo.firehose.staged.archive";
-  public static final String FIREHOSE_STAGED_MALFORMED_NAME_KEY = "fineo.firehose.staged.error";
-  public static final String FIREHOSE_STAGED_ERROR_NAME_KEY = "fineo.firehose.staged.error.commit";
+  public static final String STAGED_FIREHOSE_ARCHIVE = "fineo.firehose.staged.archive";
+  public static final String STAGED_FIREHOSE_MALFORMED = "fineo.firehose.staged.error";
+  public static final String STAGED_FIREHOSE_ERROR = "fineo.firehose.staged.error.commit";
 
   private final List<Pair<Class<? extends Provider<String>>, String>> bindings = new ArrayList<>();
 
-  public StagedFirehosePropertyBridge withAllBindings() {
+  public FirehosePropertyBridge withAllBindings() {
     return withArchive().withError().withMalformed();
   }
 
-  public StagedFirehosePropertyBridge withArchive() {
+  public FirehosePropertyBridge withArchive() {
     this.bindings.add(new Pair<>(ArchiveName.class, FirehoseModule.FIREHOSE_ARCHIVE_STREAM_NAME));
     return this;
   }
 
-  public StagedFirehosePropertyBridge withMalformed() {
+  public FirehosePropertyBridge withMalformed() {
     this.bindings
       .add(new Pair<>(MalformedName.class, FirehoseModule.FIREHOSE_MALFORMED_RECORDS_STREAM_NAME));
     return this;
   }
 
-  public StagedFirehosePropertyBridge withError() {
+  public FirehosePropertyBridge withError() {
     this.bindings
       .add(new Pair<>(ErrorName.class, FirehoseModule.FIREHOSE_COMMIT_ERROR_STREAM_NAME));
     return this;
@@ -60,7 +60,7 @@ public class StagedFirehosePropertyBridge extends AbstractModule {
     private final String name;
 
     @Inject
-    public ArchiveName(@Named(FIREHOSE_STAGED_ARCHIVE_NAME_KEY) String name) {
+    public ArchiveName(@Named(STAGED_FIREHOSE_ARCHIVE) String name) {
       this.name = name;
     }
 
@@ -74,7 +74,7 @@ public class StagedFirehosePropertyBridge extends AbstractModule {
     private final String name;
 
     @Inject
-    public MalformedName(@Named(FIREHOSE_STAGED_MALFORMED_NAME_KEY) String name) {
+    public MalformedName(@Named(STAGED_FIREHOSE_MALFORMED) String name) {
       this.name = name;
     }
 
@@ -88,7 +88,7 @@ public class StagedFirehosePropertyBridge extends AbstractModule {
     private final String name;
 
     @Inject
-    public ErrorName(@Named(FIREHOSE_STAGED_ERROR_NAME_KEY) String name) {
+    public ErrorName(@Named(STAGED_FIREHOSE_ERROR) String name) {
       this.name = name;
     }
 
