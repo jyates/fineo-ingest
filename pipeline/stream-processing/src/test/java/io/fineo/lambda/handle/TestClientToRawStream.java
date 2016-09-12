@@ -14,6 +14,7 @@ import io.fineo.lambda.configure.util.SingleInstanceModule;
 import io.fineo.lambda.handle.ingest.CustomerEventHandler;
 import io.fineo.lambda.handle.ingest.CustomerEventIngest;
 import io.fineo.lambda.handle.ingest.CustomerEventRequest;
+import io.fineo.lambda.handle.ingest.CustomerEventResponse;
 import io.fineo.lambda.handle.schema.HandlerTestUtils;
 import io.fineo.schema.store.AvroSchemaProperties;
 import org.junit.Test;
@@ -104,6 +105,12 @@ public class TestClientToRawStream {
     }catch (Exception e){
       HandlerTestUtils.expectError(e, 400, "Bad Request");
     }
+  }
+
+  @Test
+  public void testIncludesEmailStacktraceForMissingOrgId() throws Exception {
+    CustomerEventIngest ingest = getLambda(new ObjectMapper(), stream, getStreamToMapClient(null));
+    HandlerTestUtils.fail500(prov -> ingest.getInstance(), new CustomerEventRequest());
   }
 
   private Context context() {

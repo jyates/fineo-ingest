@@ -7,6 +7,7 @@ import com.amazonaws.services.kinesis.model.PutRecordsResult;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Preconditions;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import io.fineo.lambda.handle.external.ExternalErrorsUtil;
@@ -56,9 +57,7 @@ public class CustomerEventHandler extends ExternalFacingRequestHandler<CustomerE
   @Override
   protected CustomerEventResponse handle(CustomerEventRequest event, Context context)
     throws Exception {
-    if (event.getCustomerKey() == null) {
-      throw ExternalErrorsUtil.get500(context, "Missing customer key from API Gateway");
-    }
+    Preconditions.checkNotNull(event.getCustomerKey(), "Missing customer key from API Gateway");
 
     return event.getEvent() == null ?
            handleEvents(event, context) :
