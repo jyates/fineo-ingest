@@ -124,20 +124,7 @@ public class BatchProcessor {
       }
     }
 
-    // attempt to write out the successful records
-    List<JavaFutureAction> actions = new ArrayList<>(2);
-    JavaRDD<GenericRecord> toWrite = context.union(successes.toArray(new JavaRDD[0]));
-    actions.add(toWrite.foreachPartitionAsync(new DynamoWriter(opts)));
-    // we write them separately to firehose because we don't have a way of just saving files
-    // directly to S3 without them being sequence files
-    actions.add(toWrite.foreachPartitionAsync(new StagedFirehoseWriter(opts)));
-    System.out.println("Processing records");
-
-    // wait for all the actions to complete
-    for (JavaFutureAction action : actions) {
-      action.get();
-    }
-    System.out.println("All records processed");
+    writeSuccesses(context, successes.toArray(new JavaRDD[0]));
 
     if (failure != null) {
       System.out.println("Some failures found - writing them out");
@@ -156,6 +143,26 @@ public class BatchProcessor {
     }
 
     return loader;
+  }
+
+  private void writeSuccesses(JavaSparkContext context, JavaRDD[] javaRDDs)
+    throws ExecutionException, InterruptedException {
+    if (javaRDDs == null || javaRDDs.length == 0) {
+      return;
+    }
+    List<JavaFutureAction> actions = new ArrayList<>(2);
+    JavaRDD<GenericRecord> toWrite = context.union(javaRDDs);
+    actions.add(toWrite.foreachPartitionAsync(new DynamoWriter(opts)));
+    // we write them separately to firehose because we don't have a way of just saving files
+    // directly to S3 without them being sequence files
+    actions.add(toWrite.foreachPartitionAsync(new StagedFirehoseWriter(opts)));
+    System.out.println("Processing records");
+
+    // wait for all the actions to complete
+    for (JavaFutureAction action : actions) {
+      action.get();
+    }
+    System.out.println("All records processed");
   }
 
   private List<JavaPairRDD<ReadResult, Iterable<GenericRecord>>> parse(Multimap<String, Path> files,

@@ -21,7 +21,7 @@ public class FirehoseToMalformedInstanceFunctionModule extends FirehoseFunctions
 
   static final Function<ByteBuffer, ByteBuffer> func = data -> {
     // convert the data into a malformed record
-    Malformed mal = Malformed.newBuilder().setRecordContent(data).build();
+    Malformed mal = Malformed.newBuilder().setRecordContent(data).setMessage("").setOrg("").build();
     // write it out into a new bytebuffer that we can read
     FirehoseRecordWriter writer = new FirehoseRecordWriter();
     try {

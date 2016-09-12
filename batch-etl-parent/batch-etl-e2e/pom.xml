@@ -33,6 +33,7 @@
     <dependency>
       <groupId>io.fineo.etl</groupId>
       <artifactId>spark-common</artifactId>
+      <version>${project.version}</version>
       <classifier>tests</classifier>
       <scope>compile</scope>
     </dependency>
