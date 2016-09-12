@@ -39,7 +39,7 @@ public class CustomerEventHandler extends ExternalFacingRequestHandler<CustomerE
 
   private static final Logger LOG = LoggerFactory.getLogger(CustomerEventHandler.class);
   public static final String CUSTOMER_EVENT_HANDLER_KINESIS_STREAM =
-    "fineo.api.stream.kinesis.stream";
+    "fineo.kinesis.ingest";
 
   private final ObjectMapper mapper;
   private final String stream;
