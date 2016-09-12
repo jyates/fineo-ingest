@@ -6,6 +6,7 @@ import com.amazonaws.services.kinesis.model.PutRecordsRequest;
 import com.amazonaws.services.kinesis.model.PutRecordsRequestEntry;
 import com.amazonaws.services.kinesis.model.PutRecordsResult;
 import com.amazonaws.services.lambda.runtime.Context;
+import com.amazonaws.util.json.Jackson;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ArrayListMultimap;
@@ -30,6 +31,7 @@ import java.util.UUID;
 import static com.google.common.collect.Lists.newArrayList;
 import static io.fineo.lambda.configure.util.InstanceToNamed.namedInstance;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyString;
@@ -57,6 +59,21 @@ public class TestClientToRawStream {
     verifyReadEvents(events, mapper, stream, event);
   }
 
+
+  @Test
+  public void testFromRawJson() throws Exception {
+    Map<String, Object> event = new HashMap<>();
+    event.put(AvroSchemaProperties.TIMESTAMP_KEY, 124);
+    Map<String , Object> map = new HashMap<>();
+    map.put("customerKey", orgId);
+    map.put("event", event);
+    String msg = Jackson.toJsonPrettyString(map);
+    CustomerEventRequest request = Jackson.fromJsonString(msg, CustomerEventRequest.class);
+    assertEquals(orgId, request.getCustomerKey());
+    assertEquals(event, request.getEvent());
+    assertNull(request.getEvents());
+  }
+  
   @Test
   public void testEvents() throws Exception {
     Map<String, Object> o1 = new HashMap<>();
