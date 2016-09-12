@@ -8,7 +8,17 @@ public class EventResult {
     return errorCode;
   }
 
-  public void setErrorCode(String errorCode) {
+  public EventResult setErrorCode(String errorCode) {
     this.errorCode = errorCode;
+    return this;
+  }
+
+  public String getErrorMessage() {
+    return errorMessage;
+  }
+
+  public EventResult setErrorMessage(String errorMessage) {
+    this.errorMessage = errorMessage;
+    return this;
   }
 }

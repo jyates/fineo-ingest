@@ -3,13 +3,16 @@ package io.fineo.lambda.handle.ingest;
 import com.amazonaws.services.kinesis.model.InvalidArgumentException;
 import com.amazonaws.services.kinesis.model.ProvisionedThroughputExceededException;
 import com.amazonaws.services.kinesis.model.PutRecordRequest;
+import com.amazonaws.services.kinesis.model.PutRecordsRequest;
 import com.amazonaws.services.kinesis.model.PutRecordsResult;
 import com.amazonaws.services.kinesis.model.ResourceNotFoundException;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Joiner;
 import com.google.inject.Inject;
 import io.fineo.lambda.aws.AwsAsyncRequest;
+import io.fineo.lambda.aws.FlushResponse;
 import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.lambda.handle.external.ExternalErrorsUtil;
 import io.fineo.lambda.handle.external.ExternalFacingRequestHandler;
@@ -20,11 +23,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.Base64;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static com.google.common.collect.Maps.newHashMap;
 import static java.lang.String.format;
@@ -58,47 +61,40 @@ public class CustomerEventHandler extends ExternalFacingRequestHandler<CustomerE
            handleSingleEvent(event, context);
   }
 
-  private CustomerEventResponse handleEvents(CustomerEventRequest request, Context context) {
+  private CustomerEventResponse handleEvents(CustomerEventRequest request, Context context)
+    throws JsonProcessingException {
     CustomerMultiEventResponse response = new CustomerMultiEventResponse();
     if (request.getEvents() == null || request.getEvents().length == 0) {
       return response;
     }
-
-    Map<Object, EventResult> resultMap = new HashMap<>();
-    List<EventResult> results = new ArrayList<>();
-    List<Pair<byte[], Object>> events = new ArrayList<>(request.getEvents().length);
-    for (Map<String, Object> e : request.getEvents()) {
-      Pair<byte[], Object> p = new Pair<>(encode(context, request, e), e);
-      EventResult result = new EventResult();
-      resultMap.put(e, result);
-      results.add(result);
-      events.add(p);
+    List<Pair<byte[], Object>> events =
+      Stream.of(request.getEvents())
+            .map(e -> new Pair<byte[], Object>(encode(context, request, e), e))
+            .collect(Collectors.toList());
+    producer.write(getPartitionKey(request), events);
+    FlushResponse<List<Object>, PutRecordsRequest> out = producer.flushEvents();
+    MultiWriteFailures<List<Object>, PutRecordsRequest> failures = out.getFailures();
+    if (failures.any()) {
+      assert failures.getActions().size() == 1 :
+        "More than one failure result when sending a batch of records!";
+      AwsAsyncRequest<List<Object>, PutRecordsRequest> failed = failures.getActions().get(0);
+      Exception cause = failed.getException();
+      throw ExternalErrorsUtil.get500(context, format("Kinesis error: %s - %s \n%s", cause
+        .getClass(), cause.getMessage() + Joiner.on("\n(").join(cause.getStackTrace())));
     }
 
-    producer.write(getPartitionKey(request), events, success -> {
-      PutRecordsResult result = success.getResult();
-      // they were all successful, nothing to do!
-      if (result.getFailedRecordCount() == 0) {
-        return;
-      }
-
-      // some of the records failed, propagate the reason
-      List<Object> raw = success.getBaseRecord();
-      for (Object sent : raw) {
-        EventResult res = resultMap.get(sent);
-        if (res == null) {
-          LOG.error("No event result mapping found for: " + sent);
-          continue;
-        }
-
-        
-      }
-      resultMap.get(success.)
-    }, failure -> {
-
-    });
-    producer.flushEvents();
-    return null;
+    assert out.getCompleted().size() == 1 : "More than on success when sending a batch of records";
+    AwsAsyncRequest<List<Object>, PutRecordsRequest> success = out.getCompleted().get(0);
+    PutRecordsResult result = success.getResult();
+    if (result.getFailedRecordCount() == 0) {
+      return response;
+    }
+    List<EventResult> results =
+      result.getRecords().stream()
+            .map(r -> new EventResult().setErrorCode(r.getErrorCode())
+                                       .setErrorMessage(r.getErrorMessage()))
+            .collect(Collectors.toList());
+    return response.setResults(results);
   }
 
   private CustomerEventResponse handleSingleEvent(CustomerEventRequest request, Context context)

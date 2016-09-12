@@ -15,8 +15,6 @@ import io.fineo.schema.Pair;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 
 public class SimpleKinesisProducer {
 
@@ -52,9 +50,7 @@ public class SimpleKinesisProducer {
     }
   }
 
-  public void write(String stream, String partitionKey, List<Pair<byte[], Object>> sources,
-    Consumer<AwsAsyncRequest<List<Object>, PutRecordsRequest>> successHandler,
-    Consumer<AwsAsyncRequest<List<Object>, PutRecordsRequest>> failureHandler) {
+  public void write(String stream, String partitionKey, List<Pair<byte[], Object>> sources) {
     Batch current = new Batch();
     List<Batch> batches = new ArrayList<>();
     for (Pair<byte[], Object> source : sources) {
@@ -71,7 +67,7 @@ public class SimpleKinesisProducer {
     }
 
     for (Batch batch : batches) {
-      submitBatchRecords(stream, batch.records, batch.events, successHandler, failureHandler);
+      submitBatchRecords(stream, batch.records, batch.events);
     }
   }
 
@@ -97,13 +93,11 @@ public class SimpleKinesisProducer {
   }
 
   private void submitBatchRecords(String stream,
-    List<PutRecordsRequestEntry> records, List<Object> events,
-    Consumer<AwsAsyncRequest<List<Object>, PutRecordsRequest>> successHandler,
-    Consumer<AwsAsyncRequest<List<Object>, PutRecordsRequest>> failureHandler) {
+    List<PutRecordsRequestEntry> records, List<Object> events) {
     PutRecordsRequest request = new PutRecordsRequest()
       .withStreamName(stream)
       .withRecords(records);
-    submitterEvents.submit(new AwsAsyncRequest<>(events, request, successHandler, failureHandler));
+    submitterEvents.submit(new AwsAsyncRequest<>(events, request));
   }
 
   public FlushResponse<Object, PutRecordRequest> flushSingleEvent() {

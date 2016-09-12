@@ -34,10 +34,8 @@ public class SingleStreamKinesisProducer {
     producer.write(stream, partitionKey, buff, source);
   }
 
-  public void write(String partitionKey, List<Pair<byte[], Object>> sources,
-    Consumer<AwsAsyncRequest<List<Object>, PutRecordsRequest>> success,
-    Consumer<AwsAsyncRequest<List<Object>, PutRecordsRequest>> failure) {
-    producer.write(stream, partitionKey, sources, success, failure);
+  public void write(String partitionKey, List<Pair<byte[], Object>> sources) {
+    producer.write(stream, partitionKey, sources);
   }
 
   public <T> FlushResponse<T, PutRecordRequest> flushSingleEvent() {
