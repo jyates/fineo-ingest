@@ -11,5 +11,5 @@ import java.io.IOException;
 public interface IKinesisProducer {
   void add(String stream, String partitionKey, GenericRecord data) throws IOException;
 
-  MultiWriteFailures<GenericRecord> flush();
+  MultiWriteFailures<GenericRecord, ?> flush();
 }

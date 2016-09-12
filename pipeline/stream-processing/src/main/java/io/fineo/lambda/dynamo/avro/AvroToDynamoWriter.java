@@ -20,7 +20,7 @@ import org.apache.avro.generic.GenericRecord;
  * However, you should use a higher level api read and access records in Dynamo.
  * </p>
  * <p>
- * It's assumed that we don't have a large number of actions taken before calling flush.
+ * It's assumed that we don't have a large number of actions taken before calling flushSingleEvent.
  * Generally, this is fine as this writer is called from a short-running lambda function that
  * only handles a very small number of requests.
  * </p>
@@ -52,7 +52,7 @@ public class AvroToDynamoWriter {
     }
   }
 
-  public MultiWriteFailures<GenericRecord> flush() {
+  public MultiWriteFailures<GenericRecord, ?> flush() {
     return this.submitter.flush();
   }
 

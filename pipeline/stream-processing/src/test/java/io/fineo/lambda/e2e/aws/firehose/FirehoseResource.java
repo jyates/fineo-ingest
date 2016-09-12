@@ -171,7 +171,7 @@ public class FirehoseResource implements AwsResource {
             .withTimeout(Math.max(timeout, READ_S3_INTERVAL))
             .withDescription(
               "Firehose -> file://" + testFiles.getAbsolutePath() + "] "
-              + "flush; max expected: ~60sec")
+              + "flushSingleEvent; max expected: ~60sec")
             .withStatus(() -> {
               if (testFiles.exists()) {
                 return testFiles.listFiles();
@@ -200,7 +200,7 @@ public class FirehoseResource implements AwsResource {
             .withTimeout(Math.max(timeout, READ_S3_INTERVAL))
             .withDescription(
               "Firehose -> s3 [" + bucket + "/" + prefix + "] "
-              + "flush; max expected: ~60sec")
+              + "flushSingleEvent; max expected: ~60sec")
             .withStatus(() -> s3.listObjects(bucket, prefix))
             .withStatusCheck(
               listing -> ((ObjectListing) listing).getObjectSummaries().size() > 0);

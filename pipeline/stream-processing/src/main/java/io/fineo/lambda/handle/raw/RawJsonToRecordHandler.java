@@ -57,7 +57,7 @@ public class RawJsonToRecordHandler {
     LOG.trace("Wrote the record");
   }
 
-  public MultiWriteFailures<GenericRecord> commit() {
+  public MultiWriteFailures<GenericRecord, ?> commit() {
     LOG.trace("Flushing converted records to kinesis");
     return convertedRecords.flush();
   }

@@ -90,7 +90,7 @@ public class AvroToStorageHandler extends KinesisHandler {
   }
 
   @Override
-  public MultiWriteFailures<GenericRecord> commit() throws IOException {
+  public MultiWriteFailures<GenericRecord, ?> commit() throws IOException {
     return this.handler.flush();
   }
 }

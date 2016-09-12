@@ -40,6 +40,7 @@ public class AwsAsyncSubmitter<REQUEST extends AmazonWebServiceRequest, RESPONSE
 
   private volatile Phaser phase = newPhaser();
   private final List<UpdateItemHandler> actions = Collections.synchronizedList(new ArrayList<>());
+  private List<AwsAsyncRequest<BASE_REQUEST, REQUEST>> completed = new ArrayList<>();
   private final List<AwsAsyncRequest<BASE_REQUEST, REQUEST>> failed =
     Collections.synchronizedList(new ArrayList<>(0));
 
@@ -86,12 +87,19 @@ public class AwsAsyncSubmitter<REQUEST extends AmazonWebServiceRequest, RESPONSE
    *
    * @return any failures that occurred
    */
-  public MultiWriteFailures<BASE_REQUEST> flush() {
+  public MultiWriteFailures<BASE_REQUEST, REQUEST> flush() {
+    return flushRequests().getFailures();
+  }
+
+  public FlushResponse<BASE_REQUEST, REQUEST> flushRequests() {
     Phaser phaser = this.phase;
     register(phaser, "Flushing");
+    List<AwsAsyncRequest<BASE_REQUEST, REQUEST>> completed = this.completed;
     phaser.awaitAdvance(done(phaser, "Flushing - waiting advance"));
+    this.completed = new ArrayList<>();
     LOG.trace("Flushed completed => Advanced"); ;
-    return new MultiWriteFailures(failed);
+    MultiWriteFailures failures = new MultiWriteFailures(failed);
+    return new FlushResponse<>(completed, failures);
   }
 
   private static Phaser newPhaser() {
@@ -148,6 +156,7 @@ public class AwsAsyncSubmitter<REQUEST extends AmazonWebServiceRequest, RESPONSE
       LOG.debug("Update success: " + this);
       this.request.onSuccess(request, updateItemResult);
       actions.remove(this);
+      completed.add(this.request);
       done(this.phaser, "Completed update: " + this);
     }
 

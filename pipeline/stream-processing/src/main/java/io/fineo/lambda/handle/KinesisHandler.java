@@ -55,14 +55,14 @@ public abstract class KinesisHandler implements LambdaHandler<KinesisEvent> {
 
     archive.get().flush();
 
-    MultiWriteFailures<GenericRecord> failures = commit();
+    MultiWriteFailures<GenericRecord, ?> failures = commit();
     LOG.debug("Finished writing record batches");
     FailureHandler.handle(failures, this.commitFailures::get);
   }
 
   protected abstract void handleEvent(KinesisEvent.KinesisEventRecord rec) throws IOException;
 
-  protected abstract MultiWriteFailures<GenericRecord> commit() throws IOException;
+  protected abstract MultiWriteFailures<GenericRecord, ?> commit() throws IOException;
 
   private void addRecordError(KinesisEvent.KinesisEventRecord rec) {
     ByteBuffer buff = rec.getKinesis().getData();

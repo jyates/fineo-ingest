@@ -44,7 +44,7 @@ public class KinesisProducer implements IKinesisProducer {
   }
 
   @Override
-  public MultiWriteFailures<GenericRecord> flush() {
+  public MultiWriteFailures<GenericRecord, ?> flush() {
     return this.submitter.flush();
   }
 }

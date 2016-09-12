@@ -1,8 +1,8 @@
 package io.fineo.lambda;
 
 import com.google.common.base.Preconditions;
-import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.lambda.avro.FirehoseRecordWriter;
+import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.lambda.firehose.IFirehoseBatchWriter;
 import org.apache.avro.generic.GenericRecord;
 
@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
  */
 public class FailureHandler {
 
-  public static void handle(MultiWriteFailures<GenericRecord> failures,
+  public static void handle(MultiWriteFailures<GenericRecord, ?> failures,
     Supplier<IFirehoseBatchWriter> creator) throws IOException {
     if (!failures.any()) {
       return;
@@ -30,7 +30,8 @@ public class FailureHandler {
     errors.flush();
   }
 
-  public static List<GenericRecord> getFailedRecords(MultiWriteFailures<GenericRecord> failures) {
+  public static List<GenericRecord> getFailedRecords(MultiWriteFailures<GenericRecord, ?>
+    failures) {
     Preconditions.checkNotNull(failures.getActions());
     return failures.getActions().parallelStream()
                    .map(handler -> handler.getBaseRecord())

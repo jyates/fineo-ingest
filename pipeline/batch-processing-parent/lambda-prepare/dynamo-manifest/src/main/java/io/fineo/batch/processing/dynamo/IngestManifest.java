@@ -73,7 +73,7 @@ public class IngestManifest {
       async.submit(new AwsAsyncRequest<>(manifest, request));
     }
 
-    MultiWriteFailures<DynamoIngestManifest> failed = async.flush();
+    MultiWriteFailures<DynamoIngestManifest, UpdateItemRequest> failed = async.flush();
     if (failed.any()) {
       throw new RuntimeException("Failed to write all the batches! Failed: " + failed.getActions());
     }

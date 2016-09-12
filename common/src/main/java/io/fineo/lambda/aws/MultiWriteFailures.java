@@ -1,15 +1,17 @@
 package io.fineo.lambda.aws;
 
+import com.amazonaws.AmazonWebServiceRequest;
+
 import java.util.List;
 
 /**
  * Any failures that have accumulated since the last time that 'flush' was called
  */
-public class MultiWriteFailures<T> {
+public class MultiWriteFailures<T, R extends AmazonWebServiceRequest> {
 
-  private final List<AwsAsyncRequest<T, ?>> actions;
+  private final List<AwsAsyncRequest<T, R>> actions;
 
-  public MultiWriteFailures(List<AwsAsyncRequest<T, ?>> failed) {
+  public MultiWriteFailures(List<AwsAsyncRequest<T, R>> failed) {
     this.actions = failed;
   }
 
@@ -22,7 +24,7 @@ public class MultiWriteFailures<T> {
     return actions.size() > 0;
   }
 
-  public List<AwsAsyncRequest<T, ?>> getActions() {
+  public List<AwsAsyncRequest<T, R>> getActions() {
     return actions;
   }
 }

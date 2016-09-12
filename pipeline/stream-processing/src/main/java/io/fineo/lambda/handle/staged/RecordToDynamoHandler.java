@@ -25,8 +25,8 @@ public class RecordToDynamoHandler {
     }
   }
 
-  public MultiWriteFailures<GenericRecord> flush() {
-      // get any failed writes and flush them into the right firehose for failures
+  public MultiWriteFailures<GenericRecord, ?> flush() {
+      // get any failed writes and flushSingleEvent them into the right firehose for failures
       return this.dynamo.flush();
     }
 }

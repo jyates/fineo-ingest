@@ -69,7 +69,7 @@ public class FirehoseStreams {
    * Determine what timeout we should used based on the stage. Each stage should be waited
    * independently, since records may have not made it to the next stage.
    * <p>
-   * Firehose takes a minute to flush results to s3. We wait doublee that, just in case, the
+   * Firehose takes a minute to flushSingleEvent results to s3. We wait doublee that, just in case, the
    * first time, but after that all writes should have been flushed, so we just read it
    * immediately, for each stage
    * </p>

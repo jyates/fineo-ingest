@@ -64,7 +64,7 @@ public class RawRecordToAvroHandler extends KinesisHandler {
     }
   }
 
-  public MultiWriteFailures<GenericRecord> commit() throws IOException {
+  public MultiWriteFailures<GenericRecord, ?> commit() throws IOException {
     return this.jsonHandler.commit();
   }
 }
