@@ -26,7 +26,7 @@ public class DynamoWriter implements VoidFunction<Iterator<GenericRecord>>, Seri
   @Override
   public void call(Iterator<GenericRecord> genericRecordIterator) throws Exception {
     getHandler().handle(genericRecordIterator);
-    MultiWriteFailures<GenericRecord> failed = handler.flush();
+    MultiWriteFailures failed = handler.flush();
     if (failed.any()) {
       throw new RuntimeException("Failed to store some records!" + failed.getActions());
     }

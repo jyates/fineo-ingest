@@ -1,11 +1,11 @@
 package io.fineo.lambda.kinesis;
 
-import com.google.common.util.concurrent.MoreExecutors;
-import io.fineo.lambda.e2e.aws.kinesis.KinesisStreamManager;
 import com.google.common.collect.Lists;
+import com.google.common.util.concurrent.MoreExecutors;
 import io.fineo.aws.AwsDependentTests;
 import io.fineo.aws.rule.AwsCredentialResource;
 import io.fineo.lambda.aws.MultiWriteFailures;
+import io.fineo.lambda.e2e.aws.kinesis.KinesisStreamManager;
 import io.fineo.lambda.util.AwsTestRule;
 import io.fineo.lambda.util.LambdaTestUtils;
 import io.fineo.lambda.util.run.FutureWaiter;
@@ -65,7 +65,7 @@ public class ITKinesisProducerAws {
     GenericRecord data = SchemaTestUtils.createRandomRecord();
     IKinesisProducer producer = new KinesisProducer(manager.getKinesis(), 1);
     producer.add(streamName, "a", data);
-    MultiWriteFailures<GenericRecord> failures = producer.flush();
+    MultiWriteFailures failures = producer.flush();
     assertFalse("Some actions failed: " + failures.getActions(), failures.any());
 
     // verify that the data we wrote is what we read back in

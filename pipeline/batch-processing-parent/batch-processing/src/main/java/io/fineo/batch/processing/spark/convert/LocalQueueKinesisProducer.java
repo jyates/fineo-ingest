@@ -9,12 +9,10 @@ import java.util.Collections;
 import java.util.Queue;
 import java.util.concurrent.LinkedTransferQueue;
 
-/**
- *
- */
 public class LocalQueueKinesisProducer implements IKinesisProducer {
 
   private Queue<GenericRecord> records = new LinkedTransferQueue<>();
+
   @Override
   public void add(String stream, String partitionKey, GenericRecord data) throws IOException {
     records.add(data);
@@ -25,7 +23,7 @@ public class LocalQueueKinesisProducer implements IKinesisProducer {
   }
 
   @Override
-  public MultiWriteFailures<GenericRecord> flush() {
+  public MultiWriteFailures flush() {
     return new MultiWriteFailures<>(Collections.emptyList());
   }
 }

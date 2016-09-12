@@ -52,7 +52,7 @@ public class AvroToDynamoWriter {
     }
   }
 
-  public MultiWriteFailures<GenericRecord, ?> flush() {
+  public MultiWriteFailures<GenericRecord, UpdateItemRequest> flush() {
     return this.submitter.flush();
   }
 

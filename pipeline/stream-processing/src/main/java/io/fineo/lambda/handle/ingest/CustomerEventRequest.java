@@ -12,23 +12,26 @@ public class CustomerEventRequest {
     return customerKey;
   }
 
-  public void setCustomerKey(String customerKey) {
+  public CustomerEventRequest setCustomerKey(String customerKey) {
     this.customerKey = customerKey;
+    return this;
   }
 
   public Map<String, Object> getEvent() {
     return event;
   }
 
-  public void setEvent(Map<String, Object> event) {
+  public CustomerEventRequest setEvent(Map<String, Object> event) {
     this.event = event;
+    return this;
   }
 
   public Map<String, Object>[] getEvents() {
     return events;
   }
 
-  public void setEvents(Map<String, Object>[] events) {
+  public CustomerEventRequest setEvents(Map<String, Object>[] events) {
     this.events = events;
+    return this;
   }
 }

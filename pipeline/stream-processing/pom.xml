@@ -85,6 +85,12 @@
       <scope>test</scope>
     </dependency>
     <dependency>
+      <groupId>io.fineo.lambda</groupId>
+      <artifactId>lambda-core</artifactId>
+      <classifier>tests</classifier>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
       <groupId>io.fineo.aws</groupId>
       <artifactId>aws-common</artifactId>
     </dependency>

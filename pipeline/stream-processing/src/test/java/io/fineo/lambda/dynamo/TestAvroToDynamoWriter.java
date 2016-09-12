@@ -57,7 +57,7 @@ public class TestAvroToDynamoWriter {
         time, 1).get(0);
       writer.write(record);
       util.stop();
-      MultiWriteFailures<GenericRecord> failures = writer.flush();
+      MultiWriteFailures failures = writer.flush();
       assertTrue(failures.any());
       List<GenericRecord> failed = FailureHandler.getFailedRecords(failures);
       assertEquals(Lists.newArrayList(record), failed);
