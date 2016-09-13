@@ -5,6 +5,9 @@ import com.amazonaws.services.dynamodbv2.document.DynamoDB;
 import com.amazonaws.services.dynamodbv2.document.Table;
 import com.amazonaws.services.dynamodbv2.document.TableCollection;
 import com.amazonaws.services.dynamodbv2.model.ListTablesResult;
+import com.amazonaws.util.json.Jackson;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
@@ -13,17 +16,21 @@ import com.google.inject.Module;
 import io.fineo.aws.AwsDependentTests;
 import io.fineo.batch.processing.dynamo.FailedIngestFile;
 import io.fineo.batch.processing.dynamo.IngestManifest;
+import io.fineo.batch.processing.spark.options.BatchOptions;
 import io.fineo.etl.FineoProperties;
 import io.fineo.lambda.dynamo.rule.AwsDynamoResource;
 import io.fineo.lambda.dynamo.rule.AwsDynamoTablesResource;
 import io.fineo.lambda.handle.schema.SchemaStoreModuleForTesting;
 import io.fineo.lambda.handle.schema.inject.SchemaStoreModule;
+import io.fineo.schema.store.AvroSchemaProperties;
 import io.fineo.schema.store.SchemaStore;
 import io.fineo.schema.store.StoreManager;
+import io.fineo.spark.rule.DefaultConfLoader;
 import io.fineo.spark.rule.LocalSparkRule;
 import io.fineo.test.rule.TestOutput;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.spark.SparkConf;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
@@ -36,13 +43,16 @@ import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Random;
 import java.util.function.Consumer;
 import java.util.stream.StreamSupport;
 import java.util.zip.GZIPOutputStream;
 
+import static io.fineo.batch.processing.spark.options.BatchOptions.BATCH_ERRORS_OUTPUT_DIR_KEY;
 import static io.fineo.lambda.configure.util.InstanceToNamed.property;
 import static io.fineo.lambda.configure.util.SingleInstanceModule.instanceModule;
 import static org.junit.Assert.assertEquals;
@@ -62,7 +72,13 @@ public class TestBatchProcessor {
   @Rule
   public AwsDynamoTablesResource tables = new AwsDynamoTablesResource(dynamo);
   @ClassRule
-  public static LocalSparkRule spark = new LocalSparkRule();
+  public static LocalSparkRule spark = new LocalSparkRule(new DefaultConfLoader() {
+    @Override
+    public void load(SparkConf conf) {
+      super.load(conf);
+      BatchProcessor.setSerialization(conf);
+    }
+  });
   @Rule
   public TestOutput output = new TestOutput(false);
 
@@ -109,6 +125,42 @@ public class TestBatchProcessor {
     assertEquals(failures, manifest.failures(false));
   }
 
+  @Test
+  public void testBadRecord() throws Exception {
+    String org = "jorg1234";
+    // missing metrictype
+    Map<String, Object> event = new HashMap<>();
+    event.put(AvroSchemaProperties.TIMESTAMP_KEY, 1234);
+
+    String file = write("bad-data.json", false, writer -> {
+      String json = Jackson.toJsonString(event);
+      writer.write(json);
+    });
+    LocalSparkOptions options = processFiles(0, true, p(org, file));
+    String errors = options.getErrorDirectory();
+    File[] files = new File(errors).listFiles();
+    File orgDir = files[0];
+    assertEquals(org, orgDir.getName());
+    files = orgDir.listFiles();
+    List<File> content = new ArrayList<>();
+    for (File f : files) {
+      if (f.length() > 0 && !f.getName().startsWith(".")) {
+        content.add(f);
+      }
+    }
+    ObjectMapper mapper = new ObjectMapper();
+    assertEquals("Got files: " + content, 1, content.size());
+    Map<String, Object> error =
+      mapper.readValue(content.get(0), new TypeReference<Map<String, Object>>() {
+      });
+    Map<String, Object> expected = new HashMap<>();
+    expected.put("org", org);
+    expected.put("message", "No metric type found in record for metric type keys: [] or standard "
+                            + "type key 'metrictype'");
+    expected.put("recordContent", mapper.writeValueAsString(event));
+    assertEquals(expected, error);
+  }
+
   private String csv(boolean zip) throws IOException {
     return write("test.csv", zip, writer -> {
       writer.println("metrictype,timestamp,field1");
@@ -153,6 +205,11 @@ public class TestBatchProcessor {
 
   private LocalSparkOptions processFiles(int numRows, Pair<String, String>... files)
     throws Exception {
+    return processFiles(numRows, false, files);
+  }
+
+  private LocalSparkOptions processFiles(int numRows, boolean expectErrors,
+    Pair<String, String>... files) throws Exception {
     int uuid = new Random().nextInt(100000);
     String dataTablePrefix = uuid + "-test-storage";
     String schemaStoreTable = uuid + "-test-schemaStore";
@@ -173,13 +230,17 @@ public class TestBatchProcessor {
               manager.newOrg(org).newMetric().setDisplayName("metric").newField().withName("field1")
                      .withType(StoreManager.Type.INTEGER).build().build().commit();
             } catch (Exception e) {
-              throw new RuntimeException("Coudl not create org/metric for: " + org);
+              throw new RuntimeException("Couldn't create org/metric for: " + org);
             }
           });
 
     LocalSparkOptions options =
       new LocalSparkOptions(dynamo.getUtil().getUrl(), dataTablePrefix, schemaStoreTable);
     withInput(options, files);
+    Properties props = new Properties();
+    File errors = output.newFolder();
+    props.setProperty(BATCH_ERRORS_OUTPUT_DIR_KEY, errors.getAbsolutePath());
+    options.setProps(props);
 
     BatchProcessor processor = new BatchProcessor(options);
     processor.run(spark.jsc());
@@ -205,6 +266,10 @@ public class TestBatchProcessor {
     } else {
       assertNull("Shouldn't have written any data, but found data table: " + table, table);
     }
+
+    assertEquals("Found errors files: " + Arrays.toString(errors.list()),
+      expectErrors, errors.list().length > 0);
+
     return options;
   }
 

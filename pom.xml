@@ -198,6 +198,44 @@
           <artifactId>maven-shade-plugin</artifactId>
           <version>${maven.shade.version}</version>
         </plugin>
+        <!-- Scala source compilation -->
+        <plugin>
+          <groupId>net.alchim31.maven</groupId>
+          <artifactId>scala-maven-plugin</artifactId>
+          <version>3.2.2</version>
+          <configuration>
+            <recompileMode>incremental</recompileMode>
+            <useZincServer>false</useZincServer>
+            <charset>${project.build.sourceEncoding}</charset>
+            <jvmArgs>
+              <jvmArg>-Xmx1024m</jvmArg>
+            </jvmArgs>
+            <!-- <addScalacArgs>-target:jvm-1.5</addScalacArgs> -->
+            <scalaVersion>${scala.major.version}</scalaVersion>
+          </configuration>
+          <executions>
+            <execution>
+              <id>compile</id>
+              <goals>
+                <goal>compile</goal>
+              </goals>
+              <phase>compile</phase>
+            </execution>
+            <execution>
+              <id>test-compile</id>
+              <goals>
+                <goal>testCompile</goal>
+              </goals>
+              <phase>test-compile</phase>
+            </execution>
+            <execution>
+              <phase>process-resources</phase>
+              <goals>
+                <goal>compile</goal>
+              </goals>
+            </execution>
+          </executions>
+        </plugin>
       </plugins>
     </pluginManagement>
     <plugins>

@@ -1,4 +1,4 @@
-package io.fineo.etl.spark.util;
+package io.fineo.spark.util;
 
 import org.apache.avro.Schema;
 import org.apache.spark.sql.types.DataType;

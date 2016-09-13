@@ -1,14 +1,17 @@
 package io.fineo.batch.processing.spark;
 
 import com.google.common.collect.Multimap;
+import io.fineo.batch.MalformedAvroKyroRegistrator;
 import io.fineo.batch.processing.dynamo.FailedIngestFile;
 import io.fineo.batch.processing.dynamo.IngestManifest;
 import io.fineo.batch.processing.spark.convert.ReadResult;
 import io.fineo.batch.processing.spark.convert.RecordConverter;
 import io.fineo.batch.processing.spark.options.BatchOptions;
 import io.fineo.batch.processing.spark.write.DynamoWriter;
+import io.fineo.batch.processing.spark.write.MalformedRowConverter;
 import io.fineo.batch.processing.spark.write.StagedFirehoseWriter;
 import io.fineo.lambda.configure.util.PropertiesLoaderUtil;
+import io.fineo.spark.avro.RowConverter;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.hadoop.fs.Path;
 import org.apache.spark.SparkConf;
@@ -18,7 +21,9 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.sql.DataFrame;
 import org.apache.spark.sql.Row;
+import org.apache.spark.sql.RowFactory;
 import org.apache.spark.sql.SQLContext;
+import org.apache.spark.sql.SaveMode;
 import org.apache.spark.storage.StorageLevel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -136,13 +141,18 @@ public class BatchProcessor {
       // write each org to its own directory
       String errors = opts.getErrorDirectory();
       for (String org : orgs) {
-        JavaRDD<GenericRecord> orgFailedRecords = getRddByKey(out, org);
-        orgFailedRecords.saveAsObjectFile(new Path(errors, org).toString());
+        DataFrame orgFailedRecords = errorDF(sqlContext, getRddByKey(out, org));
+        orgFailedRecords.write().mode(SaveMode.Append).json(new Path(errors, org).toString());
       }
       System.out.println("Finished writing failures");
     }
 
     return loader;
+  }
+
+  private DataFrame errorDF(SQLContext context, JavaRDD<GenericRecord> rdd){
+    RowConverter converter = new MalformedRowConverter();
+    return context.applySchema(rdd.map(converter), converter.getStruct());
   }
 
   private void writeSuccesses(JavaSparkContext context, JavaRDD[] javaRDDs)
@@ -181,6 +191,8 @@ public class BatchProcessor {
     return records;
   }
 
+  private String s;
+
   public static void main(String[] args) throws Exception {
     System.out.println("--- Starting batch processing ---");
     // parse arguments and load options
@@ -192,6 +204,8 @@ public class BatchProcessor {
 
     // setup spark
     SparkConf conf = new SparkConf().setAppName(BatchProcessor.class.getName());
+    setSerialization(conf);
+
     System.out.println("--- Created conf ---");
     final JavaSparkContext context = new JavaSparkContext(conf);
     System.out.println("--- Created context ---");
@@ -209,5 +223,14 @@ public class BatchProcessor {
       throw e;
     }
     System.out.println("^^^^^ App completed ^^^^^^");
+  }
+
+  /**
+   * register our own classes and serialization mechanisms
+   *
+   * @param conf to update
+   */
+  public static void setSerialization(SparkConf conf) {
+    conf.set("spark.kryo.registrator", MalformedAvroKyroRegistrator.class.getName());
   }
 }

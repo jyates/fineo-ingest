@@ -12,7 +12,6 @@ import com.amazonaws.services.elasticmapreduce.model.JobFlowInstancesConfig;
 import com.amazonaws.services.elasticmapreduce.model.RunJobFlowRequest;
 import com.amazonaws.services.elasticmapreduce.model.RunJobFlowResult;
 import com.amazonaws.services.elasticmapreduce.model.StepConfig;
-import com.amazonaws.services.elasticmapreduce.util.StepFactory;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import io.fineo.lambda.handle.LambdaHandler;
@@ -24,7 +23,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 import static java.lang.String.format;
 
@@ -83,12 +81,9 @@ public class LaunchBatchProcessingEmrCluster implements LambdaHandler<Map<String
     if (overrides == null) {
       overrides = new HashMap<>(0);
     }
-
-    StepFactory factory = new StepFactory(region + ".elasticmapreduce");
     List<StepConfig> steps = new ArrayList<>();
-    steps.add(enableDebugging(factory));
-
-    steps.add(sparkProcessingStep(factory, overrides));
+    steps.add(enableDebugging());
+    steps.add(sparkProcessingStep(overrides));
 
     InstanceGroupConfig master = new InstanceGroupConfig()
       .withInstanceRole(InstanceRoleType.MASTER)
@@ -145,7 +140,7 @@ public class LaunchBatchProcessingEmrCluster implements LambdaHandler<Map<String
       .withProperties(java8);
   }
 
-  private StepConfig sparkProcessingStep(StepFactory factory, Map<String, Object> overrides) {
+  private StepConfig sparkProcessingStep(Map<String, Object> overrides) {
     HadoopJarStepConfig stepConf = new HadoopJarStepConfig()
       .withJar("command-runner.jar")
       .withArgs("spark-submit",
@@ -159,7 +154,7 @@ public class LaunchBatchProcessingEmrCluster implements LambdaHandler<Map<String
       .withHadoopJarStep(stepConf);
   }
 
-  private StepConfig enableDebugging(StepFactory factory) {
+  private StepConfig enableDebugging() {
     return new StepConfig()
       .withName("Enable Debugging")
       .withActionOnFailure("TERMINATE_JOB_FLOW")

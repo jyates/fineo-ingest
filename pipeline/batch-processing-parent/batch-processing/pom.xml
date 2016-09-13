@@ -13,8 +13,14 @@
 
   <build>
     <plugins>
+      <!-- copy dependencies for dynamo -->
       <plugin>
         <artifactId>maven-dependency-plugin</artifactId>
+      </plugin>
+      <!-- compile scala sources -->
+      <plugin>
+        <groupId>net.alchim31.maven</groupId>
+        <artifactId>scala-maven-plugin</artifactId>
       </plugin>
     </plugins>
   </build>
@@ -61,6 +67,11 @@
       <groupId>com.databricks</groupId>
       <artifactId>spark-csv_${scala.base.version}</artifactId>
       <version>1.4.0</version>
+    </dependency>
+    <dependency>
+      <groupId>com.databricks</groupId>
+      <artifactId>spark-avro_2.10</artifactId>
+      <version>2.0.1</version>
     </dependency>
 
     <!-- AWS -->

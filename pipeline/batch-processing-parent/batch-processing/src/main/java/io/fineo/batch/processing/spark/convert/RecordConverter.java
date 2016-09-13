@@ -1,5 +1,7 @@
 package io.fineo.batch.processing.spark.convert;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.fineo.batch.processing.spark.options.BatchOptions;
 import io.fineo.internal.customer.Malformed;
 import io.fineo.lambda.handle.raw.RawJsonToRecordHandler;
@@ -22,6 +24,7 @@ import java.util.Map;
 public class RecordConverter
   implements PairFunction<Row, ReadResult, GenericRecord>, Serializable {
 
+  private transient ObjectMapper mapper;
   private final BatchOptions options;
   private transient RawJsonToRecordHandler handler;
   private LocalQueueKinesisProducer queue;
@@ -34,18 +37,30 @@ public class RecordConverter
   }
 
   @Override
-  public Tuple2<ReadResult, GenericRecord> call(Row obj)
-    throws Exception {
+  public Tuple2<ReadResult, GenericRecord> call(Row obj) throws Exception {
     RawJsonToRecordHandler handler = getHandler();
     try {
       handler.handle(transform(obj));
       return new Tuple2<>(new ReadResult(ReadResult.Outcome.SUCCESS, orgId),
         queue.getRecords().remove());
     } catch (Exception e) {
-      Malformed mal = Malformed.newBuilder().setRecordContent(ByteBuffer.wrap(obj.toString
-        ().getBytes())).setOrg(orgId).setMessage(e.getMessage()).build();
+      Malformed mal = Malformed.newBuilder()
+                               .setRecordContent(ByteBuffer.wrap(rowBackToJson(obj).getBytes()))
+                               .setOrg(orgId)
+                               .setMessage(e.getMessage())
+                               .build();
       return new Tuple2<>(new ReadResult(ReadResult.Outcome.FAILURE, orgId), mal);
     }
+  }
+
+  private String rowBackToJson(Row row) throws JsonProcessingException {
+    Map<String, Object> event = new HashMap<>();
+    StructType schema = row.schema();
+    for (String field : schema.fieldNames()) {
+      event.put(field, row.getAs(field));
+    }
+
+    return getMapper().writeValueAsString(event);
   }
 
   protected Map<String, Object> transform(Row row) {
@@ -64,5 +79,12 @@ public class RecordConverter
       handler = options.getRawJsonToRecordHandler(queue);
     }
     return handler;
+  }
+
+  private ObjectMapper getMapper() {
+    if (this.mapper == null) {
+      this.mapper = new ObjectMapper();
+    }
+    return this.mapper;
   }
 }

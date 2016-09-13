@@ -32,8 +32,8 @@ import static io.fineo.etl.FineoProperties.KINESIS_PARSED_RAW_OUT_STREAM_NAME;
  */
 public class BatchOptions implements Serializable {
 
+  public static final String BATCH_ERRORS_OUTPUT_DIR_KEY = "fineo.batch.errors.dir";
   private Properties props;
-  private String errorDirectory;
 
   public void setProps(Properties props) {
     this.props = props;
@@ -85,6 +85,6 @@ public class BatchOptions implements Serializable {
   }
 
   public String getErrorDirectory() {
-    return errorDirectory;
+   return props.getProperty(BATCH_ERRORS_OUTPUT_DIR_KEY);
   }
 }
