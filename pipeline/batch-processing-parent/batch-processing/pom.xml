@@ -95,10 +95,10 @@
       <groupId>org.apache.spark</groupId>
       <artifactId>spark-sql_${scala.base.version}</artifactId>
     </dependency>
-    <dependency>
-      <groupId>org.apache.spark</groupId>
-      <artifactId>spark-hive_${scala.base.version}</artifactId>
-    </dependency>
+    <!--<dependency>-->
+      <!--<groupId>org.apache.spark</groupId>-->
+      <!--<artifactId>spark-hive_${scala.base.version}</artifactId>-->
+    <!--</dependency>-->
     <dependency>
       <groupId>com.twitter</groupId>
       <artifactId>chill-avro_${scala.base.version}</artifactId>
@@ -213,7 +213,6 @@
                       <exclude>org.mockito:mockito-all</exclude>
                       <exclude>com.amazonaws:DynamoDBLocal</exclude>
                       <exclude>io.fineo.aws:aws-common</exclude>
-                      <exclude>io.fineo.etl:spark-common</exclude>
                       <exclude>io.fineo.schema:schema-core:tests</exclude>
                       <exclude>io.fineo.etl.pipeline:pipeline-utils</exclude>
                       <!-- aws transitive dependencies-->
@@ -275,6 +274,8 @@
                         <exclude>META-INF/*.DSA</exclude>
                         <exclude>META-INF/*.RSA</exclude>
                         <exclude>.gitkeep</exclude>
+                        <!-- Executable producer - huge! We don't even use kinesis -->
+                        <exclude>amazon-kinesis-producer-native-binaries/**</exclude>
                       </excludes>
                     </filter>
                   </filters>

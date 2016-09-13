@@ -20,20 +20,25 @@ import io.fineo.lambda.handle.schema.inject.SchemaStoreModule;
 import io.fineo.lambda.handle.staged.RecordToDynamoHandler;
 import io.fineo.lambda.handle.staged.FirehosePropertyBridge;
 import io.fineo.lambda.kinesis.IKinesisProducer;
+import org.apache.hadoop.fs.Path;
 
+import java.io.File;
 import java.io.Serializable;
+import java.time.Instant;
 import java.util.Properties;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static io.fineo.etl.FineoProperties.KINESIS_PARSED_RAW_OUT_STREAM_NAME;
+import static java.time.Instant.now;
 
 /**
  * Bean class to handleEvent the actual options for the batch processing
  */
 public class BatchOptions implements Serializable {
 
+  public static final String VERSION = "v0";
   public static final String BATCH_ERRORS_OUTPUT_DIR_KEY = "fineo.batch.errors.dir";
-  private Properties props;
+  protected Properties props;
 
   public void setProps(Properties props) {
     this.props = props;
@@ -85,6 +90,7 @@ public class BatchOptions implements Serializable {
   }
 
   public String getErrorDirectory() {
-   return props.getProperty(BATCH_ERRORS_OUTPUT_DIR_KEY);
+    String path = props.getProperty(BATCH_ERRORS_OUTPUT_DIR_KEY);
+    return new Path(new Path(path, VERSION), Long.toString(now().toEpochMilli())).toString();
   }
 }

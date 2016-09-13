@@ -6,9 +6,9 @@ import com.amazonaws.services.dynamodbv2.document.Table;
 import com.amazonaws.services.dynamodbv2.document.TableCollection;
 import com.amazonaws.services.dynamodbv2.model.ListTablesResult;
 import com.amazonaws.util.json.Jackson;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.base.Joiner;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
 import com.google.inject.Guice;
@@ -16,7 +16,6 @@ import com.google.inject.Module;
 import io.fineo.aws.AwsDependentTests;
 import io.fineo.batch.processing.dynamo.FailedIngestFile;
 import io.fineo.batch.processing.dynamo.IngestManifest;
-import io.fineo.batch.processing.spark.options.BatchOptions;
 import io.fineo.etl.FineoProperties;
 import io.fineo.lambda.dynamo.rule.AwsDynamoResource;
 import io.fineo.lambda.dynamo.rule.AwsDynamoTablesResource;
@@ -41,6 +40,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -137,21 +137,17 @@ public class TestBatchProcessor {
       writer.write(json);
     });
     LocalSparkOptions options = processFiles(0, true, p(org, file));
-    String errors = options.getErrorDirectory();
-    File[] files = new File(errors).listFiles();
-    File orgDir = files[0];
-    assertEquals(org, orgDir.getName());
-    files = orgDir.listFiles();
-    List<File> content = new ArrayList<>();
-    for (File f : files) {
-      if (f.length() > 0 && !f.getName().startsWith(".")) {
-        content.add(f);
-      }
-    }
+    String base = options.getProperties().getProperty(BATCH_ERRORS_OUTPUT_DIR_KEY);
+    LocalBatchErrors errors = new LocalBatchErrors(base);
+    List<Instant> runs = errors.getRuns();
+    assertEquals("Got runs: " + runs + ", under " + base, 1, runs.size());
+    List<LocalBatchErrors.OrgErrors> orgErrors = errors.getErrors(runs.get(0));
+    assertEquals("Wrong number of orgs with errors under " + base, 1, orgErrors.size());
+    LocalBatchErrors.OrgErrors oe = orgErrors.get(0);
+    assertEquals("Wrong number of errors for org under " + base, 1, oe.getErrors().size());
     ObjectMapper mapper = new ObjectMapper();
-    assertEquals("Got files: " + content, 1, content.size());
     Map<String, Object> error =
-      mapper.readValue(content.get(0), new TypeReference<Map<String, Object>>() {
+      mapper.readValue(oe.getErrors().get(0), new TypeReference<Map<String, Object>>() {
       });
     Map<String, Object> expected = new HashMap<>();
     expected.put("org", org);
@@ -170,10 +166,17 @@ public class TestBatchProcessor {
 
   private String json(boolean zip) throws IOException {
     return write("test.json", zip, w -> {
-      w.println("{" + Joiner.on(",")
-                            .join(" \"metrictype\" : \"metric\"",
-                              " \"timestamp\" : 1234",
-                              " \"field1\" : 1") + "}");
+      Map<String, Object> map = new HashMap<>();
+      map.put(AvroSchemaProperties.ORG_METRIC_TYPE_KEY, "metric");
+      map.put(AvroSchemaProperties.TIMESTAMP_KEY, 1234);
+      map.put("field1", 1);
+      String msg;
+      try {
+        msg = new ObjectMapper().writeValueAsString(map);
+      } catch (JsonProcessingException e) {
+        throw new RuntimeException(e);
+      }
+      w.println(msg);
     });
   }
 

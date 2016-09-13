@@ -1,6 +1,6 @@
 package io.fineo.lambda.e2e.state;
 
-import io.fineo.lambda.configure.legacy.StreamType;
+import io.fineo.lambda.configure.StreamType;
 import io.fineo.schema.Pair;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;

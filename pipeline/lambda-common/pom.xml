@@ -15,6 +15,14 @@
     <jackson-jr.version>2.7.0</jackson-jr.version>
   </properties>
 
+  <build>
+    <plugins>
+      <plugin>
+        <artifactId>maven-jar-plugin</artifactId>
+      </plugin>
+    </plugins>
+  </build>
+
   <dependencies>
     <dependency>
       <groupId>io.fineo.etl</groupId>

@@ -49,9 +49,9 @@ import static com.google.common.collect.Lists.newArrayList;
 import static io.fineo.etl.FineoProperties.KINESIS_PARSED_RAW_OUT_STREAM_NAME;
 import static io.fineo.etl.FineoProperties.RAW_PREFIX;
 import static io.fineo.etl.FineoProperties.STAGED_PREFIX;
-import static io.fineo.lambda.configure.legacy.LambdaClientProperties
+import static io.fineo.lambda.configure.LambdaClientProperties
   .getFirehoseStreamPropertyVisibleForTesting;
-import static io.fineo.lambda.configure.legacy.StreamType.ARCHIVE;
+import static io.fineo.lambda.configure.StreamType.ARCHIVE;
 import static io.fineo.lambda.e2e.ITEndToEndLambdaLocal.INGEST_CONNECTOR;
 import static io.fineo.lambda.e2e.ITEndToEndLambdaLocal.STAGE_CONNECTOR;
 import static io.fineo.lambda.e2e.ITEndToEndLambdaLocal.getMockFirehoses;

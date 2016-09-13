@@ -11,7 +11,7 @@ import com.google.inject.name.Names;
 import io.fineo.etl.FineoProperties;
 import io.fineo.lambda.configure.PropertiesModule;
 import io.fineo.lambda.configure.firehose.FirehoseModule;
-import io.fineo.lambda.configure.legacy.StreamType;
+import io.fineo.lambda.configure.StreamType;
 import io.fineo.lambda.configure.util.SingleInstanceModule;
 import io.fineo.lambda.dynamo.avro.AvroToDynamoWriter;
 import io.fineo.lambda.e2e.aws.lambda.LambdaKinesisConnector;
@@ -58,9 +58,9 @@ import static com.google.common.collect.Maps.newHashMap;
 import static io.fineo.etl.FineoProperties.KINESIS_PARSED_RAW_OUT_STREAM_NAME;
 import static io.fineo.etl.FineoProperties.RAW_PREFIX;
 import static io.fineo.etl.FineoProperties.STAGED_PREFIX;
-import static io.fineo.lambda.configure.legacy.LambdaClientProperties
+import static io.fineo.lambda.configure.LambdaClientProperties
   .getFirehoseStreamPropertyVisibleForTesting;
-import static io.fineo.lambda.configure.legacy.StreamType.ARCHIVE;
+import static io.fineo.lambda.configure.StreamType.ARCHIVE;
 
 /**
  * Test the end-to-end workflow of the lambda architecture.

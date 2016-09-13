@@ -6,7 +6,7 @@ import com.google.common.util.concurrent.MoreExecutors;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.Module;
-import io.fineo.lambda.configure.legacy.StreamType;
+import io.fineo.lambda.configure.StreamType;
 import io.fineo.lambda.e2e.aws.lambda.LambdaKinesisConnector;
 import io.fineo.lambda.e2e.manager.collector.OutputCollector;
 import io.fineo.lambda.e2e.state.EndtoEndSuccessStatus;

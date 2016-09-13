@@ -1,7 +1,7 @@
 package io.fineo.lambda.e2e.validation.step;
 
-import io.fineo.lambda.configure.legacy.LambdaClientProperties;
-import io.fineo.lambda.configure.legacy.StreamType;
+import io.fineo.lambda.configure.LambdaClientProperties;
+import io.fineo.lambda.configure.StreamType;
 import io.fineo.lambda.e2e.state.EventFormTracker;
 import io.fineo.lambda.e2e.validation.util.ValidationUtils;
 import io.fineo.lambda.util.LambdaTestUtils;
@@ -15,8 +15,8 @@ import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.function.Function;
 
-import static io.fineo.lambda.configure.legacy.StreamType.COMMIT_ERROR;
-import static io.fineo.lambda.configure.legacy.StreamType.PROCESSING_ERROR;
+import static io.fineo.lambda.configure.StreamType.COMMIT_ERROR;
+import static io.fineo.lambda.configure.StreamType.PROCESSING_ERROR;
 
 public class ErrorStreams extends ValidationStep {
 

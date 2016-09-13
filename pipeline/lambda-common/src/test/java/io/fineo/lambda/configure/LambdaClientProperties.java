@@ -1,4 +1,4 @@
-package io.fineo.lambda.configure.legacy;
+package io.fineo.lambda.configure;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.AbstractModule;
@@ -6,8 +6,6 @@ import com.google.inject.Guice;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
 import io.fineo.etl.FineoProperties;
-import io.fineo.lambda.configure.DefaultCredentialsModule;
-import io.fineo.lambda.configure.PropertiesModule;
 import io.fineo.lambda.configure.util.PropertiesLoaderUtil;
 
 import java.io.IOException;

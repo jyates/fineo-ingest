@@ -1,6 +1,6 @@
 package io.fineo.lambda.e2e.validation;
 
-import io.fineo.lambda.configure.legacy.StreamType;
+import io.fineo.lambda.configure.StreamType;
 import io.fineo.lambda.e2e.state.EndToEndTestBuilder;
 import io.fineo.lambda.e2e.validation.step.DynamoWrites;
 import io.fineo.lambda.e2e.validation.step.ValidationStep;

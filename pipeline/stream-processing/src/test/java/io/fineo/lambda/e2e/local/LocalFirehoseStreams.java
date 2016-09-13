@@ -2,8 +2,8 @@ package io.fineo.lambda.e2e.local;
 
 import com.google.common.base.Preconditions;
 import com.google.inject.Injector;
-import io.fineo.lambda.configure.legacy.LambdaClientProperties;
-import io.fineo.lambda.configure.legacy.StreamType;
+import io.fineo.lambda.configure.LambdaClientProperties;
+import io.fineo.lambda.configure.StreamType;
 import io.fineo.lambda.e2e.util.IngestUtil;
 import io.fineo.lambda.e2e.util.ResourceUtils;
 import io.fineo.lambda.e2e.util.TestProperties;

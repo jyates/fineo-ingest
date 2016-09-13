@@ -1,7 +1,7 @@
 package io.fineo.lambda.e2e.state;
 
 import io.fineo.lambda.configure.PropertiesModule;
-import io.fineo.lambda.configure.legacy.LambdaClientProperties;
+import io.fineo.lambda.configure.LambdaClientProperties;
 import io.fineo.lambda.e2e.manager.ManagerBuilder;
 import io.fineo.lambda.e2e.validation.EndToEndValidator;
 import io.fineo.lambda.e2e.validation.PhaseValidationBuilder;
@@ -14,7 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 
-import static io.fineo.lambda.configure.legacy.LambdaClientProperties.*;
+import static io.fineo.lambda.configure.LambdaClientProperties.*;
 import static io.fineo.lambda.configure.util.SingleInstanceModule.instanceModule;
 import static java.util.stream.Collectors.toList;
 

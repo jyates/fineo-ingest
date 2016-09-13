@@ -2,7 +2,7 @@ package io.fineo.lambda.e2e.manager;
 
 import com.google.inject.Module;
 import io.fineo.lambda.configure.PropertiesModule;
-import io.fineo.lambda.configure.legacy.LambdaClientProperties;
+import io.fineo.lambda.configure.LambdaClientProperties;
 import io.fineo.lambda.configure.util.SingleInstanceModule;
 import io.fineo.lambda.e2e.aws.lambda.LambdaKinesisConnector;
 import io.fineo.lambda.e2e.manager.collector.LoggingCollector;

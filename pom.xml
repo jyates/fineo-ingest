@@ -327,6 +327,13 @@
         <version>${project.version}</version>
       </dependency>
       <dependency>
+        <groupId>io.fineo.etl.pipeline</groupId>
+        <artifactId>lambda-common</artifactId>
+        <version>${project.version}</version>
+        <classifier>tests</classifier>
+        <scope>test</scope>
+      </dependency>
+      <dependency>
         <groupId>io.fineo.etl</groupId>
         <artifactId>common</artifactId>
         <version>${project.version}</version>

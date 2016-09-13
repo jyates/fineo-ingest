@@ -1,6 +1,6 @@
 package io.fineo.lambda.e2e.validation.step;
 
-import io.fineo.lambda.configure.legacy.LambdaClientProperties;
+import io.fineo.lambda.configure.LambdaClientProperties;
 import io.fineo.lambda.e2e.state.EventFormTracker;
 import io.fineo.lambda.e2e.validation.util.TriFunction;
 import io.fineo.lambda.e2e.validation.util.ValidationUtils;
@@ -9,7 +9,7 @@ import io.fineo.lambda.util.IResourceManager;
 import java.nio.ByteBuffer;
 import java.util.List;
 
-import static io.fineo.lambda.configure.legacy.StreamType.ARCHIVE;
+import static io.fineo.lambda.configure.StreamType.ARCHIVE;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;

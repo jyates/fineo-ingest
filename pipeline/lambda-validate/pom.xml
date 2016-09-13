@@ -78,6 +78,12 @@
       <classifier>tests</classifier>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>io.fineo.etl.pipeline</groupId>
+      <artifactId>lambda-common</artifactId>
+      <classifier>tests</classifier>
+      <scope>compile</scope>
+    </dependency>
 
     <dependency>
       <groupId>junit</groupId>

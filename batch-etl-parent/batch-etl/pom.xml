@@ -84,6 +84,12 @@
       <artifactId>jcommander</artifactId>
       <version>1.48</version>
     </dependency>
+    <dependency>
+      <groupId>io.fineo.etl.pipeline</groupId>
+      <artifactId>lambda-common</artifactId>
+      <classifier>tests</classifier>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <profiles>

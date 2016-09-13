@@ -1,4 +1,4 @@
-package io.fineo.lambda.configure.legacy;
+package io.fineo.lambda.configure;
 
 public enum StreamType {
   ARCHIVE("archive"), PROCESSING_ERROR("error"), COMMIT_ERROR("error.commit");

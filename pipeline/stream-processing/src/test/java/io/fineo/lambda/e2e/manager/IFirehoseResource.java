@@ -1,6 +1,6 @@
 package io.fineo.lambda.e2e.manager;
 
-import io.fineo.lambda.configure.legacy.StreamType;
+import io.fineo.lambda.configure.StreamType;
 import io.fineo.lambda.e2e.manager.collector.OutputCollector;
 import io.fineo.lambda.firehose.FirehoseBatchWriter;
 import io.fineo.schema.Pair;

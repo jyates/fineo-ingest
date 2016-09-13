@@ -4,7 +4,6 @@ import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.internal.StaticCredentialsProvider;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.amazonaws.services.dynamodbv2.document.DynamoDB;
-import com.google.common.base.Supplier;
 import com.google.inject.Guice;
 import io.fineo.batch.processing.dynamo.IngestManifest;
 import io.fineo.batch.processing.dynamo.IngestManifestModule;
@@ -23,6 +22,7 @@ import org.schemarepo.ValidatorFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Properties;
 
 import static io.fineo.lambda.configure.util.InstanceToNamed.namedInstance;
 import static io.fineo.lambda.configure.util.SingleInstanceModule.instanceModule;
@@ -92,5 +92,9 @@ public class LocalSparkOptions extends BatchOptions{
       ("AKIAIZFKPYAKBFDZPAEA",
         "18S1bF4bpjCKZP2KRgbqOn7xJLDmqmwSXqq5GAWq"));
     return new AmazonDynamoDBAsyncClient(provider).withEndpoint(dynamoUrl);
+  }
+
+  public Properties getProperties(){
+    return this.props;
   }
 }

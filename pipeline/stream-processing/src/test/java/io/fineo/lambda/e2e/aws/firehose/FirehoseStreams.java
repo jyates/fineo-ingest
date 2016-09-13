@@ -1,7 +1,7 @@
 package io.fineo.lambda.e2e.aws.firehose;
 
 import com.google.common.base.Preconditions;
-import io.fineo.lambda.configure.legacy.StreamType;
+import io.fineo.lambda.configure.StreamType;
 import io.fineo.lambda.e2e.util.TestProperties;
 import io.fineo.lambda.util.Join;
 import io.fineo.schema.Pair;

@@ -1,6 +1,6 @@
 package io.fineo.lambda.e2e.validation;
 
-import io.fineo.lambda.configure.legacy.LambdaClientProperties;
+import io.fineo.lambda.configure.LambdaClientProperties;
 import io.fineo.lambda.e2e.state.EventFormTracker;
 import io.fineo.lambda.e2e.validation.step.ValidationStep;
 import io.fineo.lambda.util.IResourceManager;

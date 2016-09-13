@@ -37,6 +37,12 @@
       <artifactId>lambda-common</artifactId>
     </dependency>
     <dependency>
+      <groupId>io.fineo.etl.pipeline</groupId>
+      <artifactId>lambda-common</artifactId>
+      <classifier>tests</classifier>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
       <groupId>com.beust</groupId>
       <artifactId>jcommander</artifactId>
       <version>1.48</version>

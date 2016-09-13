@@ -4,16 +4,10 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
 import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
-import io.fineo.etl.FineoProperties;
-import io.fineo.lambda.configure.PropertiesModule;
-import io.fineo.lambda.configure.legacy.LambdaClientProperties;
 import io.fineo.lambda.dynamo.LocalDynamoTestUtil;
-import io.fineo.lambda.handle.schema.inject.SchemaStoreModule;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.junit.rules.ExternalResource;
-
-import java.util.Properties;
 
 /**
  * Manage aws tables and getting a connection to them. Generally, this should be used at the
