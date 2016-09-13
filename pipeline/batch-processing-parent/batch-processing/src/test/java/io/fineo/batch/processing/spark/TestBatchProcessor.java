@@ -24,12 +24,11 @@ import io.fineo.lambda.handle.schema.inject.SchemaStoreModule;
 import io.fineo.schema.store.AvroSchemaProperties;
 import io.fineo.schema.store.SchemaStore;
 import io.fineo.schema.store.StoreManager;
-import io.fineo.spark.rule.DefaultConfLoader;
+import io.fineo.spark.avro.AvroSparkUtils;
 import io.fineo.spark.rule.LocalSparkRule;
 import io.fineo.test.rule.TestOutput;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.spark.SparkConf;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
@@ -72,13 +71,8 @@ public class TestBatchProcessor {
   @Rule
   public AwsDynamoTablesResource tables = new AwsDynamoTablesResource(dynamo);
   @ClassRule
-  public static LocalSparkRule spark = new LocalSparkRule(new DefaultConfLoader() {
-    @Override
-    public void load(SparkConf conf) {
-      super.load(conf);
-      BatchProcessor.setSerialization(conf);
-    }
-  });
+  public static LocalSparkRule spark = new LocalSparkRule(
+    conf -> AvroSparkUtils.setKyroAvroSerialization(conf));
   @Rule
   public TestOutput output = new TestOutput(false);
 

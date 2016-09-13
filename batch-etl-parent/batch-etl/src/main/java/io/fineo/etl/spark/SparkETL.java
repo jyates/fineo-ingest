@@ -7,7 +7,7 @@ import io.fineo.etl.spark.fs.FileCleaner;
 import io.fineo.etl.spark.fs.RddLoader;
 import io.fineo.etl.spark.options.ETLOptions;
 import io.fineo.etl.spark.options.OptionsHandler;
-import io.fineo.spark.util.AvroSparkUtils;
+import io.fineo.spark.avro.AvroSparkUtils;
 import io.fineo.lambda.configure.PropertiesModule;
 import io.fineo.lambda.configure.dynamo.DynamoModule;
 import io.fineo.lambda.configure.dynamo.DynamoRegionConfigurator;
@@ -48,7 +48,7 @@ import java.util.stream.Stream;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static io.fineo.etl.spark.fs.RddUtils.getRddByKey;
-import static io.fineo.spark.util.AvroSparkUtils.getSparkType;
+import static io.fineo.spark.avro.AvroSparkUtils.getSparkType;
 import static io.fineo.schema.store.AvroSchemaProperties.BASE_FIELDS_KEY;
 import static io.fineo.schema.store.AvroSchemaProperties.ORG_ID_KEY;
 import static io.fineo.schema.store.AvroSchemaProperties.ORG_METRIC_TYPE_KEY;

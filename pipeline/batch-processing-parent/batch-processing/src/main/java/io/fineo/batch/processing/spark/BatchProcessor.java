@@ -1,7 +1,6 @@
 package io.fineo.batch.processing.spark;
 
 import com.google.common.collect.Multimap;
-import io.fineo.batch.MalformedAvroKyroRegistrator;
 import io.fineo.batch.processing.dynamo.FailedIngestFile;
 import io.fineo.batch.processing.dynamo.IngestManifest;
 import io.fineo.batch.processing.spark.convert.ReadResult;
@@ -10,7 +9,9 @@ import io.fineo.batch.processing.spark.options.BatchOptions;
 import io.fineo.batch.processing.spark.write.DynamoWriter;
 import io.fineo.batch.processing.spark.write.MalformedRowConverter;
 import io.fineo.batch.processing.spark.write.StagedFirehoseWriter;
+import io.fineo.internal.customer.Malformed;
 import io.fineo.lambda.configure.util.PropertiesLoaderUtil;
+import io.fineo.spark.avro.AvroSparkUtils;
 import io.fineo.spark.avro.RowConverter;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.hadoop.fs.Path;
@@ -21,7 +22,6 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.sql.DataFrame;
 import org.apache.spark.sql.Row;
-import org.apache.spark.sql.RowFactory;
 import org.apache.spark.sql.SQLContext;
 import org.apache.spark.sql.SaveMode;
 import org.apache.spark.storage.StorageLevel;
@@ -41,6 +41,7 @@ import java.util.function.Function;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static io.fineo.etl.spark.fs.RddUtils.getRddByKey;
+import static scala.collection.JavaConversions.asScalaBuffer;
 
 /**
  * Run the stream processing pipeline in 'batch mode' as a spark job.
@@ -150,7 +151,7 @@ public class BatchProcessor {
     return loader;
   }
 
-  private DataFrame errorDF(SQLContext context, JavaRDD<GenericRecord> rdd){
+  private DataFrame errorDF(SQLContext context, JavaRDD<GenericRecord> rdd) {
     RowConverter converter = new MalformedRowConverter();
     return context.applySchema(rdd.map(converter), converter.getStruct());
   }
@@ -160,18 +161,28 @@ public class BatchProcessor {
     if (javaRDDs == null || javaRDDs.length == 0) {
       return;
     }
-    List<JavaFutureAction> actions = new ArrayList<>(2);
+
     JavaRDD<GenericRecord> toWrite = context.union(javaRDDs);
-    actions.add(toWrite.foreachPartitionAsync(new DynamoWriter(opts)));
+    JavaFutureAction dynamo = toWrite.foreachPartitionAsync(new DynamoWriter(opts));
     // we write them separately to firehose because we don't have a way of just saving files
     // directly to S3 without them being sequence files
-    actions.add(toWrite.foreachPartitionAsync(new StagedFirehoseWriter(opts)));
+    JavaFutureAction archive = toWrite.foreachPartitionAsync(new StagedFirehoseWriter(opts));
     System.out.println("Processing records");
 
-    // wait for all the actions to complete
-    for (JavaFutureAction action : actions) {
-      action.get();
+    try {
+      dynamo.get();
+    } catch (ExecutionException e) {
+      LOG.error("Error while trying to write to dynamo!", e);
+      throw e;
     }
+
+    try {
+      archive.get();
+    } catch (ExecutionException e) {
+      LOG.error("Error while trying to archive data!", e);
+      throw e;
+    }
+
     System.out.println("All records processed");
   }
 
@@ -204,7 +215,7 @@ public class BatchProcessor {
 
     // setup spark
     SparkConf conf = new SparkConf().setAppName(BatchProcessor.class.getName());
-    setSerialization(conf);
+    AvroSparkUtils.setKyroAvroSerialization(conf);
 
     System.out.println("--- Created conf ---");
     final JavaSparkContext context = new JavaSparkContext(conf);
@@ -223,14 +234,5 @@ public class BatchProcessor {
       throw e;
     }
     System.out.println("^^^^^ App completed ^^^^^^");
-  }
-
-  /**
-   * register our own classes and serialization mechanisms
-   *
-   * @param conf to update
-   */
-  public static void setSerialization(SparkConf conf) {
-    conf.set("spark.kryo.registrator", MalformedAvroKyroRegistrator.class.getName());
   }
 }

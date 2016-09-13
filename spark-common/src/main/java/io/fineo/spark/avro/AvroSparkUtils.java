@@ -1,6 +1,9 @@
-package io.fineo.spark.util;
+package io.fineo.spark.avro;
 
+import io.fineo.etl.AvroKyroRegistrator;
 import org.apache.avro.Schema;
+import org.apache.spark.SparkConf;
+import org.apache.spark.serializer.KryoSerializer;
 import org.apache.spark.sql.types.DataType;
 import org.apache.spark.sql.types.DataTypes;
 
@@ -12,6 +15,12 @@ import static com.google.common.collect.Lists.newArrayList;
 
 
 public class AvroSparkUtils {
+
+  public static void setKyroAvroSerialization(SparkConf conf){
+    conf.set("spark.serializer", KryoSerializer.class.getName());
+    conf.set("spark.kryo.registrator", AvroKyroRegistrator.class.getName());
+  }
+
   public static DataType getSparkType(Schema.Field field) {
     switch (field.schema().getType()) {
       case BOOLEAN:

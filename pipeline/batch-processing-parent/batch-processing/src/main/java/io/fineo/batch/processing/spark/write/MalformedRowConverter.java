@@ -8,7 +8,6 @@ import org.apache.spark.sql.types.StructField;
 
 import java.nio.ByteBuffer;
 
-import static io.fineo.spark.util.AvroSparkUtils.getSparkType;
 import static org.apache.spark.sql.types.DataTypes.createStructField;
 
 /**

@@ -13,7 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
-import static io.fineo.spark.util.AvroSparkUtils.getSparkType;
+import static io.fineo.spark.avro.AvroSparkUtils.getSparkType;
 import static org.apache.spark.sql.types.DataTypes.createStructField;
 import static org.apache.spark.sql.types.DataTypes.createStructType;
 
