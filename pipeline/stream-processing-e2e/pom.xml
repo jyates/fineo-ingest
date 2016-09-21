@@ -110,10 +110,11 @@
                       <include>io.fineo.etl.pipeline:stream-processing:aws</include>
                       <include>io.fineo.etl.pipeline:stream-processing:tests</include>
                       <include>com.beust:jcommander</include>
-                      <include>io.fineo.lambda:lambda-dynamo:tests</include>
                       <include>org.mockito:mockito-all</include>
                       <include>junit:junit</include>
                       <include>io.fineo.schema:schema-core:tests</include>
+                      <include>io.fineo.lambda:lambda-dynamo:tests</include>
+                      <include>io.fineo.etl.pipeline:lambda-common:tests</include>
                       <!--<include>com.fasterxml.jackson.core:jackson-core</include>-->
                     </includes>
                   </artifactSet>
