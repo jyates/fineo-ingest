@@ -30,7 +30,7 @@ public class RunBatchEmrLocal {
     LaunchBatchProcessingEmrCluster launch = new LaunchBatchProcessingEmrCluster(
       "us-east-1",
       "deploy.fineo.io",
-      "lambda/Batch/2016-09-12_18:53:07_-0700/processor/batch-processing-2.0-SNAPSHOT-aws.jar",
+      "lambda/Batch/2016-09-12_22:31:29_-0700/processor/batch-processing-2.0-SNAPSHOT-aws.jar",
       "io.fineo.batch.processing.spark.BatchProcessor",
       "batch-processor",
       client
@@ -41,8 +41,9 @@ public class RunBatchEmrLocal {
   @Test
   public void addBatchManifestFiles() throws Exception {
     addFilesToBatchManifest(credentials(), "batch-manifest",
-      "s3://external-batch-processing-test.fineo.io/remote-s3-file_metric.json",
+//      "s3://external-batch-processing-test.fineo.io/remote-s3-file_metric.json",
       "s3://batch.fineo.io/ingest/test-invoke-api-key_local-s3-file_metric.json"
+//      "s3://batch.fineo.io/ingest/test-invoke-api-key_not_a_file-1234343543.json"
     );
   }
 

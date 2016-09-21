@@ -55,9 +55,10 @@ public class BatchRddLoader {
         // find all the files under the given root directory
         RemoteIterator<LocatedFileStatus> iter = null;
         try {
+          LOG.info("Attempting to load file: {}", root);
           Path rootPath = fs.resolvePath(new Path(root.getPath()));
           iter = fs.listFiles(rootPath, true);
-        } catch (Exception e){
+        } catch (Exception e) {
           // really terrible to catch the raw exception, but can't seem to find the jars for the
           // proper handling of
           // com.amazon.ws.emr.hadoop.fs.shaded.com.amazonaws.services.s3.model.AmazonS3Exception

@@ -9,7 +9,6 @@ import io.fineo.batch.processing.spark.options.BatchOptions;
 import io.fineo.batch.processing.spark.write.DynamoWriter;
 import io.fineo.batch.processing.spark.write.MalformedRowConverter;
 import io.fineo.batch.processing.spark.write.StagedFirehoseWriter;
-import io.fineo.internal.customer.Malformed;
 import io.fineo.lambda.configure.util.PropertiesLoaderUtil;
 import io.fineo.spark.avro.AvroSparkUtils;
 import io.fineo.spark.avro.RowConverter;
@@ -20,6 +19,8 @@ import org.apache.spark.api.java.JavaFutureAction;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.partial.BoundedDouble;
+import org.apache.spark.partial.PartialResult;
 import org.apache.spark.sql.DataFrame;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SQLContext;
@@ -41,7 +42,6 @@ import java.util.function.Function;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static io.fineo.etl.spark.fs.RddUtils.getRddByKey;
-import static scala.collection.JavaConversions.asScalaBuffer;
 
 /**
  * Run the stream processing pipeline in 'batch mode' as a spark job.
@@ -61,24 +61,22 @@ public class BatchProcessor {
     // singleton instance
     IngestManifest manifest = opts.getManifest();
     Multimap<String, String> sources = manifest.files();
-    System.out.println("--- Got potential sources");
     if (sources.size() == 0) {
       LOG.warn("No input sources found!");
       return;
     }
-    System.out.println("----Running job");
     BatchRddLoader loader = runJob(context, sources);
-    System.out.println("----clearing manifest");
     clearManifest(manifest, sources, loader.getFilesThatFailedToLoad());
   }
 
   private void clearManifest(IngestManifest manifest, Multimap<String, String> sources,
-    List<FailedIngestFile>
-      filesThatFailedToLoad) {
+    List<FailedIngestFile> filesThatFailedToLoad) {
     for (Map.Entry<String, Collection<String>> files : sources.asMap().entrySet()) {
+      LOG.info("Successfully loaded: {}", files);
       manifest.remove(files.getKey(), files.getValue());
     }
     for (FailedIngestFile failure : filesThatFailedToLoad) {
+      LOG.info("Failed to load file: {} ", failure);
       manifest.addFailure(failure);
       manifest.remove(failure.getOrg(), failure.getFile());
     }
@@ -88,22 +86,18 @@ public class BatchProcessor {
   private BatchRddLoader runJob(JavaSparkContext context, Multimap<String, String> sources)
     throws IOException, URISyntaxException, ExecutionException, InterruptedException {
     BatchRddLoader loader = new BatchRddLoader(context, sources);
-    System.out.println("Got batch loader");
     loader.load();
-    System.out.println("Loaded batch");
 
     // convert the records
     SQLContext sqlContext = new SQLContext(context);
     List<JavaPairRDD<ReadResult, Iterable<GenericRecord>>> records = parse(loader.getJsonFiles(),
       path -> sqlContext.read().json(path.toString()));
-    System.out.println("Parsed json");
     records.addAll(parse(loader.getCsvFiles(),
       path -> sqlContext.read()
                         .format("com.databricks.spark.csv")
                         .option("inferSchema", "false")
                         .option("header", "true")
                         .load(path.toString())));
-    System.out.println("Parsed csv");
 
     // group the records by the results
     List<JavaRDD<GenericRecord>> successes = new ArrayList<>();
@@ -133,7 +127,6 @@ public class BatchProcessor {
     writeSuccesses(context, successes.toArray(new JavaRDD[0]));
 
     if (failure != null) {
-      System.out.println("Some failures found - writing them out");
       JavaPairRDD<String, Iterable<GenericRecord>> out =
         failure.mapToPair(tuple -> new Tuple2<>(tuple._1().getOrg(), newArrayList(tuple._2())))
                .flatMapValues(error -> error)
@@ -143,9 +136,10 @@ public class BatchProcessor {
       String errors = opts.getErrorDirectory();
       for (String org : orgs) {
         DataFrame orgFailedRecords = errorDF(sqlContext, getRddByKey(out, org));
-        orgFailedRecords.write().mode(SaveMode.Append).json(new Path(errors, org).toString());
+        String path = new Path(errors, org).toString();
+        LOG.info("Writing {} errors to {}", org, path);
+        orgFailedRecords.write().mode(SaveMode.Append).json(path);
       }
-      System.out.println("Finished writing failures");
     }
 
     return loader;
@@ -159,15 +153,19 @@ public class BatchProcessor {
   private void writeSuccesses(JavaSparkContext context, JavaRDD[] javaRDDs)
     throws ExecutionException, InterruptedException {
     if (javaRDDs == null || javaRDDs.length == 0) {
+      LOG.warn("No successful records found to write!");
       return;
     }
 
     JavaRDD<GenericRecord> toWrite = context.union(javaRDDs);
+    PartialResult<BoundedDouble> partial = toWrite.countApprox(1000);
+    BoundedDouble approx = partial.initialValue();
+    LOG.info("Approximately {} - {} (confidence: {}) successful records to write",
+      approx.mean(), approx.toString(), approx.confidence());
     JavaFutureAction dynamo = toWrite.foreachPartitionAsync(new DynamoWriter(opts));
     // we write them separately to firehose because we don't have a way of just saving files
     // directly to S3 without them being sequence files
     JavaFutureAction archive = toWrite.foreachPartitionAsync(new StagedFirehoseWriter(opts));
-    System.out.println("Processing records");
 
     try {
       dynamo.get();
@@ -182,8 +180,6 @@ public class BatchProcessor {
       LOG.error("Error while trying to archive data!", e);
       throw e;
     }
-
-    System.out.println("All records processed");
   }
 
   private List<JavaPairRDD<ReadResult, Iterable<GenericRecord>>> parse(Multimap<String, Path> files,
@@ -205,24 +201,17 @@ public class BatchProcessor {
   private String s;
 
   public static void main(String[] args) throws Exception {
-    System.out.println("--- Starting batch processing ---");
     // parse arguments and load options
     BatchOptions opts = new BatchOptions();
-    System.out.println("--- Created options ---");
     opts.setProps(PropertiesLoaderUtil.load());
-
-    System.out.println("--- Loaded properties ---");
 
     // setup spark
     SparkConf conf = new SparkConf().setAppName(BatchProcessor.class.getName());
     AvroSparkUtils.setKyroAvroSerialization(conf);
 
-    System.out.println("--- Created conf ---");
     final JavaSparkContext context = new JavaSparkContext(conf);
-    System.out.println("--- Created context ---");
     // run the job
     BatchProcessor processor = new BatchProcessor(opts);
-    System.out.println("--- Created processor--");
     try {
       processor.run(context);
     } catch (Error e) {
@@ -233,6 +222,5 @@ public class BatchProcessor {
       System.exit(1000);
       throw e;
     }
-    System.out.println("^^^^^ App completed ^^^^^^");
   }
 }

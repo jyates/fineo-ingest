@@ -87,6 +87,7 @@
                       <include>io.fineo.e2e:e2e-parsing</include>
                       <include>io.fineo.etl.pipeline:stream-processing:tests</include>
                       <include>io.fineo.etl:spark-common:tests</include>
+                      <include>io.fineo.lambda:lambda-dynamo:tests</include>
                       <!-- Necessary, since we aren't running on EMR -->
                       <include>com.amazonaws:aws-java-sdk-core</include>
                       <include>com.amazonaws:aws-java-sdk-dynamodb</include>
