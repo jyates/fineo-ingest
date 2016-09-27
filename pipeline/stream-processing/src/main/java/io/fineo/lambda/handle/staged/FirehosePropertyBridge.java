@@ -23,8 +23,8 @@ import java.util.List;
 public class FirehosePropertyBridge extends AbstractModule {
 
   public static final String STAGED_FIREHOSE_ARCHIVE = "fineo.firehose.staged.archive";
-  public static final String STAGED_FIREHOSE_MALFORMED = "fineo.firehose.staged.error";
-  public static final String STAGED_FIREHOSE_ERROR = "fineo.firehose.staged.error.commit";
+  public static final String STAGED_FIREHOSE_MALFORMED = "fineo.firehose.staged.malformed";
+  public static final String STAGED_FIREHOSE_ERROR = "fineo.firehose.staged.error";
 
   private final List<Pair<Class<? extends Provider<String>>, String>> bindings = new ArrayList<>();
 
