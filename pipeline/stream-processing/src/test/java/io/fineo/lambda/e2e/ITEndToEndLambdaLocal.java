@@ -39,7 +39,7 @@ import io.fineo.lambda.util.LambdaTestUtils;
 import io.fineo.schema.store.AvroSchemaProperties;
 import io.fineo.schema.store.SchemaStore;
 import io.fineo.schema.store.StoreManager;
-import io.fineo.schema.store.timestamp.MultiPatternTimestampParser;
+import io.fineo.schema.timestamp.MultiPatternTimestampParser;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.Test;

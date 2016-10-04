@@ -1,8 +1,6 @@
 package io.fineo.lambda.dynamo;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
-import com.google.inject.name.Named;
-import io.fineo.etl.FineoProperties;
 import org.junit.Test;
 import org.mockito.Mockito;
 

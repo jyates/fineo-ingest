@@ -38,6 +38,7 @@
     <scala.version-next>2.11</scala.version-next>
     <spark.version>1.6.2</spark.version>
     <fineo.lambda.version>1.0-SNAPSHOT</fineo.lambda.version>
+    <fineo.client.version>1.1.2-SNAPSHOT</fineo.client.version>
 
     <!-- AWS -->
     <dynamo-local.version>1.10.5.1</dynamo-local.version>
@@ -378,6 +379,11 @@
         <version>${fineo.lambda.version}</version>
         <classifier>tests</classifier>
         <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>io.fineo.client.schema</groupId>
+        <artifactId>schema-common</artifactId>
+        <version>${fineo.client.version}</version>
       </dependency>
 
       <dependency>
