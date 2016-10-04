@@ -16,5 +16,25 @@
     <module>batch-processing</module>
     <module>lambda-prepare</module>
     <module>lambda-emr-launch</module>
+    <module>data-expansion</module>
   </modules>
+
+  <properties>
+    <spark-csv.version>1.4.0</spark-csv.version>
+  </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>com.databricks</groupId>
+        <artifactId>spark-csv_${scala.base.version}</artifactId>
+        <version>${spark-csv.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.databricks</groupId>
+        <artifactId>spark-avro_${scala.base.version}</artifactId>
+        <version>2.0.1</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
 </project>
