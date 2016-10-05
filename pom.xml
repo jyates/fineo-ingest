@@ -466,15 +466,15 @@
         <scope>test</scope>
       </dependency>
       <dependency>
-        <groupId>io.fineo.etl</groupId>
-        <artifactId>spark-common</artifactId>
-        <version>${project.version}</version>
+        <groupId>io.fineo.schema</groupId>
+        <artifactId>schema-repo-dynamodb</artifactId>
+        <version>${schema-mgmt.version}</version>
         <classifier>tests</classifier>
         <scope>test</scope>
       </dependency>
       <dependency>
-        <groupId>io.fineo.etl.pipeline</groupId>
-        <artifactId>lambda-common</artifactId>
+        <groupId>io.fineo.etl</groupId>
+        <artifactId>spark-common</artifactId>
         <version>${project.version}</version>
         <classifier>tests</classifier>
         <scope>test</scope>

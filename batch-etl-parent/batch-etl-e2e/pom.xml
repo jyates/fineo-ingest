@@ -46,8 +46,9 @@
     <dependency>
       <groupId>io.fineo.etl</groupId>
       <artifactId>spark-common</artifactId>
-      <classifier>tests</classifier>
+      <version>${project.version}</version>
       <scope>compile</scope>
+      <classifier>tests</classifier>
     </dependency>
     <dependency>
       <groupId>com.amazonaws</groupId>

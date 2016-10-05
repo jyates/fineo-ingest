@@ -74,6 +74,12 @@
       <classifier>tests</classifier>
     </dependency>
     <dependency>
+      <groupId>io.fineo.schema</groupId>
+      <artifactId>schema-repo-dynamodb</artifactId>
+      <classifier>tests</classifier>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
       <groupId>io.fineo.etl</groupId>
       <artifactId>dynamo-common</artifactId>
       <classifier>tests</classifier>
@@ -121,10 +127,6 @@
       <version>4.0</version>
       <scope>test</scope>
     </dependency>
-    <!--<dependency>-->
-      <!--<groupId>org.apache.spark</groupId>-->
-      <!--<artifactId>spark-hive_2.10</artifactId>-->
-    <!--</dependency>-->
   </dependencies>
 
   <build>
