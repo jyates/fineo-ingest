@@ -227,11 +227,6 @@
                   </filters>
                   <transformers>
                     <transformer
-                       implementation="org.apache.maven.plugins.shade.resource.IncludeResourceTransformer">
-                      <resource>fineo-lambda.properties</resource>
-                      <file>config/fineo-lambda.properties</file>
-                    </transformer>
-                    <transformer
                        implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                       <manifestEntries>
                         <X-Compile-Source-JDK>${java.version}</X-Compile-Source-JDK>
