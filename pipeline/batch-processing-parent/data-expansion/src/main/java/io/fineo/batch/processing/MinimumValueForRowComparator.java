@@ -8,10 +8,10 @@ import java.util.Comparator;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
-class MinumumValueForRowComparator implements Serializable, Comparator<Row> {
+class MinimumValueForRowComparator implements Serializable, Comparator<Row> {
   private Broadcast<String[]> broadcastType;
 
-  public MinumumValueForRowComparator(Broadcast<String[]> broadcastType) {
+  public MinimumValueForRowComparator(Broadcast<String[]> broadcastType) {
     this.broadcastType = broadcastType;
   }
 
@@ -19,8 +19,6 @@ class MinumumValueForRowComparator implements Serializable, Comparator<Row> {
   public int compare(Row row1, Row row2) {
     int index1 = row1.fieldIndex(broadcastType.getValue()[0]);
     int index2 = row2.fieldIndex(broadcastType.getValue()[0]);
-    BiFunction func;
-    Function<Row, Object> out;
     switch (broadcastType.getValue()[1].toUpperCase()) {
       case "SHORT":
       case "INTEGER":

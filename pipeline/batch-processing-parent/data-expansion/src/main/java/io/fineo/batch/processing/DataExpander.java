@@ -58,7 +58,7 @@ public class DataExpander {
       context.broadcast(new String[]{opts.intervalField, opts.fieldType});
 
     JavaRDD<Row> rows = frame.toJavaRDD();
-    Comparator<Row> minCompare = new MinumumValueForRowComparator(broadcastType);
+    Comparator<Row> minCompare = new MinimumValueForRowComparator(broadcastType);
     Comparator<Row> maxCompare = minCompare.reversed();
     Row min = rows.min(minCompare);
     Row max = rows.max(maxCompare);

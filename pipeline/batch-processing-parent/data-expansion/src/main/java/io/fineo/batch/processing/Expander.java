@@ -117,31 +117,4 @@ class Expander implements Function2<Integer, Iterator<Row>, Iterator<Row>> {
       }
     };
   }
-
-  private Object rand() {
-    switch (broadcastType.getValue()[1]) {
-      case "SHORT":
-      case "INTEGER":
-      case "INT":
-        int min = (int) bcMinMax.getValue()._1();
-        int max = (int) bcMinMax.getValue()._2();
-        return ThreadLocalRandom.current().nextInt(min, max);
-      case "DOUBLE":
-      case "DECIMAL":
-        double minD = (double) bcMinMax.getValue()._1();
-        double maxD = (double) bcMinMax.getValue()._2();
-        return ThreadLocalRandom.current().nextDouble(minD, maxD);
-      case "LONG":
-        long minL = (long) bcMinMax.getValue()._1();
-        long maxL = (long) bcMinMax.getValue()._2();
-        return ThreadLocalRandom.current().nextLong(minL, maxL);
-      case "FLOAT":
-        float minF = (float) bcMinMax.getValue()._1();
-        float maxF = (float) bcMinMax.getValue()._2();
-        return ThreadLocalRandom.current().nextFloat() * (maxF - minF) + minF;
-      default:
-        throw new UnsupportedOperationException("Does not support type: " + broadcastType
-          .getValue()[1]);
-    }
-  }
 }
