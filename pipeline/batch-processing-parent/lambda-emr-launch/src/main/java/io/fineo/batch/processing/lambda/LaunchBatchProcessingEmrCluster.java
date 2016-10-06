@@ -47,13 +47,16 @@ public class LaunchBatchProcessingEmrCluster implements LambdaHandler<Map<String
   private static final Integer MASTER_INSTANCES = 1;
   private static final String EC2_KEY_NAME = "transient-batch-processing-emr_US-East-1";
   private static final String MASTER_SECURITY_GROUP = "sg-a11403d9";//"ElasticMapReduce-master"
-  private static final String CORE_INSTANCE_SECURITY_GROUP = "sg-a21403da";//"ElasticMapReduce-slave"
+  private static final String CORE_INSTANCE_SECURITY_GROUP = "sg-a21403da";
+//"ElasticMapReduce-slave"
 
   // Cluster launching properties
   private static final String FINEO_BATCH_LAUNCH_OVERRIDES_KEY = "fineo.batch.overrides";
   public static final String FINEO_BATCH_CLUSTER_JAR = "fineo.batch.cluster.jar";
   public static final String FINEO_BATCH_CLUSTER_MAIN = "fineo.batch.cluster.main";
   public static final String FINEO_BATCH_CLUSTER_NAME = "fineo.batch.cluster.name";
+  public static final String FINEO_BATCH_CLUSTER_TERMINATION_PROTECTED =
+    "fineo.batch.cluster.termination_protected";
 
   private final String sourceJar;
   private final String mainClass;
@@ -97,10 +100,12 @@ public class LaunchBatchProcessingEmrCluster implements LambdaHandler<Map<String
     JobFlowInstancesConfig instances = new JobFlowInstancesConfig()
       .withInstanceGroups(master, core)
       .withKeepJobFlowAliveWhenNoSteps(true)
-      .withTerminationProtected(true)
       .withEmrManagedMasterSecurityGroup(MASTER_SECURITY_GROUP)
       .withEmrManagedSlaveSecurityGroup(CORE_INSTANCE_SECURITY_GROUP)
       .withEc2KeyName(EC2_KEY_NAME);
+    if (getOrDefault(overrides, FINEO_BATCH_CLUSTER_TERMINATION_PROTECTED, false)) {
+      instances.withTerminationProtected(true);
+    }
 
     RunJobFlowRequest request = new RunJobFlowRequest()
       .withName("Transient Spark Cluster - " + clusterName)
@@ -126,13 +131,13 @@ public class LaunchBatchProcessingEmrCluster implements LambdaHandler<Map<String
       .withConfigurations(getEnvironment());
   }
 
-  private Configuration getSparkConfig(){
+  private Configuration getSparkConfig() {
     return new Configuration()
       .withClassification("spark-env")
       .withConfigurations(getEnvironment());
   }
 
-  private Configuration getEnvironment(){
+  private Configuration getEnvironment() {
     Map<String, String> java8 = new HashMap<>();
     java8.put("JAVA_HOME", "/usr/lib/jvm/java-1.8.0");
     return new Configuration()
@@ -144,7 +149,7 @@ public class LaunchBatchProcessingEmrCluster implements LambdaHandler<Map<String
     HadoopJarStepConfig stepConf = new HadoopJarStepConfig()
       .withJar("command-runner.jar")
       .withArgs("spark-submit",
-        "--executor-memory","1g",
+        "--executor-memory", "1g",
         "--deploy-mode", "cluster",
         "--class", mainClass,
         getOrDefault(overrides, FINEO_BATCH_CLUSTER_JAR, sourceJar));
