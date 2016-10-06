@@ -157,14 +157,10 @@ public class LaunchBatchProcessingEmrCluster implements LambdaHandler<Map<String
   private StepConfig enableDebugging() {
     return new StepConfig()
       .withName("Enable Debugging")
-      .withActionOnFailure("TERMINATE_JOB_FLOW")
+      .withActionOnFailure(ActionOnFailure.TERMINATE_JOB_FLOW)
       .withHadoopJarStep(new HadoopJarStepConfig()
         .withJar("command-runner.jar")
         .withArgs("state-pusher-script"));
-//    return new StepConfig()
-//      .withName("Enable debugging")
-//      .withActionOnFailure(ActionOnFailure.TERMINATE_JOB_FLOW)
-//      .withHadoopJarStep(factory.newEnableDebuggingStep());
   }
 
   private <T> T getOrDefault(Map<String, Object> map, String key, T defaultValue) {
