@@ -16,6 +16,7 @@ import io.fineo.lambda.configure.util.InstanceToNamed;
 import io.fineo.lambda.configure.util.SingleInstanceModule;
 import io.fineo.lambda.firehose.IFirehoseBatchWriter;
 import io.fineo.lambda.handle.raw.RawJsonToRecordHandler;
+import io.fineo.lambda.handle.schema.inject.CachingDynamoDBRepositoryProvider;
 import io.fineo.lambda.handle.schema.inject.SchemaStoreModule;
 import io.fineo.lambda.handle.staged.RecordToDynamoHandler;
 import io.fineo.lambda.handle.staged.FirehosePropertyBridge;
@@ -84,7 +85,7 @@ public class BatchOptions implements Serializable {
       InstanceToNamed.property(KINESIS_PARSED_RAW_OUT_STREAM_NAME, "raw-archive"),
       new DynamoModule(),
       new DynamoRegionConfigurator(),
-      new SchemaStoreModule(),
+      new SchemaStoreModule(CachingDynamoDBRepositoryProvider.class),
       new SingleInstanceModule<>(queue, IKinesisProducer.class)
     ).getInstance(RawJsonToRecordHandler.class);
   }

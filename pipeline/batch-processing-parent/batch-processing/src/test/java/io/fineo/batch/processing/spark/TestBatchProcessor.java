@@ -20,7 +20,7 @@ import io.fineo.etl.FineoProperties;
 import io.fineo.lambda.dynamo.rule.AwsDynamoResource;
 import io.fineo.lambda.dynamo.rule.AwsDynamoTablesResource;
 import io.fineo.lambda.handle.schema.SchemaStoreModuleForTesting;
-import io.fineo.lambda.handle.schema.inject.SchemaStoreModule;
+import io.fineo.lambda.handle.schema.inject.DynamoDBRepositoryProvider;
 import io.fineo.schema.store.AvroSchemaProperties;
 import io.fineo.schema.store.SchemaStore;
 import io.fineo.schema.store.StoreManager;
@@ -216,7 +216,7 @@ public class TestBatchProcessor {
     List<Module> modules = new ArrayList<>();
     modules.add(new SchemaStoreModuleForTesting());
     modules.add(instanceModule(tables.getAsyncClient()));
-    modules.add(property(SchemaStoreModule.DYNAMO_SCHEMA_STORE_TABLE, schemaStoreTable));
+    modules.add(property(DynamoDBRepositoryProvider.DYNAMO_SCHEMA_STORE_TABLE, schemaStoreTable));
     SchemaStore store = Guice.createInjector(modules).getInstance(SchemaStore.class);
     StoreManager manager = new StoreManager(store);
     Arrays.asList(files).stream()
