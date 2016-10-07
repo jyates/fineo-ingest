@@ -10,6 +10,8 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.spark.api.java.function.PairFunction;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.types.StructType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import scala.Tuple2;
 
 import java.io.Serializable;
@@ -24,6 +26,7 @@ import java.util.Map;
 public class RecordConverter
   implements PairFunction<Row, ReadResult, GenericRecord>, Serializable {
 
+  private static final Logger LOG = LoggerFactory.getLogger(RecordConverter.class);
   private transient ObjectMapper mapper;
   private final BatchOptions options;
   private transient RawJsonToRecordHandler handler;
@@ -44,6 +47,7 @@ public class RecordConverter
       return new Tuple2<>(new ReadResult(ReadResult.Outcome.SUCCESS, orgId),
         queue.getRecords().remove());
     } catch (Exception e) {
+      LOG.error("Found malformed record: {}", obj, e);
       Malformed mal = Malformed.newBuilder()
                                .setRecordContent(ByteBuffer.wrap(rowBackToJson(obj).getBytes()))
                                .setOrg(orgId)

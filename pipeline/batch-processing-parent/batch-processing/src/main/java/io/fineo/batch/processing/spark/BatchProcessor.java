@@ -158,10 +158,7 @@ public class BatchProcessor {
     }
 
     JavaRDD<GenericRecord> toWrite = context.union(javaRDDs);
-    PartialResult<BoundedDouble> partial = toWrite.countApprox(1000);
-    BoundedDouble approx = partial.initialValue();
-    LOG.info("Approximately {} - {} (confidence: {}) successful records to write",
-      approx.mean(), approx.toString(), approx.confidence());
+    logApproxSize(toWrite, "successful records to write");
     JavaFutureAction dynamo = toWrite.foreachPartitionAsync(new DynamoWriter(opts));
     // we write them separately to firehose because we don't have a way of just saving files
     // directly to S3 without them being sequence files
@@ -182,12 +179,22 @@ public class BatchProcessor {
     }
   }
 
+  private void logApproxSize(JavaRDD<?> rdd, String msg){
+    if(LOG.isDebugEnabled()) {
+      PartialResult<BoundedDouble> partial = rdd.countApprox(120000); // 2 min wait to count
+      BoundedDouble approx = partial.initialValue();
+      LOG.debug("Approximately {} - {} (confidence: {}): {}",
+        approx.mean(), approx.toString(), approx.confidence(), msg);
+    }
+  }
+
   private List<JavaPairRDD<ReadResult, Iterable<GenericRecord>>> parse(Multimap<String, Path> files,
     Function<Path, DataFrame> loader) {
     List<JavaPairRDD<ReadResult, Iterable<GenericRecord>>> records = new ArrayList<>(files.size());
     for (Map.Entry<String, Collection<Path>> orgToFile : files.asMap().entrySet()) {
       for (Path file : orgToFile.getValue()) {
         JavaRDD<Row> rows = loader.apply(file).javaRDD();
+        logApproxSize(rows, "initial csv read");
         JavaPairRDD<ReadResult, GenericRecord> rdd =
           rows.mapToPair(new RecordConverter(orgToFile.getKey(), opts));
         rdd.persist(StorageLevel.MEMORY_AND_DISK());

@@ -110,7 +110,7 @@ public class LaunchBatchProcessingEmrCluster implements LambdaHandler<Map<String
     RunJobFlowRequest request = new RunJobFlowRequest()
       .withName("Transient Spark Cluster - " + clusterName)
       .withReleaseLabel(RELEASE_LABEL)
-      .withConfigurations(getHadoopConfig(), getSparkConfig())
+      .withConfigurations(getHadoopConfig(), getSparkConfig(), getSparkLog4j())
       .withLogUri("s3://logs.fineo.io/transient-spark-" + clusterName + "/" + Instant.now())
       .withServiceRole(SERVICE_ROLE)
       .withJobFlowRole(EXEC_ROLE)
@@ -135,6 +135,25 @@ public class LaunchBatchProcessingEmrCluster implements LambdaHandler<Map<String
     return new Configuration()
       .withClassification("spark-env")
       .withConfigurations(getEnvironment());
+  }
+
+  private Configuration getSparkLog4j() {
+    Map<String, String> logging = new HashMap<>();
+    logging.put("log4j.rootLogger", "INFO, CONSOLE");
+    logging.put("log4j.appender.CONSOLE", "org.apache.log4j.ConsoleAppender");
+    logging.put("log4j.appender.CONSOLE.target", "System.err");
+    logging.put("log4j.appender.CONSOLE.layout", "org.apache.log4j.PatternLayout");
+    logging.put("log4j.appender.CONSOLE.layout.conversionPattern",
+      "%d{yyyy-MM-dd HH:mm:ss} %-5p %c{3}[%L] - %m%n");
+    setLogLevel(logging, "io.fineo", "TRACE");
+
+    return new Configuration()
+      .withClassification("spark-log4j")
+      .withProperties(logging);
+  }
+
+  private void setLogLevel(Map<String, String> logging, String path, String level) {
+    logging.put(format("log4j.logger.%s", path), level);
   }
 
   private Configuration getEnvironment() {
