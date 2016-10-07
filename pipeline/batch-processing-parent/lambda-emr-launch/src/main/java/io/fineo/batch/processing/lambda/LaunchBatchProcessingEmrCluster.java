@@ -46,13 +46,18 @@ public class LaunchBatchProcessingEmrCluster implements LambdaHandler<Map<String
   private static final Integer CORE_INSTANCES = 2;
   private static final Integer MASTER_INSTANCES = 1;
   private static final String EC2_KEY_NAME = "transient-batch-processing-emr_US-East-1";
-  private static final String MASTER_SECURITY_GROUP = "sg-a11403d9";//"ElasticMapReduce-master"
+  //"ElasticMapReduce-master"
+  private static final String MASTER_SECURITY_GROUP = "sg-a11403d9";
+  //"ElasticMapReduce-slave"
   private static final String CORE_INSTANCE_SECURITY_GROUP = "sg-a21403da";
-//"ElasticMapReduce-slave"
 
   // Cluster launching properties
   private static final String FINEO_BATCH_LAUNCH_OVERRIDES_KEY = "fineo.batch.overrides";
+  // either specify the jar in properties or use the configured s3 bucket/key
   public static final String FINEO_BATCH_CLUSTER_JAR = "fineo.batch.cluster.jar";
+  public static final String FINEO_BATCH_CLUSTER_S3_BUCKET = "fineo.batch.cluster.s3.bucket";
+  public static final String FINEO_BATCH_CLUSTER_S3_KEY = "fineo.batch.cluster.s3.key";
+  // generic cluster properties
   public static final String FINEO_BATCH_CLUSTER_MAIN = "fineo.batch.cluster.main";
   public static final String FINEO_BATCH_CLUSTER_NAME = "fineo.batch.cluster.name";
   public static final String FINEO_BATCH_CLUSTER_TERMINATION_PROTECTED =
@@ -66,8 +71,8 @@ public class LaunchBatchProcessingEmrCluster implements LambdaHandler<Map<String
 
   @Inject
   public LaunchBatchProcessingEmrCluster(@Named("aws.region") String region,
-    @Named("fineo.batch.cluster.s3.bucket") String bucket,
-    @Named("fineo.batch.cluster.s3.key") String key,
+    @Named(FINEO_BATCH_CLUSTER_S3_BUCKET) String bucket,
+    @Named(FINEO_BATCH_CLUSTER_S3_KEY) String key,
     @Named(FINEO_BATCH_CLUSTER_MAIN) String mainClass,
     @Named(FINEO_BATCH_CLUSTER_NAME) String clusterName,
     AmazonElasticMapReduceClient emr) {
@@ -103,6 +108,7 @@ public class LaunchBatchProcessingEmrCluster implements LambdaHandler<Map<String
       .withEmrManagedMasterSecurityGroup(MASTER_SECURITY_GROUP)
       .withEmrManagedSlaveSecurityGroup(CORE_INSTANCE_SECURITY_GROUP)
       .withEc2KeyName(EC2_KEY_NAME);
+    // by default, allow the cluster to terminate. Can be overridden with event properties
     if (getOrDefault(overrides, FINEO_BATCH_CLUSTER_TERMINATION_PROTECTED, false)) {
       instances.withTerminationProtected(true);
     }
@@ -111,7 +117,7 @@ public class LaunchBatchProcessingEmrCluster implements LambdaHandler<Map<String
       .withName("Transient Spark Cluster - " + clusterName)
       .withReleaseLabel(RELEASE_LABEL)
       .withConfigurations(getHadoopConfig(), getSparkConfig(), getSparkLog4j())
-      .withLogUri("s3://logs.fineo.io/transient-spark-" + clusterName + "/" + Instant.now())
+      .withLogUri(format("s3://logs.fineo.io/transient-spark-%s/%s", clusterName, Instant.now()))
       .withServiceRole(SERVICE_ROLE)
       .withJobFlowRole(EXEC_ROLE)
       .withInstances(instances)
@@ -173,7 +179,7 @@ public class LaunchBatchProcessingEmrCluster implements LambdaHandler<Map<String
         "--class", mainClass,
         getOrDefault(overrides, FINEO_BATCH_CLUSTER_JAR, sourceJar));
     return new StepConfig()
-      .withName("Spark Step")
+      .withName("Spark Batch Processing Step")
       .withActionOnFailure(ActionOnFailure.TERMINATE_JOB_FLOW)
       .withHadoopJarStep(stepConf);
   }
