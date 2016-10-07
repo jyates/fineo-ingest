@@ -183,7 +183,7 @@ public class BatchProcessor {
     if(LOG.isDebugEnabled()) {
       PartialResult<BoundedDouble> partial = rdd.countApprox(120000); // 2 min wait to count
       BoundedDouble approx = partial.initialValue();
-      LOG.debug("Approximately {} - {} (confidence: {}): {}",
+      LOG.debug("Approximately {} records - {} (confidence: {}): {}",
         approx.mean(), approx.toString(), approx.confidence(), msg);
     }
   }

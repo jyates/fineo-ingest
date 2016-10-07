@@ -73,8 +73,10 @@ public class BatchRddLoader {
             sources.add(status.getPath());
             String path = status.getPath().toString();
             if (path.endsWith(".csv") || path.endsWith(".csv.gz")) {
+              LOG.debug("Adding csv file: {}", status);
               csvFiles.put(org, status.getPath());
             } else {
+              LOG.debug("Adding json file: {}", status);
               jsonFiles.put(org, status.getPath());
             }
           }
