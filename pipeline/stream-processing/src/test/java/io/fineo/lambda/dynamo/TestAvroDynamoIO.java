@@ -27,6 +27,7 @@ import io.fineo.schema.store.SchemaTestUtils;
 import io.fineo.schema.store.StoreClerk;
 import io.fineo.schema.store.StoreManager;
 import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -40,9 +41,11 @@ import org.schemarepo.ValidatorFactory;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -78,6 +81,24 @@ public class TestAvroDynamoIO {
   @Test
   public void testMultipleWrites() throws Exception {
     readWriteRecord(5, 2);
+  }
+
+  @Test
+  public void testWriteRecordWithMissingField() throws Exception {
+    String orgId = "orgId", metricID = "metricAlias", field = "f1";
+    SchemaStore store = new SchemaStore(new InMemoryRepository(ValidatorFactory.EMPTY));
+    StoreManager manager = new StoreManager(store);
+    manager.newOrg(orgId).newMetric().setDisplayName(metricID).newField().withName(field)
+           .withType(StoreManager.Type.INTEGER).build().build().commit();
+
+    AvroSchemaEncoderFactory bridge = new StoreClerk(store, orgId).getEncoderFactory();
+    Map fields = getBaseFields(orgId, metricID, 1);
+    MapRecord record = new MapRecord(fields);
+    GenericData.Record gr = bridge.getEncoder(record).encode();
+
+    TestRunner runner = new TestRunner(store, orgId, metricID, Arrays.asList(gr));
+    runner.writeRecords();
+    runner.verifyRecords();
   }
 
   @Test
@@ -330,7 +351,7 @@ public class TestAvroDynamoIO {
 
       BaseFields actualBase = actualMeta.getBaseFields();
       BaseFields expectedBase = expectedMeta.getBaseFields();
-      if(!expectedBase.equals(actualBase)){
+      if (!expectedBase.equals(actualBase)) {
         return false;
       }
 
@@ -340,7 +361,7 @@ public class TestAvroDynamoIO {
                    .filter(field -> !field.name().equals(AvroSchemaProperties.BASE_FIELDS_KEY))
                    .map(field -> {
                      String name = field.name();
-                     return expected.get(name).equals(actual.get(name));
+                     return Objects.equals(expected.get(name), (actual.get(name)));
                    })
                    .allMatch(match -> match == true);
     }

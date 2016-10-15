@@ -114,10 +114,10 @@ public class DynamoUpdate {
     schema.getFields().stream()
           .map(org.apache.avro.Schema.Field::name)
           .filter(name -> !AvroSchemaProperties.BASE_FIELDS_KEY.equals(name))
-          .map(name -> {
-            GenericData.Record rec = (GenericData.Record) record.get(name);
-            return rec.get("value");
-          }).forEach(obj -> sb.append(obj.toString()));
+          .map(name -> (GenericData.Record) record.get(name))
+          .filter(record -> record != null)
+          .map(record -> record.get("value"))
+          .forEach(obj -> sb.append(obj.toString()));
     for (Map.Entry<String, String> e : this.fields.getUnknownFields().entrySet()) {
       sb.append(e.getKey());
       sb.append(e.getValue());
@@ -273,6 +273,8 @@ public class DynamoUpdate {
     // since we handled that separately above
     record.getSchema().getFields().stream()
           .filter(field -> !field.name().equals(AvroSchemaProperties.BASE_FIELDS_KEY))
+          // no value for the 'expected' field, skip it
+          .filter(field -> record.get(field.name()) != null)
           .forEach(field -> {
             hasFields[0] = true;
             Pair<String, AttributeValue> attribute =

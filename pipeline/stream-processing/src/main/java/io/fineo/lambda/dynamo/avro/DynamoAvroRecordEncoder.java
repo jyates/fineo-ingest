@@ -13,6 +13,9 @@ public class DynamoAvroRecordEncoder {
   static Pair<String, AttributeValue> convertField(GenericData.Record value) {
     Pair<String, AttributeValue> pair = of((String) value.get(0), null);
     Object recordValue = value.get(1);
+    if(recordValue == null){
+      return null;
+    }
     org.apache.avro.Schema.Field field = value.getSchema().getField("value");
     switch (field.schema().getType()) {
       case STRING:

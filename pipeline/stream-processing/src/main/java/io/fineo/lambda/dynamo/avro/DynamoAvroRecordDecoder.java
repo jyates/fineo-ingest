@@ -105,12 +105,16 @@ public class DynamoAvroRecordDecoder {
     schema.getFields().stream().filter(retainedField).forEach(schemaField -> {
       String name = schemaField.name();
       List<String> aliases = namesToAliases.get(name).getFieldAliases();
-      String key = findKey(item, aliases);
+      try {
+        String key = findKey(item, aliases);
 
-      Record idRecord = new IdSpecificItemRecord(id, item);
-      GenericRecord fieldRecord = asTypedRecord(finalSchema, name, key, idRecord);
-      record.put(name, fieldRecord);
-      handledFields.add(key);
+        Record idRecord = new IdSpecificItemRecord(id, item);
+        GenericRecord fieldRecord = asTypedRecord(finalSchema, name, key, idRecord);
+        record.put(name, fieldRecord);
+        handledFields.add(key);
+      } catch (IllegalStateException e) {
+        // means there is no value found for that key
+      }
       allFields.remove(name);
     });
 
