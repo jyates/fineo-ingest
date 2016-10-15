@@ -68,7 +68,7 @@ public class ITBatchProcessorWithLocalResources {
     String org = "sadfsdfsdf3223gdnlfkas";
     // have to use s3n here because emr has the actual s3 jar we use in prod, but not available
     // publicly (screw you aws).
-    String file = "s3n://test.fineo.io/batch/carbon_dioxide_short.csv.gz";
+    String file = "s3n://test.fineo.io/batch/carbon_dioxide_shorter.csv";
 
     int uuid = new Random().nextInt(100000);
     String dataTablePrefix = uuid + "-test-storage";
