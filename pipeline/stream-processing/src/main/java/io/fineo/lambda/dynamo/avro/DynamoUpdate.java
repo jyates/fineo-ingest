@@ -279,6 +279,9 @@ public class DynamoUpdate {
             hasFields[0] = true;
             Pair<String, AttributeValue> attribute =
               convertField((GenericData.Record) record.get(field.name()));
+            if (attribute == null) {
+              return;
+            }
             handler.accept(attribute.getKey(), attribute.getValue());
           });
     return hasFields[0];

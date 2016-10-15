@@ -19,7 +19,12 @@ public class DynamoAvroRecordEncoder {
     org.apache.avro.Schema.Field field = value.getSchema().getField("value");
     switch (field.schema().getType()) {
       case STRING:
-        pair.setValue(new AttributeValue(String.valueOf(recordValue)));
+        String s = String.valueOf(recordValue);
+        // dynamo only supports non-zero length string fields
+        if(s.length() == 0){
+          return null;
+        }
+        pair.setValue(new AttributeValue(s));
         break;
       case BYTES:
         pair.setValue(new AttributeValue().withB(ByteBuffer.wrap((byte[]) recordValue)));
