@@ -155,11 +155,6 @@ public class SparkETL {
       String metricId = type.getMetricId();
       StoreClerk clerk = new StoreClerk(store, org);
       StoreClerk.Metric metric = clerk.getMetricForCanonicalName(metricId);
-      String schemaString = metric.getUnderlyingMetric().getMetricSchema();
-      // parser keeps state and we redefine the logical name, so we need to create a new Parser
-      // each time
-      Schema.Parser parser = new Schema.Parser();
-      Schema parsed = parser.parse(schemaString);
       Map<String, List<String>> fieldAliasMap = new HashMap<>();
       metric.getUserVisibleFields().stream().forEach(field -> {
         fieldAliasMap.put(field.getCname(), field.getAliases());
@@ -167,8 +162,10 @@ public class SparkETL {
       Map<String, List<String>> canonicalToAliases = AvroSparkUtils
         .removeUnserializableAvroTypesFromMap(fieldAliasMap);
       JavaRDD<Row> rows =
-        grouped.map(new RowConverter(schemaString, canonicalToAliases, org, metricId));
-      schemas.add(new Tuple2<>(type, new Tuple2<>(rows, mapSchemaToStruct(parsed))));
+        grouped.map(
+          new RowConverter(new SerializableMetric(metric.getUnderlyingMetric()), canonicalToAliases,
+            org, metricId));
+      schemas.add(new Tuple2<>(type, new Tuple2<>(rows, mapSchemaToStruct(metric))));
     }
     return schemas;
   }
@@ -204,15 +201,13 @@ public class SparkETL {
     return dirs;
   }
 
-  private StructType mapSchemaToStruct(Schema parsed) {
+  private StructType mapSchemaToStruct(StoreClerk.Metric parsed) {
     List<StructField> fields = new ArrayList<>();
     addBaseFields(fields);
-    streamSchemaWithoutBaseFields(parsed)
-      .forEach(field -> {
-        Schema fieldSchema = field.schema();
-        List<Schema.Field> schemaFields = fieldSchema.getFields();
-        fields.add(createStructField(field.name(), getSparkType(schemaFields.get(1)), true));
-      });
+    parsed.getUserVisibleFields().stream()
+          .forEach(field -> {
+            fields.add(createStructField(field.getCname(), getSparkType(field.getType()), true));
+          });
     return createStructType(fields);
   }
 

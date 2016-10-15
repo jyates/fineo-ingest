@@ -16,13 +16,17 @@ import static com.google.common.collect.Lists.newArrayList;
 
 public class AvroSparkUtils {
 
-  public static void setKyroAvroSerialization(SparkConf conf){
+  public static void setKyroAvroSerialization(SparkConf conf) {
     conf.set("spark.serializer", KryoSerializer.class.getName());
     conf.set("spark.kryo.registrator", AvroKyroRegistrator.class.getName());
   }
 
   public static DataType getSparkType(Schema.Field field) {
-    switch (field.schema().getType()) {
+    return getSparkType(field.schema().getType());
+  }
+
+  public static DataType getSparkType(Schema.Type type) {
+    switch (type) {
       case BOOLEAN:
         return DataTypes.BooleanType;
       case STRING:
@@ -36,7 +40,7 @@ public class AvroSparkUtils {
       case DOUBLE:
         return DataTypes.DoubleType;
       default:
-        throw new IllegalArgumentException("No spark type available for: " + field);
+        throw new IllegalArgumentException("No spark type available for: " + type);
     }
   }
 
