@@ -9,7 +9,6 @@ import com.amazonaws.services.dynamodbv2.model.ListTablesResult;
 import com.google.inject.Guice;
 import com.google.inject.Module;
 import io.fineo.aws.rule.AwsCredentialResource;
-import io.fineo.etl.FineoProperties;
 import io.fineo.lambda.dynamo.rule.AwsDynamoResource;
 import io.fineo.lambda.dynamo.rule.AwsDynamoTablesResource;
 import io.fineo.lambda.handle.schema.SchemaStoreModuleForTesting;
@@ -38,7 +37,6 @@ import static io.fineo.lambda.configure.util.InstanceToNamed.property;
 import static io.fineo.lambda.configure.util.SingleInstanceModule.instanceModule;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
 /**
@@ -68,6 +66,8 @@ public class ITBatchProcessorWithLocalResources {
   @Test
   public void testReadS3File() throws Exception {
     String org = "sadfsdfsdf3223gdnlfkas";
+    // have to use s3n here because emr has the actual s3 jar we use in prod, but not available
+    // publicly (screw you aws).
     String file = "s3n://test.fineo.io/batch/carbon_dioxide_short.csv.gz";
 
     int uuid = new Random().nextInt(100000);
