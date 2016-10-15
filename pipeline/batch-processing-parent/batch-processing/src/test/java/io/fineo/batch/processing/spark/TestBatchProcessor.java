@@ -16,7 +16,6 @@ import com.google.inject.Module;
 import io.fineo.aws.AwsDependentTests;
 import io.fineo.batch.processing.dynamo.FailedIngestFile;
 import io.fineo.batch.processing.dynamo.IngestManifest;
-import io.fineo.etl.FineoProperties;
 import io.fineo.lambda.dynamo.rule.AwsDynamoResource;
 import io.fineo.lambda.dynamo.rule.AwsDynamoTablesResource;
 import io.fineo.lambda.handle.schema.SchemaStoreModuleForTesting;
@@ -210,8 +209,6 @@ public class TestBatchProcessor {
     int uuid = new Random().nextInt(100000);
     String dataTablePrefix = uuid + "-test-storage";
     String schemaStoreTable = uuid + "-test-schemaStore";
-    Properties properties = new Properties();
-    properties.setProperty(FineoProperties.DYNAMO_REGION, REGION);
     // create a metric in the metric store for our test org
     List<Module> modules = new ArrayList<>();
     modules.add(new SchemaStoreModuleForTesting());
