@@ -207,7 +207,7 @@
                       <exclude>commons-logging:commons-logging</exclude>
                       <!-- Test jars -->
                       <exclude>junit:junit</exclude>
-                      <exclude>org.mockito:mockito-all</exclude>
+                      <exclude>org.mockito:*</exclude>
                       <exclude>com.amazonaws:DynamoDBLocal</exclude>
                       <exclude>io.fineo.aws:aws-common</exclude>
                       <exclude>io.fineo.schema:schema-core:tests</exclude>

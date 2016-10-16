@@ -76,6 +76,7 @@
                       <exclude>io.fineo.aws:aws-common</exclude>
                       <exclude>io.fineo.schema:schema-core:tests</exclude>
                       <exclude>io.fineo.etl.pipeline:pipeline-utils</exclude>
+                      <exclude>commons-logging:commons-logging</exclude>
                     </excludes>
                   </artifactSet>
                   <filters>
