@@ -107,11 +107,13 @@ public class LaunchBatchProcessingEmrCluster implements LambdaHandler<Map<String
       .withKeepJobFlowAliveWhenNoSteps(true)
       .withEmrManagedMasterSecurityGroup(MASTER_SECURITY_GROUP)
       .withEmrManagedSlaveSecurityGroup(CORE_INSTANCE_SECURITY_GROUP)
-      .withEc2KeyName(EC2_KEY_NAME);
-    // by default, allow the cluster to terminate. Can be overridden with event properties
-    if (getOrDefault(overrides, FINEO_BATCH_CLUSTER_TERMINATION_PROTECTED, false)) {
-      instances.withTerminationProtected(true);
-    }
+      .withEc2KeyName(EC2_KEY_NAME)
+      // auto-termination
+      .withKeepJobFlowAliveWhenNoSteps(false)
+      // by default, allow the cluster to terminate. Can be overridden with event properties
+      .withTerminationProtected(getOrDefault(overrides,
+        FINEO_BATCH_CLUSTER_TERMINATION_PROTECTED, false));
+
 
     RunJobFlowRequest request = new RunJobFlowRequest()
       .withName("Transient Spark Cluster - " + clusterName)
