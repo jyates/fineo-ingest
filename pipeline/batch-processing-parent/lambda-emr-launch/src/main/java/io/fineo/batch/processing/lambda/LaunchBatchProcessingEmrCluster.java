@@ -62,6 +62,8 @@ public class LaunchBatchProcessingEmrCluster implements LambdaHandler<Map<String
   public static final String FINEO_BATCH_CLUSTER_NAME = "fineo.batch.cluster.name";
   public static final String FINEO_BATCH_CLUSTER_TERMINATION_PROTECTED =
     "fineo.batch.cluster.termination_protected";
+  public static final String FINEO_BATCH_CLUSTER_AUTO_TERMINATE =
+    "fineo.batch.cluster.auto_terminate";
 
   private final String sourceJar;
   private final String mainClass;
@@ -108,8 +110,9 @@ public class LaunchBatchProcessingEmrCluster implements LambdaHandler<Map<String
       .withEmrManagedMasterSecurityGroup(MASTER_SECURITY_GROUP)
       .withEmrManagedSlaveSecurityGroup(CORE_INSTANCE_SECURITY_GROUP)
       .withEc2KeyName(EC2_KEY_NAME)
-      // auto-termination
-      .withKeepJobFlowAliveWhenNoSteps(false)
+      // keep-alive (!auto-termination).
+      .withKeepJobFlowAliveWhenNoSteps(!getOrDefault(overrides,
+        FINEO_BATCH_CLUSTER_AUTO_TERMINATE, false))
       // by default, allow the cluster to terminate. Can be overridden with event properties
       .withTerminationProtected(getOrDefault(overrides,
         FINEO_BATCH_CLUSTER_TERMINATION_PROTECTED, false));
