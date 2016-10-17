@@ -169,6 +169,8 @@ public class LaunchBatchProcessingEmrCluster implements LambdaHandler<Map<String
     logging.put("log4j.appender.CONSOLE.layout.conversionPattern",
       "%d{yyyy-MM-dd HH:mm:ss} %-5p %c{3}[%L] - %m%n");
     setLogLevel(logging, "io.fineo", "TRACE");
+    // DEBUG adds count-approx hooks, which take a lot of time to calculate
+    setLogLevel(logging, "io.fineo.batch.processing.spark.BatchProcessor", "INFO");
 
     return new Configuration()
       .withClassification("spark-log4j")
