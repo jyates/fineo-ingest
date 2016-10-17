@@ -193,9 +193,9 @@ public class LaunchBatchProcessingEmrCluster implements LambdaHandler<Map<String
     HadoopJarStepConfig stepConf = new HadoopJarStepConfig()
       .withJar("command-runner.jar")
       .withArgs("spark-submit",
-//        "--num-executors", getOrDefault(overrides, SPARK_EXECUTORS, "2"),
-//        "--executor-memory", getOrDefault(overrides, SPARK_EXECUTOR_MEMORY, "6g"),
-//        "–-executor-cores", getOrDefault(overrides, SPARK_EXECUTOR_CORES, "4"),
+        "--num-executors", getOrDefault(overrides, SPARK_EXECUTORS, "4"),
+        "--executor-memory", getOrDefault(overrides, SPARK_EXECUTOR_MEMORY, "3g"),
+        "–-executor-cores", getOrDefault(overrides, SPARK_EXECUTOR_CORES, "3"),
         "--deploy-mode", "cluster",
         "--class", mainClass,
         getOrDefault(overrides, FINEO_BATCH_CLUSTER_JAR, sourceJar));
