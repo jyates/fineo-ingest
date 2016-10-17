@@ -64,6 +64,9 @@ public class LaunchBatchProcessingEmrCluster implements LambdaHandler<Map<String
     "fineo.batch.cluster.termination_protected";
   public static final String FINEO_BATCH_CLUSTER_AUTO_TERMINATE =
     "fineo.batch.cluster.auto_terminate";
+  private static final String SPARK_EXECUTORS = "fineo.batch.spark.executor.num";
+  private static final String SPARK_EXECUTOR_MEMORY = "fineo.batch.spark.executor.memory";
+  private static final String SPARK_EXECUTOR_CORES = "fineo.batch.spark.executor.cores";
 
   private final String sourceJar;
   private final String mainClass;
@@ -121,7 +124,8 @@ public class LaunchBatchProcessingEmrCluster implements LambdaHandler<Map<String
     RunJobFlowRequest request = new RunJobFlowRequest()
       .withName("Transient Spark Cluster - " + clusterName)
       .withReleaseLabel(RELEASE_LABEL)
-      .withConfigurations(getHadoopConfig(), getSparkConfig(), getSparkLog4j())
+      .withConfigurations(getHadoopConfig(), getSparkConfig(), getSparkProperties(),
+        getSparkLog4j())
       .withLogUri(format("s3://logs.fineo.io/transient-spark-%s/%s", clusterName, Instant.now()))
       .withServiceRole(SERVICE_ROLE)
       .withJobFlowRole(EXEC_ROLE)
@@ -146,6 +150,14 @@ public class LaunchBatchProcessingEmrCluster implements LambdaHandler<Map<String
     return new Configuration()
       .withClassification("spark-env")
       .withConfigurations(getEnvironment());
+  }
+
+  private Configuration getSparkProperties() {
+    Map<String, String> props = new HashMap<>();
+    props.put("maximizeResourceAllocation", "true");
+    return new Configuration()
+      .withClassification("spark")
+      .withProperties(props);
   }
 
   private Configuration getSparkLog4j() {
@@ -179,7 +191,9 @@ public class LaunchBatchProcessingEmrCluster implements LambdaHandler<Map<String
     HadoopJarStepConfig stepConf = new HadoopJarStepConfig()
       .withJar("command-runner.jar")
       .withArgs("spark-submit",
-        "--executor-memory", "1g",
+//        "--num-executors", getOrDefault(overrides, SPARK_EXECUTORS, "2"),
+//        "--executor-memory", getOrDefault(overrides, SPARK_EXECUTOR_MEMORY, "6g"),
+//        "–-executor-cores", getOrDefault(overrides, SPARK_EXECUTOR_CORES, "4"),
         "--deploy-mode", "cluster",
         "--class", mainClass,
         getOrDefault(overrides, FINEO_BATCH_CLUSTER_JAR, sourceJar));
