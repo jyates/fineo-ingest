@@ -112,7 +112,7 @@ public class LaunchBatchProcessingEmrCluster implements LambdaHandler<Map<String
       .withEc2KeyName(EC2_KEY_NAME)
       // keep-alive (!auto-termination).
       .withKeepJobFlowAliveWhenNoSteps(!getOrDefault(overrides,
-        FINEO_BATCH_CLUSTER_AUTO_TERMINATE, false))
+        FINEO_BATCH_CLUSTER_AUTO_TERMINATE, true))
       // by default, allow the cluster to terminate. Can be overridden with event properties
       .withTerminationProtected(getOrDefault(overrides,
         FINEO_BATCH_CLUSTER_TERMINATION_PROTECTED, false));
