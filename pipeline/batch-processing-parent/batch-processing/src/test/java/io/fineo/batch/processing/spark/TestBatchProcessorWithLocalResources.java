@@ -6,6 +6,7 @@ import com.amazonaws.services.dynamodbv2.document.DynamoDB;
 import com.amazonaws.services.dynamodbv2.document.Table;
 import com.amazonaws.services.dynamodbv2.document.TableCollection;
 import com.amazonaws.services.dynamodbv2.model.ListTablesResult;
+import com.amazonaws.services.s3.AmazonS3Client;
 import com.google.inject.Guice;
 import com.google.inject.Module;
 import io.fineo.aws.AwsDependentTests;
@@ -14,34 +15,38 @@ import io.fineo.lambda.dynamo.rule.AwsDynamoResource;
 import io.fineo.lambda.dynamo.rule.AwsDynamoTablesResource;
 import io.fineo.lambda.handle.schema.SchemaStoreModuleForTesting;
 import io.fineo.lambda.handle.schema.inject.DynamoDBRepositoryProvider;
-import io.fineo.schema.OldSchemaException;
 import io.fineo.schema.store.SchemaStore;
 import io.fineo.schema.store.StoreManager;
 import io.fineo.spark.avro.AvroSparkUtils;
 import io.fineo.spark.rule.LocalSparkRule;
 import io.fineo.test.rule.TestOutput;
 import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.hadoop.conf.Configuration;
+import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.ClassRule;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
-import java.net.URISyntaxException;
+import java.io.OutputStream;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 import java.util.Random;
-import java.util.concurrent.ExecutionException;
 import java.util.stream.StreamSupport;
+import java.util.zip.GZIPOutputStream;
 
 import static io.fineo.batch.processing.spark.options.BatchOptions.BATCH_ERRORS_OUTPUT_DIR_KEY;
 import static io.fineo.lambda.configure.util.InstanceToNamed.property;
 import static io.fineo.lambda.configure.util.SingleInstanceModule.instanceModule;
+import static java.lang.String.format;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
@@ -52,6 +57,7 @@ import static org.junit.Assert.assertNull;
 @Category(AwsDependentTests.class)
 public class TestBatchProcessorWithLocalResources {
 
+  private static final String BUCKET = "test.fineo.io";
   @ClassRule
   public static AwsDynamoResource dynamo = new AwsDynamoResource();
   @Rule
@@ -70,12 +76,28 @@ public class TestBatchProcessorWithLocalResources {
   @Rule
   public TestOutput output = new TestOutput(false);
 
+  private List<Pair<String, String>> files = new ArrayList<>();
+
+  @After
+  public void cleanupS3() {
+    AmazonS3Client s3 = credentials.getClient();
+    for (Pair<String, String> file : files) {
+      s3.deleteObject(file.getKey(), file.getValue());
+    }
+    files.clear();
+  }
+
   @Test
   public void testBatchReadSingleRowS3CsvFile() throws Exception {
-    // have to use s3n here because emr has the actual s3 jar we use in prod, but not available
-    // publicly (screw you aws).
-    String file = "s3n://test.fineo.io/batch/carbon_dioxide_shorter.csv";
-    TestProperties props = runCarbonDioxideRead(file);
+    File source = write("single_row", false,
+      "id,obvius_upload_id,measurement,measured_at,unit,building_sensor_config_id,bad_data,"
+      + "created_at,updated_at,metrictype"
+      ,
+      "7492,,652.304260253906,2015-10-24 04:00:00,,4685,f,2016-01-21 15:32:12.183183,2016-01-21 "
+      + "15:32:12.183183,carbon_dioxide"
+    );
+    String path = upload(source);
+    TestProperties props = runCarbonDioxideRead(path);
     validateTableRead(props, 1);
   }
 
@@ -83,9 +105,46 @@ public class TestBatchProcessorWithLocalResources {
   public void testBatchReadShortS3CsvFile() throws Exception {
     // have to use s3n here because emr has the actual s3 jar we use in prod, but not available
     // publicly (screw you aws).
-    String file = "s3n://test.fineo.io/batch/carbon_dioxide_short.csv.gz";
-    TestProperties props = runCarbonDioxideRead(file);
+    File source = write("short", false,
+      "id,obvius_upload_id,measurement,measured_at,unit,building_sensor_config_id,bad_data,"
+      + "created_at,updated_at,metrictype"
+      ,
+      "7492,,652.304260253906,2015-10-24 04:00:00,,4685,f,2016-01-21 15:32:12.183183,2016-01-21 "
+      + "15:32:12.183183,carbon_dioxide"
+      ,
+      "7500,,644.123229980469,2015-10-24 04:15:00,,4685,f,2016-01-21 15:32:12.199681,2016-01-21 "
+      + "15:32:12.199681,carbon_dioxide"
+      ,
+      "7507,,652.304260253906,2015-10-24 04:30:00,,4685,f,2016-01-21 15:32:12.212263,2016-01-21 "
+      + "15:32:12.212263,carbon_dioxide"
+      ,
+      "7513,,659.93994140625,2015-10-24 04:45:00,,4685,f,2016-01-21 15:32:12.226382,2016-01-21 "
+      + "15:32:12.226382,carbon_dioxide"
+    );
+    TestProperties props = runCarbonDioxideRead(upload(source));
     validateTableRead(props, 4);
+  }
+
+  private String upload(File file) {
+    AmazonS3Client s3 = credentials.getClient();
+    String path = format("batch/%s", file.getName());
+    s3.putObject(BUCKET, path, file);
+    files.add(new ImmutablePair<>(BUCKET, path));
+    // have to use s3n here because emr has the actual s3 jar we use in prod, but not available
+    // publicly (screw you aws).
+    return format("s3n://%s/%s", BUCKET, path);
+  }
+
+  private File write(String name, boolean zip, String... lines) throws IOException {
+    File out = new File(output.newFolder(), name + ".csv" + (zip ? ".gz" : ""));
+    try (OutputStream fos = new FileOutputStream(out);
+         OutputStream fos2 = zip ? new GZIPOutputStream(fos) : fos;
+         PrintWriter w = new PrintWriter(fos2)) {
+      for (String line : lines) {
+        w.println(line);
+      }
+    }
+    return out;
   }
 
   private TestProperties runCarbonDioxideRead(String file)
