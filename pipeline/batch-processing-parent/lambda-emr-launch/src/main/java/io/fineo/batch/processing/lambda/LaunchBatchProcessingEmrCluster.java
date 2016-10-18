@@ -41,10 +41,11 @@ public class LaunchBatchProcessingEmrCluster implements LambdaHandler<Map<String
 
   // EC2 Settings
   private static final String RELEASE_LABEL = "emr-4.7.2";
-  private static final String MASTER_INSTANCE_TYPE = "m1.large";
-  private static final String CORE_INSTANCE_TYPE = "m3.xlarge";
-  private static final Integer CORE_INSTANCES = 2;
   private static final Integer MASTER_INSTANCES = 1;
+  private static final String MASTER_INSTANCE_TYPE = "m1.large";
+  private static final Integer CORE_INSTANCES = 3;
+  private static final String CORE_INSTANCE_TYPE = "m3.xlarge";
+
   private static final String EC2_KEY_NAME = "transient-batch-processing-emr_US-East-1";
   //"ElasticMapReduce-master"
   private static final String MASTER_SECURITY_GROUP = "sg-a11403d9";
@@ -170,7 +171,7 @@ public class LaunchBatchProcessingEmrCluster implements LambdaHandler<Map<String
       "%d{yyyy-MM-dd HH:mm:ss} %-5p %c{3}[%L] - %m%n");
     setLogLevel(logging, "io.fineo", "TRACE");
     // DEBUG adds count-approx hooks, which take a lot of time to calculate
-    setLogLevel(logging, "io.fineo.batch.processing.spark.BatchProcessor", "INFO");
+//    setLogLevel(logging, "io.fineo.batch.processing.spark.BatchProcessor", "INFO");
 
     return new Configuration()
       .withClassification("spark-log4j")
@@ -193,8 +194,8 @@ public class LaunchBatchProcessingEmrCluster implements LambdaHandler<Map<String
     HadoopJarStepConfig stepConf = new HadoopJarStepConfig()
       .withJar("command-runner.jar")
       .withArgs("spark-submit",
-        "--num-executors", getOrDefault(overrides, SPARK_EXECUTORS, "4"),
-        "--executor-memory", getOrDefault(overrides, SPARK_EXECUTOR_MEMORY, "3g"),
+        "--num-executors", getOrDefault(overrides, SPARK_EXECUTORS, "6"),
+        "--executor-memory", getOrDefault(overrides, SPARK_EXECUTOR_MEMORY, "2g"),
         "--executor-cores", getOrDefault(overrides, SPARK_EXECUTOR_CORES, "3"),
         "--deploy-mode", "cluster",
         "--class", mainClass,

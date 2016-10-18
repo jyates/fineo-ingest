@@ -3,9 +3,10 @@ package io.fineo.batch.processing.spark.write;
 import io.fineo.batch.processing.spark.options.BatchOptions;
 import io.fineo.lambda.avro.FirehoseRecordWriter;
 import io.fineo.lambda.firehose.IFirehoseBatchWriter;
-import io.fineo.lambda.handle.staged.RecordToDynamoHandler;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.spark.api.java.function.VoidFunction;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
 import java.util.Iterator;
@@ -15,6 +16,7 @@ import java.util.Iterator;
  */
 public class StagedFirehoseWriter implements
                                   VoidFunction<Iterator<GenericRecord>>, Serializable {
+  private static final Logger LOG = LoggerFactory.getLogger(StagedFirehoseWriter.class);
   private final BatchOptions props;
   private transient IFirehoseBatchWriter writer;
 
@@ -25,11 +27,13 @@ public class StagedFirehoseWriter implements
 
   @Override
   public void call(Iterator<GenericRecord> records) throws Exception {
+    LOG.debug("Writing records to firehose");
     FirehoseRecordWriter map = FirehoseRecordWriter.create();
     while (records.hasNext()) {
       getHandler().addToBatch(map.write(records.next()));
     }
     if (this.writer != null) {
+      LOG.debug("Have some records to write, flushing them");
       writer.flush();
     }
   }

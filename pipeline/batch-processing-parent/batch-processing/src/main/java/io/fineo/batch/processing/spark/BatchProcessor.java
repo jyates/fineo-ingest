@@ -113,6 +113,7 @@ public class BatchProcessor {
         rdd.filter(v -> v._1().getOut() == ReadResult.Outcome.FAILURE);
       failures.add(failure);
     }
+    LOG.info("Grouped success and failures");
 
     // group the failures
     JavaPairRDD<ReadResult, GenericRecord> failure = null;
@@ -127,6 +128,7 @@ public class BatchProcessor {
     writeSuccesses(context, successes.toArray(new JavaRDD[0]));
 
     if (failure != null) {
+      LOG.info("Found some failures, writing them out");
       JavaPairRDD<String, Iterable<GenericRecord>> out =
         failure.mapToPair(tuple -> new Tuple2<>(tuple._1().getOrg(), newArrayList(tuple._2())))
                .flatMapValues(error -> error)
@@ -158,6 +160,7 @@ public class BatchProcessor {
     }
 
     JavaRDD<GenericRecord> toWrite = context.union(javaRDDs);
+    LOG.info("Writing out successful records");
     logApproxSize(toWrite, "successful records to write");
     JavaFutureAction dynamo = toWrite.foreachPartitionAsync(new DynamoWriter(opts));
     // we write them separately to firehose because we don't have a way of just saving files
