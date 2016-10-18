@@ -1,10 +1,13 @@
 package io.fineo.batch.processing.spark.options;
 
 import com.google.inject.Guice;
+import com.google.inject.Injector;
 import com.google.inject.Key;
 import com.google.inject.name.Names;
 import io.fineo.batch.processing.dynamo.IngestManifest;
 import io.fineo.batch.processing.dynamo.IngestManifestModule;
+import io.fineo.batch.processing.spark.schema.BatchSchemaRepository;
+import io.fineo.batch.processing.spark.schema.StoreManagerProvider;
 import io.fineo.lambda.configure.DefaultCredentialsModule;
 import io.fineo.lambda.configure.PropertiesModule;
 import io.fineo.lambda.configure.dynamo.AvroToDynamoModule;
@@ -16,16 +19,17 @@ import io.fineo.lambda.configure.util.InstanceToNamed;
 import io.fineo.lambda.configure.util.SingleInstanceModule;
 import io.fineo.lambda.firehose.IFirehoseBatchWriter;
 import io.fineo.lambda.handle.raw.RawJsonToRecordHandler;
-import io.fineo.lambda.handle.schema.inject.CachingDynamoDBRepositoryProvider;
 import io.fineo.lambda.handle.schema.inject.SchemaStoreModule;
-import io.fineo.lambda.handle.staged.RecordToDynamoHandler;
 import io.fineo.lambda.handle.staged.FirehosePropertyBridge;
+import io.fineo.lambda.handle.staged.RecordToDynamoHandler;
 import io.fineo.lambda.kinesis.IKinesisProducer;
+import io.fineo.schema.OldSchemaException;
 import org.apache.hadoop.fs.Path;
+import org.schemarepo.Repository;
+import org.schemarepo.ValidatorFactory;
 
-import java.io.File;
+import java.io.IOException;
 import java.io.Serializable;
-import java.time.Instant;
 import java.util.Properties;
 
 import static com.google.common.collect.Lists.newArrayList;
@@ -77,16 +81,32 @@ public class BatchOptions implements Serializable {
       Key.get(IFirehoseBatchWriter.class, Names.named(FirehoseModule.FIREHOSE_ARCHIVE_STREAM)));
   }
 
-  public RawJsonToRecordHandler getRawJsonToRecordHandler(IKinesisProducer queue) {
-    return Guice.createInjector(
+  public RawJsonToRecordHandler getRawJsonToRecordHandler(IKinesisProducer queue)
+    throws IOException, OldSchemaException {
+    // create a dynamo schema store module
+    Injector base = Guice.createInjector(
       new PropertiesModule(this.props),
       DefaultCredentialsModule.create(this.props),
       // override the property - we don't actually care where it writes, it all goes to the queue
       InstanceToNamed.property(KINESIS_PARSED_RAW_OUT_STREAM_NAME, "raw-archive"),
       new DynamoModule(),
       new DynamoRegionConfigurator(),
-      new SchemaStoreModule(CachingDynamoDBRepositoryProvider.class),
       new SingleInstanceModule<>(queue, IKinesisProducer.class)
+    );
+
+    // get the dynamo repository
+    Repository source = base.createChildInjector(
+      new SchemaStoreModule()
+    ).getInstance(Repository.class);
+
+    // create a local, batch version
+    BatchSchemaRepository repository = BatchSchemaRepository.createRepository(ValidatorFactory
+      .EMPTY, getManifest(), source);
+
+    // use the local, batch schema store to create the handle
+    return base.createChildInjector(
+      new SingleInstanceModule<>(repository, Repository.class),
+      new StoreManagerProvider()
     ).getInstance(RawJsonToRecordHandler.class);
   }
 

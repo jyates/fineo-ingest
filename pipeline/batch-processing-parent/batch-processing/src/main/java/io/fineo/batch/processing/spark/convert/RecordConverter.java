@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.fineo.batch.processing.spark.options.BatchOptions;
 import io.fineo.internal.customer.Malformed;
 import io.fineo.lambda.handle.raw.RawJsonToRecordHandler;
+import io.fineo.schema.OldSchemaException;
 import io.fineo.schema.store.AvroSchemaProperties;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.spark.api.java.function.PairFunction;
@@ -14,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scala.Tuple2;
 
+import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
@@ -77,7 +79,7 @@ public class RecordConverter
     return values;
   }
 
-  private RawJsonToRecordHandler getHandler() {
+  private RawJsonToRecordHandler getHandler() throws IOException, OldSchemaException {
     if (this.handler == null) {
       this.queue = new LocalQueueKinesisProducer();
       handler = options.getRawJsonToRecordHandler(queue);

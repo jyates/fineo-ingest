@@ -195,7 +195,7 @@ public class LaunchBatchProcessingEmrCluster implements LambdaHandler<Map<String
       .withArgs("spark-submit",
         "--num-executors", getOrDefault(overrides, SPARK_EXECUTORS, "4"),
         "--executor-memory", getOrDefault(overrides, SPARK_EXECUTOR_MEMORY, "3g"),
-        "–-executor-cores", getOrDefault(overrides, SPARK_EXECUTOR_CORES, "3"),
+        "--executor-cores", getOrDefault(overrides, SPARK_EXECUTOR_CORES, "3"),
         "--deploy-mode", "cluster",
         "--class", mainClass,
         getOrDefault(overrides, FINEO_BATCH_CLUSTER_JAR, sourceJar));
