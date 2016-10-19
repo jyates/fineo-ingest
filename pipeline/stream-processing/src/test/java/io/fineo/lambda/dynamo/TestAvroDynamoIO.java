@@ -51,6 +51,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.google.common.collect.ImmutableList.of;
+import static com.google.common.collect.Lists.newArrayList;
 import static io.fineo.lambda.configure.util.SingleInstanceModule.instanceModule;
 import static io.fineo.schema.store.SchemaTestUtils.getBaseFields;
 import static io.fineo.schema.store.TestSchemaManager.commitSimpleType;
@@ -181,6 +182,97 @@ public class TestAvroDynamoIO {
     runner.verifyRecords();
   }
 
+  @Test
+  public void testWriteRecordWithEmptyString() throws Exception {
+    SchemaStore store = new SchemaStore(new InMemoryRepository(ValidatorFactory.EMPTY));
+    StoreManager manager = new StoreManager(store);
+    String orgId = "org1", metricName = "metricname", fieldName = "f1";
+    commitSimpleType(manager, orgId, metricName, of(), new Pair<>(fieldName, "VARCHAR"));
+    AvroSchemaEncoderFactory bridge = new StoreClerk(store, orgId).getEncoderFactory();
+    Map fields = getBaseFields(orgId, metricName, 1);
+    fields.put(fieldName, "");
+    MapRecord record = new MapRecord(fields);
+    GenericRecord gr = bridge.getEncoder(record).encode();
+
+    TestRunner runner = new TestRunner(store, orgId, metricName, newArrayList(gr));
+    runner.writeRecords();
+    runner.verifyTables();
+    List<GenericRecord> records =
+      runner.reader.scanMetricAlias(orgId, metricName, runner.range).collect(
+        Collectors.toList());
+    assertEquals(1, records.size());
+    GenericRecord wrote = records.get(0);
+    assertTrue(checkBaseFieldsMatch(gr, wrote));
+    // other field should be null
+    RecordMetadata expectedMeta = RecordMetadata.get(gr);
+    // verify the non-base fields match
+    Schema schema = expectedMeta.getMetricSchema();
+    boolean empty = schema.getFields().stream()
+                          .filter(
+                            field -> !field.name().equals(AvroSchemaProperties.BASE_FIELDS_KEY))
+                          .map(field -> {
+                            String name = field.name();
+                            return wrote.get(name);
+                          }).allMatch(a -> a == null);
+    assertTrue("Found non-null, non-base fields in record!\nRecord:\n" + wrote, empty);
+  }
+
+  @Test
+  public void testZeroLengthStringInSameTimestampUpdate() throws Exception {
+    SchemaStore store = new SchemaStore(new InMemoryRepository(ValidatorFactory.EMPTY));
+    StoreManager manager = new StoreManager(store);
+    String orgId = "org1", metricName = "metricname", fieldName = "f1", f2 = "f2";
+    commitSimpleType(manager, orgId, metricName, of(), new Pair<>(fieldName, "VARCHAR"), new
+      Pair<>(f2, "INTEGER"));
+    AvroSchemaEncoderFactory bridge = new StoreClerk(store, orgId).getEncoderFactory();
+    Map fields = getBaseFields(orgId, metricName, 1);
+    fields.put(fieldName, "");
+    fields.put(f2, 1);
+    MapRecord record = new MapRecord(fields);
+    GenericRecord gr = bridge.getEncoder(record).encode();
+
+    TestRunner runner = new TestRunner(store, orgId, metricName, newArrayList(gr));
+    runner.writeRecords();
+
+    // second record at the same timestamp
+    fields.put(f2, 2);
+    record = new MapRecord(fields);
+    gr = bridge.getEncoder(record).encode();
+    runner.writeRecords(newArrayList(gr));
+
+    runner.verifyTables();
+
+    // verify that we read only null for the varchar field
+    List<GenericRecord> records =
+      runner.reader.scanMetricAlias(orgId, metricName, runner.range).collect(
+        Collectors.toList());
+    assertEquals(2, records.size());
+
+    // what the name of the field will be in the returned record
+    StoreClerk clerk = new StoreClerk(store, orgId);
+    String cname = clerk.getMetrics().get(0).getCanonicalNameFromUserFieldName(fieldName);
+
+    // ensure that only one field (whose canonical name we just looked up) is null
+    for (GenericRecord wrote : records) {
+      // other field should be null
+      RecordMetadata expectedMeta = RecordMetadata.get(gr);
+      // verify the non-base fields match
+      Schema schema = expectedMeta.getMetricSchema();
+      boolean empty = schema.getFields().stream()
+                            .filter(
+                              field -> !field.name().equals(AvroSchemaProperties.BASE_FIELDS_KEY))
+                            .map(field -> {
+                              String name = field.name();
+                              if (name.equals(cname)) {
+                                return wrote.get(name) == null;
+                              }
+                              return wrote.get(name) != null;
+                            }).allMatch(a -> a == true);
+      assertTrue("Found non-null fields (for the wrong fields) in record!\nRecord:\n" + wrote,
+        empty);
+    }
+  }
+
   public static List<GenericRecord> createRandomRecordForSchema(SchemaStore store, String orgId,
     String metricType, long startTs, int recordCount, String fieldName, int fieldValue)
     throws SchemaNotFoundException {
@@ -216,7 +308,6 @@ public class TestAvroDynamoIO {
     TestRunner runner = createTestRunner(recordCount, fieldCount);
     runner.writeRecords();
     runner.verifyTables();
-    runner.verifyRecords();
   }
 
   private TestRunner createTestRunner(int recordCount, int fieldCount)
@@ -337,24 +428,11 @@ public class TestAvroDynamoIO {
     }
 
     private boolean matches(GenericRecord expected, GenericRecord actual) {
-      RecordMetadata actualMeta = RecordMetadata.get(actual);
+      if (!checkBaseFieldsMatch(expected, actual)) {
+        return false;
+      }
+
       RecordMetadata expectedMeta = RecordMetadata.get(expected);
-      if (!expectedMeta.getOrgID().equals(actualMeta.getOrgID())) {
-        return false;
-      }
-      if (!expectedMeta.getMetricCanonicalType().equals(actualMeta.getMetricCanonicalType())) {
-        return false;
-      }
-      if (!expectedMeta.getMetricSchema().equals(actualMeta.getMetricSchema())) {
-        return false;
-      }
-
-      BaseFields actualBase = actualMeta.getBaseFields();
-      BaseFields expectedBase = expectedMeta.getBaseFields();
-      if (!expectedBase.equals(actualBase)) {
-        return false;
-      }
-
       // verify the non-base fields match
       Schema schema = expectedMeta.getMetricSchema();
       return schema.getFields().stream()
@@ -385,6 +463,27 @@ public class TestAvroDynamoIO {
       this.tableCount = tableCount;
       return this;
     }
+  }
+
+  private boolean checkBaseFieldsMatch(GenericRecord expected, GenericRecord actual) {
+    RecordMetadata expectedMeta = RecordMetadata.get(expected);
+    RecordMetadata actualMeta = RecordMetadata.get(actual);
+    if (!expectedMeta.getOrgID().equals(actualMeta.getOrgID())) {
+      return false;
+    }
+    if (!expectedMeta.getMetricCanonicalType().equals(actualMeta.getMetricCanonicalType())) {
+      return false;
+    }
+    if (!expectedMeta.getMetricSchema().equals(actualMeta.getMetricSchema())) {
+      return false;
+    }
+
+    BaseFields actualBase = actualMeta.getBaseFields();
+    BaseFields expectedBase = expectedMeta.getBaseFields();
+    if (!expectedBase.equals(actualBase)) {
+      return false;
+    }
+    return true;
   }
 
   @FunctionalInterface

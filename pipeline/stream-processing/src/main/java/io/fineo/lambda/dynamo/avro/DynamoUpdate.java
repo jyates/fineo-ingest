@@ -5,6 +5,7 @@ import com.amazonaws.services.dynamodbv2.model.ReturnValue;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
 import com.google.common.base.Joiner;
+import com.google.common.base.Preconditions;
 import io.fineo.internal.customer.BaseFields;
 import io.fineo.lambda.aws.AwsAsyncSubmitter;
 import io.fineo.lambda.dynamo.Schema;
@@ -253,6 +254,12 @@ public class DynamoUpdate {
     String aliasName = state.asNameAlias(name);
     String attributeName = state.attributeName(value);
     String rowIdName = state.asNameAlias(id);
+    // Legacy fix where we would occasionally write bad records, but the error message isn't very
+    // helpful, so we attempt to make a better one ourselves
+    // tostring is the easiest way to verify. otherwise we need to check each field.
+    Preconditions.checkArgument(!value.toString().equals("{S: ,}"),
+      "Attempting to store zero-length string for [request: %s] field: '%s'[%s]", id, name,
+      aliasName);
     state.withExpression(format("%s.%s = %s", aliasName, rowIdName, attributeName));
   }
 
