@@ -110,6 +110,11 @@ public class TestClientToRawStream {
     }
   }
 
+  /**
+   * This used to be an issue, but now we don't enforce the that event have a timestamp - it may
+   * actually be in the schema that the timestmap is some other field.
+   * @throws Exception
+   */
   @Test
   public void testMissingTimestampEvent() throws Exception {
     Context context = context();
@@ -120,7 +125,7 @@ public class TestClientToRawStream {
           context);
       fail();
     }catch (Exception e){
-      HandlerTestUtils.expectError(e, 400, "Bad Request");
+      HandlerTestUtils.expectError(e, 500, "Internal Server Error");
     }
   }
 

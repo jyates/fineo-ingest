@@ -97,11 +97,9 @@ public class CustomerEventHandler extends ExternalFacingRequestHandler<CustomerE
 
     List<PutRecordsRequestEntry> entries =
       events.stream()
-            .map(bytes -> {
-              return new PutRecordsRequestEntry()
-                .withData(ByteBuffer.wrap(bytes))
-                .withPartitionKey(getPartitionKey(request));
-            }).collect(Collectors.toList());
+            .map(bytes -> new PutRecordsRequestEntry()
+              .withData(ByteBuffer.wrap(bytes))
+              .withPartitionKey(getPartitionKey(request))).collect(Collectors.toList());
 
     PutRecordsRequest putRequest = new PutRecordsRequest()
       .withRecords(entries)
@@ -138,9 +136,6 @@ public class CustomerEventHandler extends ExternalFacingRequestHandler<CustomerE
 
   private byte[] encode(Context context, CustomerEventRequest event, Map<String, Object> object)
     throws JsonProcessingException {
-    if (object.get(AvroSchemaProperties.TIMESTAMP_KEY) == null) {
-      throw ExternalErrorsUtil.get40X(context, 0, "Missing 'timestamp' field!");
-    }
     Map<String, Object> outEvent = newHashMap(object);
     outEvent.put(AvroSchemaProperties.ORG_ID_KEY, event.getCustomerKey());
     try {
