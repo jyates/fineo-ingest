@@ -143,7 +143,7 @@ public class AwsAsyncSubmitter<REQUEST extends AmazonWebServiceRequest, RESPONSE
           done(this.phaser, "Had error, but marked completed: " + this);
         }
       } catch (Exception e) {
-        LOG.error("Fatal execption when processing error!", e);
+        LOG.error("Fatal exception when processing error!", e);
         // make sure we don't attempt this again
         this.attempts = Integer.MAX_VALUE;
         fail(this);
