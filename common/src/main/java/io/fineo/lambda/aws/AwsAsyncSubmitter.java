@@ -67,17 +67,17 @@ public class AwsAsyncSubmitter<REQUEST extends AmazonWebServiceRequest, RESPONSE
 
   private void submit(UpdateItemHandler handler) {
     if (handler.attempts >= retries) {
-      fail(handler);
+      fail(handler, "Actions exceeded retries");
       return;
     }
     LOG.trace("Resubmitting!");
     client.submit(handler.getRequest(), handler);
   }
 
-  private void fail(UpdateItemHandler handler) {
+  private void fail(UpdateItemHandler handler, String msg) {
     this.actions.remove(handler);
     this.failed.add(handler.request);
-    done(handler.phaser, "Actions exceeded retries");
+    done(handler.phaser, msg);
   }
 
   /**
@@ -134,7 +134,7 @@ public class AwsAsyncSubmitter<REQUEST extends AmazonWebServiceRequest, RESPONSE
 
     @Override
     public void onError(Exception exception) {
-      LOG.error("Failed to make an update for request: " + this.request, exception);
+      LOG.trace("Failed to make an update for request: " + this.request, exception);
       attempts++;
       try {
         if (request.onError(exception)) {
@@ -143,10 +143,11 @@ public class AwsAsyncSubmitter<REQUEST extends AmazonWebServiceRequest, RESPONSE
           done(this.phaser, "Had error, but marked completed: " + this);
         }
       } catch (Exception e) {
-        LOG.error("Fatal exception when processing error!", e);
+        String msg = "Fatal exception when processing error!";
+        LOG.error(msg, e);
         // make sure we don't attempt this again
         this.attempts = Integer.MAX_VALUE;
-        fail(this);
+        fail(this, msg);
       }
     }
 
