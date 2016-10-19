@@ -125,8 +125,8 @@ public class LaunchBatchProcessingEmrCluster implements LambdaHandler<Map<String
     RunJobFlowRequest request = new RunJobFlowRequest()
       .withName("Transient Spark Cluster - " + clusterName)
       .withReleaseLabel(RELEASE_LABEL)
-      .withConfigurations(getHadoopConfig(), getSparkConfig(), getSparkProperties(),
-        getSparkLog4j())
+      .withConfigurations(getHadoopConfig(),
+        getSparkConfig(), getSparkDefaults(overrides), getSparkLog4j())
       .withLogUri(format("s3://logs.fineo.io/transient-spark-%s/%s", clusterName, Instant.now()))
       .withServiceRole(SERVICE_ROLE)
       .withJobFlowRole(EXEC_ROLE)
@@ -151,14 +151,6 @@ public class LaunchBatchProcessingEmrCluster implements LambdaHandler<Map<String
     return new Configuration()
       .withClassification("spark-env")
       .withConfigurations(getEnvironment());
-  }
-
-  private Configuration getSparkProperties() {
-    Map<String, String> props = new HashMap<>();
-    props.put("maximizeResourceAllocation", "true");
-    return new Configuration()
-      .withClassification("spark")
-      .withProperties(props);
   }
 
   private Configuration getSparkLog4j() {
@@ -190,13 +182,21 @@ public class LaunchBatchProcessingEmrCluster implements LambdaHandler<Map<String
       .withProperties(java8);
   }
 
+  private Configuration getSparkDefaults(Map<String, Object> overrides) {
+    Map<String, String> props = new HashMap<>();
+    props.put("spark.executor.memory", getOrDefault(overrides, SPARK_EXECUTOR_MEMORY, "6g"));
+    props.put("spark.yarn.executor.memoryOverhead", "1");
+    props.put("spark.executor.cores", getOrDefault(overrides, SPARK_EXECUTOR_CORES, "3"));
+    props.put("spark.dynamicAllocation.enabled ", "true");
+    return new Configuration()
+      .withClassification("spark-defaults")
+      .withProperties(props);
+  }
+
   private StepConfig sparkProcessingStep(Map<String, Object> overrides) {
     HadoopJarStepConfig stepConf = new HadoopJarStepConfig()
       .withJar("command-runner.jar")
       .withArgs("spark-submit",
-        "--num-executors", getOrDefault(overrides, SPARK_EXECUTORS, "6"),
-        "--executor-memory", getOrDefault(overrides, SPARK_EXECUTOR_MEMORY, "2g"),
-        "--executor-cores", getOrDefault(overrides, SPARK_EXECUTOR_CORES, "3"),
         "--deploy-mode", "cluster",
         "--class", mainClass,
         getOrDefault(overrides, FINEO_BATCH_CLUSTER_JAR, sourceJar));
