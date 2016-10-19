@@ -134,7 +134,9 @@ public class AwsAsyncSubmitter<REQUEST extends AmazonWebServiceRequest, RESPONSE
 
     @Override
     public void onError(Exception exception) {
-      LOG.trace("Failed to make an update for request: " + this.request, exception);
+      LOG
+        .trace("{}: Failed to make an update for request: {}", exception.getMessage(), this.request,
+          exception);
       attempts++;
       try {
         if (request.onError(exception)) {
