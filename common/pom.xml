@@ -14,7 +14,14 @@
   <dependencies>
     <dependency>
       <groupId>com.amazonaws</groupId>
-      <artifactId>aws-java-sdk</artifactId>
+      <artifactId>aws-java-sdk-core</artifactId>
+    </dependency>
+    <!-- Something random that we can use to validate the request submitter -->
+    <dependency>
+      <groupId>com.amazonaws</groupId>
+      <artifactId>aws-java-sdk-datapipeline</artifactId>
+      <version>${aws-java-sdk.version}</version>
+      <scope>test</scope>
     </dependency>
   </dependencies>
 
