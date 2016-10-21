@@ -115,6 +115,8 @@
                       <include>io.fineo.schema:schema-core:tests</include>
                       <include>io.fineo.lambda:lambda-dynamo:tests</include>
                       <include>io.fineo.etl.pipeline:lambda-common:tests</include>
+                      <!-- Core libs that are not present in local, but are when on AWS -->
+                      <include>com.amazonaws:aws-java-sdk-core</include>
                       <!--<include>com.fasterxml.jackson.core:jackson-core</include>-->
                     </includes>
                   </artifactSet>

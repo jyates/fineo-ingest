@@ -39,6 +39,7 @@
     <dependency>
       <groupId>com.google.inject</groupId>
       <artifactId>guice</artifactId>
+      <classifier>no_aop</classifier>
     </dependency>
     <dependency>
       <groupId>com.fasterxml.jackson.jr</groupId>
@@ -56,7 +57,7 @@
     <!-- AWS -->
     <dependency>
       <groupId>com.amazonaws</groupId>
-      <artifactId>aws-java-sdk</artifactId>
+      <artifactId>aws-java-sdk-core</artifactId>
     </dependency>
     <dependency>
       <groupId>com.amazonaws</groupId>

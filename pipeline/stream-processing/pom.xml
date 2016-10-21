@@ -22,11 +22,6 @@
       <artifactId>dynamo-access</artifactId>
     </dependency>
 
-    <dependency>
-      <groupId>com.amazonaws</groupId>
-      <artifactId>aws-java-sdk</artifactId>
-      <scope>provided</scope>
-    </dependency>
     <!-- Handle logging warning for local logs -->
     <dependency>
       <groupId>io.fineo.schema</groupId>
@@ -37,13 +32,40 @@
       <artifactId>schema-lambda</artifactId>
     </dependency>
     <dependency>
-      <groupId>io.fineo.schema</groupId>
-      <artifactId>schema-lambda</artifactId>
-      <classifier>tests</classifier>
-    </dependency>
-    <dependency>
       <groupId>com.google.inject</groupId>
       <artifactId>guice</artifactId>
+      <classifier>no_aop</classifier>
+    </dependency>
+    <dependency>
+      <groupId>com.github.oxo42</groupId>
+      <artifactId>stateless4j</artifactId>
+      <version>2.5.0</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-jdk14</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.scala-lang</groupId>
+      <artifactId>scala-library</artifactId>
+    </dependency>
+    <!--<dependency>-->
+      <!--<groupId>org.slf4j</groupId>-->
+      <!--<artifactId>slf4j-log4j12</artifactId>-->
+      <!--<version>${slf4j.version}</version>-->
+    <!--</dependency>-->
+
+    <!-- Logging -->
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>log4j-over-slf4j</artifactId>
+    </dependency>
+    <!-- Just use log4j to handle the underlying output -->
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-log4j12</artifactId>
     </dependency>
 
     <!-- Test dependencies -->
@@ -95,6 +117,16 @@
       <artifactId>lambda-core</artifactId>
       <classifier>tests</classifier>
       <scope>test</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>com.google.inject</groupId>
+          <artifactId>guice</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>ch.qos.logback</groupId>
+          <artifactId>logback-classic</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>io.fineo.aws</groupId>
@@ -107,25 +139,28 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>com.github.oxo42</groupId>
-      <artifactId>stateless4j</artifactId>
-      <version>2.5.0</version>
-      <exclusions>
-        <exclusion>
-          <groupId>org.slf4j</groupId>
-          <artifactId>slf4j-jdk14</artifactId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-    <dependency>
-      <groupId>org.scala-lang</groupId>
-      <artifactId>scala-library</artifactId>
-    </dependency>
-    <dependency>
       <groupId>com.google.inject.extensions</groupId>
       <artifactId>guice-testlib</artifactId>
       <version>4.0</version>
       <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>commons-io</groupId>
+      <artifactId>commons-io</artifactId>
+      <version>2.4</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.fineo.schema</groupId>
+      <artifactId>schema-lambda</artifactId>
+      <classifier>tests</classifier>
+      <scope>test</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>log4j-over-slf4j</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
   </dependencies>
 
@@ -205,6 +240,8 @@
                   <artifactSet>
                     <excludes>
                       <exclude>commons-logging:commons-logging</exclude>
+                      <exclude>org.slf4j:log4j-over-slf4j</exclude>
+                      <exclude>ch.qos.logback:*</exclude>
                       <!-- Test jars -->
                       <exclude>junit:junit</exclude>
                       <exclude>org.mockito:*</exclude>
