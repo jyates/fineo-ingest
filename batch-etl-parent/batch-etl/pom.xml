@@ -25,6 +25,12 @@
       <groupId>io.fineo.schema</groupId>
       <artifactId>schema-core</artifactId>
     </dependency>
+    <!-- Provided in the sense that it is included via logback... -->
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-log4j12</artifactId>
+      <scope>provided</scope>
+    </dependency>
     <dependency>
       <groupId>io.fineo.schema</groupId>
       <artifactId>schema-lambda</artifactId>
@@ -32,6 +38,16 @@
     <dependency>
       <groupId>io.fineo.etl.pipeline</groupId>
       <artifactId>stream-processing</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>io.fineo.client</groupId>
+          <artifactId>common</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>log4j</groupId>
+          <artifactId>log4j</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>io.fineo.etl</groupId>
@@ -72,6 +88,12 @@
       <artifactId>stream-processing</artifactId>
       <classifier>tests</classifier>
       <scope>test</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>log4j</groupId>
+          <artifactId>log4j</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>io.fineo.etl.pipeline</groupId>
@@ -119,42 +141,42 @@
                 </goals>
                 <configuration>
                   <artifactSet>
-                  <includes>
-                    <include>io.fineo.lambda:*</include>
-                    <include>io.fineo.schema:*</include>
-                    <include>io.fineo.etl:*</include>
-                    <include>io.fineo.etl.pipeline:*</include>
+                    <includes>
+                      <include>io.fineo.lambda:*</include>
+                      <include>io.fineo.schema:*</include>
+                      <include>io.fineo.etl:*</include>
+                      <include>io.fineo.etl.pipeline:*</include>
 
-                    <include>org.apache.avro:avro</include>
-                    <include>org.codehaus.jackson:*</include>
-                    <include>com.thoughtworks.paranamer:paranamer</include>
-                    <include>org.apache.commons:commons-compress</include>
-                    <include>org.tukaani:xz</include>
-                    <include>org.schemarepo:*</include>
-                    <include>com.google.code.gson:*</include>
-                    <include>com.sun.jersey:jersey-client</include>
-                    <include>com.fasterxml.jackson.dataformat:jackson-dataformat-cbor</include>
-                    <include>com.google.guava:guava</include>
+                      <include>org.apache.avro:avro</include>
+                      <include>org.codehaus.jackson:*</include>
+                      <include>com.thoughtworks.paranamer:paranamer</include>
+                      <include>org.apache.commons:commons-compress</include>
+                      <include>org.tukaani:xz</include>
+                      <include>org.schemarepo:*</include>
+                      <include>com.google.code.gson:*</include>
+                      <include>com.sun.jersey:jersey-client</include>
+                      <include>com.fasterxml.jackson.dataformat:jackson-dataformat-cbor</include>
+                      <include>com.google.guava:guava</include>
 
-                    <include>com.fasterxml.jackson.jr:jackson-jr-objects</include>
-                    <include>com.google.inject:guice</include>
-                    <include>javax.inject:javax.inject</include>
-                    <include>aopalliance:aopalliance</include>
-                    <include>io.fineo.etl:spark-common</include>
+                      <include>com.fasterxml.jackson.jr:jackson-jr-objects</include>
+                      <include>com.google.inject:guice</include>
+                      <include>javax.inject:javax.inject</include>
+                      <include>aopalliance:aopalliance</include>
+                      <include>io.fineo.etl:spark-common</include>
 
-                    <include>com.beust:jcommander</include>
+                      <include>com.beust:jcommander</include>
 
-                    <!-- Chill Serialization -->
-                    <include>com.twitter:chill-avro_${scala.base.version}</include>
-                    <include> com.twitter:chill-bijection_${scala.base.version}</include>
-                    <include>com.esotericsoftware.kryo:kryo</include>
-                    <include>com.esotericsoftware.reflectasm:reflectasm</include>
-                    <include>org.ow2.asm:asm</include>
-                    <include>com.esotericsoftware.minlog:minlog</include>
-                    <include>org.objenesis:objenesis</include>
-                    <include>com.twitter:bijection-avro_${scala.base.version}</include>
-                    <include>com.twitter:bijection-core_${scala.base.version}</include>
-                  </includes>
+                      <!-- Chill Serialization -->
+                      <include>com.twitter:chill-avro_${scala.base.version}</include>
+                      <include>com.twitter:chill-bijection_${scala.base.version}</include>
+                      <include>com.esotericsoftware.kryo:kryo</include>
+                      <include>com.esotericsoftware.reflectasm:reflectasm</include>
+                      <include>org.ow2.asm:asm</include>
+                      <include>com.esotericsoftware.minlog:minlog</include>
+                      <include>org.objenesis:objenesis</include>
+                      <include>com.twitter:bijection-avro_${scala.base.version}</include>
+                      <include>com.twitter:bijection-core_${scala.base.version}</include>
+                    </includes>
                   </artifactSet>
                   <filters>
                     <filter>
