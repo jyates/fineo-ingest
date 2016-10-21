@@ -79,10 +79,12 @@
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.mockito</groupId>
       <artifactId>mockito-all</artifactId>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>io.fineo.schema</groupId>
@@ -222,6 +224,7 @@
               <createDependencyReducedPom>false</createDependencyReducedPom>
               <shadedArtifactAttached>true</shadedArtifactAttached>
               <shadedClassifierName>aws</shadedClassifierName>
+              <promoteTransitiveDependencies>true</promoteTransitiveDependencies>
             </configuration>
             <executions>
               <execution>
@@ -232,9 +235,11 @@
                 <configuration>
                   <artifactSet>
                     <excludes>
+                      <!-- Only use log4j -->
                       <exclude>commons-logging:commons-logging</exclude>
                       <exclude>org.slf4j:log4j-over-slf4j</exclude>
                       <exclude>ch.qos.logback:*</exclude>
+
                       <!-- Test jars -->
                       <exclude>junit:junit</exclude>
                       <exclude>org.mockito:*</exclude>
