@@ -122,7 +122,7 @@
                       <include>io.fineo.etl.pipeline:lambda-common:tests</include>
                       <!-- Core libs that are not present in local, but are when on AWS -->
                       <include>com.amazonaws:aws-java-sdk-core</include>
-                      <include>org.apache.httpcomponents:httpclient</include>
+                      <include>org.apache.httpcomponents:*</include>
                       <!--<include>com.fasterxml.jackson.core:jackson-core</include>-->
                     </includes>
                   </artifactSet>
