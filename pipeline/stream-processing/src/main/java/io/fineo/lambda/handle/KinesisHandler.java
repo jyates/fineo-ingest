@@ -34,7 +34,7 @@ public abstract class KinesisHandler implements LambdaHandler<KinesisEvent> {
 
   @Override
   public void handle(KinesisEvent event) throws IOException {
-    LOG.trace("Entering handler");
+    LOG.trace("Entering handler - {} records", event.getRecords().size());
     int count = 0;
     for (KinesisEvent.KinesisEventRecord rec : event.getRecords()) {
       count++;
@@ -45,7 +45,7 @@ public abstract class KinesisHandler implements LambdaHandler<KinesisEvent> {
         data.reset();
         handleEvent(rec);
       } catch (RuntimeException e) {
-        LOG.error("Failed for process record", e);
+        LOG.error("Failed to process record", e);
         addRecordError(rec);
       }
     }
@@ -56,7 +56,7 @@ public abstract class KinesisHandler implements LambdaHandler<KinesisEvent> {
     archive.get().flush();
 
     MultiWriteFailures<GenericRecord, ?> failures = commit();
-    LOG.debug("Finished writing record batches");
+    LOG.debug("Finished writing record batches, checking if we need to write failures");
     FailureHandler.handle(failures, this.commitFailures::get);
   }
 

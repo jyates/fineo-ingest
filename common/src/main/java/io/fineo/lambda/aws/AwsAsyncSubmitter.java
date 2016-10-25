@@ -70,7 +70,7 @@ public class AwsAsyncSubmitter<REQUEST extends AmazonWebServiceRequest, RESPONSE
       fail(handler, "Actions exceeded retries");
       return;
     }
-    LOG.trace("Resubmitting!");
+    LOG.trace(handler.attempts == 0 ? "Submitting initial request." : "Resubmitting!");
     client.submit(handler.getRequest(), handler);
   }
 
