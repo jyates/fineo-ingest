@@ -48,6 +48,7 @@ import static io.fineo.lambda.configure.util.SingleInstanceModule.instanceModule
 import static java.lang.String.format;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
 /**
@@ -215,6 +216,7 @@ public class TestBatchProcessorWithLocalResources {
         break;
       }
     }
+    assertNotNull("Didn't find any tables!", table);
     long count = StreamSupport.stream(table.scan().spliterator(), false).count();
     assertEquals("Wrong number of rows read in dynamo!", numRows, count);
     assertFalse("Found errors files: " + Arrays.toString(props.errorFile.list()),
