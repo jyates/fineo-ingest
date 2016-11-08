@@ -10,7 +10,8 @@ import com.amazonaws.services.kinesisfirehose.model.PutRecordBatchResponseEntry;
 import com.amazonaws.services.kinesisfirehose.model.PutRecordBatchResult;
 import com.amazonaws.services.kinesisfirehose.model.Record;
 import com.google.common.collect.Lists;
-import javafx.util.Pair;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 import org.junit.Test;
 import org.mockito.Mockito;
 
@@ -153,7 +154,7 @@ public class TestFirehoseBatchWriter {
            .then(invocation -> {
              PutRecordBatchRequest request = (PutRecordBatchRequest) invocation.getArguments()[0];
              List<Record> records1 = Lists.newArrayList(request.getRecords());
-             requests.add(new Pair<>(request, records1));
+             requests.add(new ImmutablePair<> (request, records1));
              return results.remove(0);
            });
 
