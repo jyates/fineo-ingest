@@ -5,16 +5,18 @@ import io.fineo.lambda.e2e.manager.collector.OutputCollector;
 import io.fineo.schema.avro.RecordMetadata;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 /**
  *
  */
 public interface IDynamoResource extends IResource {
 
-  public AvroToDynamoWriter getWriter();
+  AvroToDynamoWriter getWriter();
 
-  void verify(RecordMetadata metadata, Map<String, Object> json);
+  void verify(Stream<RecordMetadata> metadata, List<Map<String, Object>> json);
 
   void copyStoreTables(OutputCollector dynamo) throws IOException;
 }

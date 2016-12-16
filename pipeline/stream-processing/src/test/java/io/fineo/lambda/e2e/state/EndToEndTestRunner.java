@@ -4,17 +4,18 @@ import com.google.common.base.Preconditions;
 import io.fineo.lambda.configure.LambdaClientProperties;
 import io.fineo.lambda.e2e.validation.EndToEndValidator;
 import io.fineo.lambda.util.IResourceManager;
+import io.fineo.schema.OldSchemaException;
 import io.fineo.schema.exception.SchemaNotFoundException;
 import io.fineo.schema.exception.SchemaTypeNotFoundException;
 import io.fineo.schema.store.AvroSchemaProperties;
 import io.fineo.schema.store.SchemaStore;
-import io.fineo.schema.store.SchemaTestUtils;
 import io.fineo.schema.store.StoreClerk;
 import io.fineo.schema.store.StoreManager;
 import org.apache.avro.Schema;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -48,51 +49,69 @@ public class EndToEndTestRunner {
     // collect the fields that are not the base fields
     List<String> otherFields = event.keySet().stream().filter(AvroSchemaProperties
       .IS_BASE_FIELD.negate()).collect(Collectors.toList());
+    StoreManager manager = new StoreManager(store);
+    StoreClerk clerk;
     try {
-      SchemaTestUtils.addNewOrg(store, orgId, metricType, otherFields.toArray(new String[0]));
-    } catch (IllegalStateException e) {
-      StoreManager manager = new StoreManager(store);
-      StoreClerk clerk = new StoreClerk(store, orgId);
-      StoreManager.OrganizationBuilder builder = manager.updateOrg(orgId);
-      StoreManager.MetricBuilder metricBuilder = builder.updateMetric(metricType);
-      event.entrySet().stream().sequential()
-           .filter(entry -> AvroSchemaProperties.IS_BASE_FIELD.negate().test(entry.getKey()))
-           .filter(entry -> {
-             try {
-               return clerk.getMetricForUserNameOrAlias(metricType)
-                           .getCanonicalNameFromUserFieldName(entry.getKey()) == null;
-             } catch (SchemaNotFoundException e1) {
-               throw new RuntimeException(e1);
-             }
-           })
-           .forEach(entry -> {
-             try {
-               String clazz = entry.getValue().getClass().getSimpleName().toUpperCase();
-               if (clazz.equals("BYTE[]")) {
-                 metricBuilder.newField().withType("BYTES").withName(entry.getKey()).build();
-                 return;
-               } else if (clazz.equals("INTEGER")) {
-                 metricBuilder.newField().withType("INTEGER").withName(entry.getKey()).build();
-                 return;
-               }
-               Schema.Type type = Schema.Type.valueOf(clazz);
-               switch (type) {
-                 case BOOLEAN:
-                 case LONG:
-                 case FLOAT:
-                 case DOUBLE:
-                 case STRING:
-                   metricBuilder.newField().withType(type.getName()).withName(entry.getKey())
-                                .build();
-                   return;
-               }
-             } catch (SchemaTypeNotFoundException e1) {
-               e1.printStackTrace();
-             }
-           });
+      clerk = new StoreClerk(store, orgId);
+      updateSchema(manager, clerk, orgId, metricType, event);
+    } catch (NullPointerException e) {
+      // schema doesn't exist, so create it
+      createSchema(manager, orgId, metricType, event);
+    }
+  }
 
-      metricBuilder.build();
-      builder.commit();
+  private static void updateSchema(StoreManager manager, StoreClerk clerk, String orgId,
+    String metricType, Map<String, Object> event) throws IOException, OldSchemaException {
+    StoreManager.OrganizationBuilder builder = manager.updateOrg(orgId);
+    StoreManager.MetricBuilder metricBuilder = builder.updateMetric(metricType);
+    event.entrySet().stream().sequential()
+         .filter(entry -> AvroSchemaProperties.IS_BASE_FIELD.negate().test(entry.getKey()))
+         .filter(entry -> {
+           try {
+             return clerk.getMetricForUserNameOrAlias(metricType)
+                         .getCanonicalNameFromUserFieldName(entry.getKey()) == null;
+           } catch (SchemaNotFoundException e1) {
+             throw new RuntimeException(e1);
+           }
+         })
+      .forEach(entry -> addFieldToMetric(entry, metricBuilder));
+    metricBuilder.build().commit();
+  }
+
+  private static void createSchema(StoreManager manager, String orgId, String metricType,
+    Map<String, Object> event) throws IOException, OldSchemaException {
+    StoreManager.OrganizationBuilder builder = manager.newOrg(orgId);
+    StoreManager.MetricBuilder metricBuilder = builder.newMetric().setDisplayName(metricType);
+    event.entrySet().stream().sequential()
+         .filter(entry -> AvroSchemaProperties.IS_BASE_FIELD.negate().test(entry.getKey()))
+         .forEach(entry -> addFieldToMetric(entry, metricBuilder));
+    metricBuilder.build().commit();
+  }
+
+  private static void addFieldToMetric(Map.Entry<String, Object> entry, StoreManager
+    .MetricBuilder metricBuilder){
+    try {
+      String clazz = entry.getValue().getClass().getSimpleName().toUpperCase();
+      if (clazz.equals("BYTE[]")) {
+        metricBuilder.newField().withType("BYTES").withName(entry.getKey()).build();
+        return;
+      } else if (clazz.equals("INTEGER")) {
+        metricBuilder.newField().withType("INTEGER").withName(entry.getKey()).build();
+        return;
+      }
+      Schema.Type type = Schema.Type.valueOf(clazz);
+      switch (type) {
+        case BOOLEAN:
+        case LONG:
+        case FLOAT:
+        case DOUBLE:
+        case STRING:
+          metricBuilder.newField().withType(type.getName()).withName(entry.getKey())
+                       .build();
+          return;
+      }
+    } catch (SchemaTypeNotFoundException e1) {
+      e1.printStackTrace();
     }
   }
 

@@ -19,8 +19,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 import static io.fineo.lambda.e2e.validation.util.ValidationUtils.verifyRecordMatchesJson;
+import static io.fineo.lambda.e2e.validation.util.ValidationUtils.verifyRecordsMatchJson;
 import static org.junit.Assert.assertEquals;
 
 /**
@@ -52,9 +54,8 @@ public class MockAvroToDynamo implements IDynamoResource {
   }
 
   @Override
-  public void verify(RecordMetadata metadata, Map<String, Object> json) {
-    assertEquals("Got wrong number of writes: " + dynamoWrites, 1, dynamoWrites.size());
-    verifyRecordMatchesJson(store, json, dynamoWrites.get(0));
+  public void verify(Stream<RecordMetadata> metadata, List<Map<String, Object>> json) {
+    verifyRecordsMatchJson(store, dynamoWrites, json);
   }
 
   @Override

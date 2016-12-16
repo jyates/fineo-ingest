@@ -4,13 +4,12 @@ import io.fineo.lambda.configure.LambdaClientProperties;
 import io.fineo.lambda.configure.StreamType;
 import io.fineo.lambda.e2e.state.EventFormTracker;
 import io.fineo.lambda.e2e.validation.util.ValidationUtils;
-import io.fineo.lambda.util.LambdaTestUtils;
 import io.fineo.lambda.util.IResourceManager;
+import io.fineo.lambda.util.LambdaTestUtils;
 import io.fineo.lambda.util.SchemaUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.function.Function;
@@ -31,11 +30,7 @@ public class ErrorStreams extends ValidationStep {
     EventFormTracker progress) {
     LOG.info("Checking to make sure that there are no errors in stage: " + phase);
     verifyNoFirehoseWrites(manager, props, bbs -> {
-      try {
-        return SchemaUtil.toString(LambdaTestUtils.readRecords(ValidationUtils.combine(bbs)));
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
+      return SchemaUtil.toString(LambdaTestUtils.readRecords(ValidationUtils.combine(bbs)));
     }, phase, PROCESSING_ERROR, COMMIT_ERROR);
   }
 

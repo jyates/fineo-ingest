@@ -52,6 +52,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Spliterators;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Maps.newHashMap;
@@ -153,6 +154,35 @@ public class ITEndToEndLambdaLocal {
     expectedOut.put(AvroSchemaProperties.TIMESTAMP_KEY, fixedTs);
 
     run(state, event, expectedOut, false);
+    state.getRunner().cleanup();
+  }
+
+  @Test
+  public void testMultipleEvents() throws Exception {
+    Map<String, Object>[] events = LambdaTestUtils.createRecordsForSingleTenant(3, 2,
+      (recordCount, fieldName) -> {
+        String index = fieldName.substring(1);
+        switch (index) {
+          case "0":
+            return false;
+          case "1":
+            return recordCount;
+          default:
+            throw new RuntimeException("Should only have two different fields!");
+        }
+      });
+    E2ETestState state = prepareTest();
+
+    EndToEndTestRunner runner = state.getRunner();
+    runner.setup();
+    for (int i = 0; i < events.length; i++) {
+      if (i == 0) {
+        runner.run(events[i]);
+      } else {
+        runner.send(events[i]);
+      }
+    }
+    runner.validate();
     state.getRunner().cleanup();
   }
 

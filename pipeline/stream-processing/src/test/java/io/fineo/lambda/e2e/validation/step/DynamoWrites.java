@@ -15,7 +15,7 @@ public class DynamoWrites extends ValidationStep {
   public void validate(IResourceManager manager, LambdaClientProperties props,
     EventFormTracker progress) {
     // verify that we wrote the right things to DynamoDB
-    RecordMetadata metadata = RecordMetadata.get(progress.getAvro());
-    manager.verifyDynamoWrites(metadata, progress.getExpected());
+    manager.verifyDynamoWrites(progress.getAvro().stream().map(RecordMetadata::get),
+      progress.getExpected());
   }
 }

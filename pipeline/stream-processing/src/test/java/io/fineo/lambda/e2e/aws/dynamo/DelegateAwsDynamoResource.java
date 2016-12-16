@@ -15,10 +15,13 @@ import org.apache.avro.generic.GenericRecord;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static io.fineo.lambda.configure.util.InstanceToNamed.property;
 import static io.fineo.lambda.e2e.validation.util.ValidationUtils.verifyRecordMatchesJson;
+import static io.fineo.lambda.e2e.validation.util.ValidationUtils.verifyRecordsMatchJson;
 import static org.junit.Assert.assertEquals;
 
 /**
@@ -48,10 +51,10 @@ public class DelegateAwsDynamoResource implements IDynamoResource {
   }
 
   @Override
-  public void verify(RecordMetadata metadata, Map<String, Object> json) {
-    List<GenericRecord> records = dynamo.read(metadata);
-    assertEquals(newArrayList(records.get(0)), records);
-    verifyRecordMatchesJson(getStore(), json, records.get(0));
+  public void verify(Stream<RecordMetadata> metadata, List<Map<String, Object>> json) {
+    List<GenericRecord> records =
+      metadata.map(meta -> dynamo.read(meta)).flatMap(r -> r.stream()).collect(Collectors.toList());
+    verifyRecordsMatchJson(getStore(), records, json);
   }
 
   @Override

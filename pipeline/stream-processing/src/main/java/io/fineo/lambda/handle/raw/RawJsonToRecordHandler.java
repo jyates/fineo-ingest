@@ -39,7 +39,7 @@ public class RawJsonToRecordHandler {
   public void handle(Map<String, Object> values) throws IOException {
     // parse out the necessary values
     MapRecord record = new MapRecord(values);
-    LOG.trace("got record");
+    LOG.trace("got record: {}", record);
     // this is an ugly reach into the bridge logic for the org ID, specially as we pull it out
     // when we create the schema bridge, but that requires a bit more refactoring than I want
     // to do right now for the schema bridge. Maybe an easy improvement later.
@@ -51,7 +51,7 @@ public class RawJsonToRecordHandler {
 
     // write the record to a ByteBuffer
     GenericRecord outRecord = bridge.encode();
-//    LOG.trace("Encoded the record {}", outRecord);
+    LOG.trace("Encoded the record {}", outRecord);
     // add the record
     this.convertedRecords.add(stream, orgId, outRecord);
     LOG.trace("Wrote the record");

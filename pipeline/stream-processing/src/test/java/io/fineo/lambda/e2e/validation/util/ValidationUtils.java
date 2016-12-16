@@ -22,10 +22,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static java.lang.String.format;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
@@ -70,7 +73,7 @@ public class ValidationUtils {
       } else {
         // ensure the value matches
         assertNotNull("Didn't find a matching canonical name for " + aliasName, cname);
-        String eventString = "JSON: " + json + "\nRecord: " + record;
+        String eventString = "\n(expected)JSON: " + json + "\n(actual)Record: " + record;
         assertEquals("Wrong data! " + eventString,
           entry.getValue(), ((GenericData.Record) record.get(cname)).get(1));
         assertEquals("Wrong alias name! " + eventString, entry.getKey(),
@@ -90,14 +93,47 @@ public class ValidationUtils {
       parsedBytes.addAll(elem);
     }
     // read the parsed avro records
-    List<GenericRecord> parsedRecords = LambdaTestUtils.readRecords(combine(parsedBytes));
-    assertEquals("[" + stream + "] Got unexpected number of records: " +
-                 (parsedRecords.isEmpty() ? "<empty>" : parsedRecords), 1, parsedRecords.size());
-    GenericRecord record = parsedRecords.get(0);
+    List<GenericRecord> parsedRecords =
+      parsedBytes.stream().map(parsed -> {
+        parsed.rewind(); return parsed;
+      })
+                 .map(LambdaTestUtils::readRecords)
+                 .flatMap(recs -> recs.stream())
+                 .collect(Collectors.toList());
+    verifyRecordsMatchJson(manager.getStore(), parsedRecords, progress.getExpected(),
+      (record, json) -> {
+        progress.setRecord(record); return null;
+      }, stream);
+  }
 
-    // org/schema naming
-    TestRecordMetadata.verifyRecordMetadataMatchesExpectedNaming(record);
-    verifyRecordMatchesJson(manager.getStore(), progress.getExpected(), record);
-    progress.setRecord(record);
+  public static void verifyRecordsMatchJson(SchemaStore store, List<GenericRecord> records,
+    List<Map<String, Object>> json) {
+    verifyRecordsMatchJson(store, records, json, (a, b) -> null);
+  }
+
+  public static void verifyRecordsMatchJson(SchemaStore store, List<GenericRecord> records,
+    List<Map<String, Object>> json, BiFunction<GenericRecord, Map<String, Object>, ?> onMatch) {
+    verifyRecordsMatchJson(store, records, json, onMatch, null);
+  }
+
+  public static void verifyRecordsMatchJson(SchemaStore store, List<GenericRecord> records,
+    List<Map<String, Object>> json, BiFunction<GenericRecord, Map<String, Object>, ?> onMatch,
+    String phase) {
+    LOG.info("{}) Verifying records:\nExpected (json)[{}]:\n{}\nActual (recs)[{}]:{}", phase,
+      json.size(), json, records.size(), records);
+
+    for (int i = 0; i < records.size(); i++) {
+      GenericRecord record = records.get(i);
+      Map<String, Object> j = json.get(i);
+
+      // org/schema naming
+      TestRecordMetadata.verifyRecordMetadataMatchesExpectedNaming(record);
+      verifyRecordMatchesJson(store, j, record);
+      onMatch.apply(record, j);
+    }
+    String msg = phase == null ? "" : format("(%s) ", phase);
+    assertEquals(msg + "Mismatched expected number of records and found records!", json.size(),
+      records
+        .size());
   }
 }

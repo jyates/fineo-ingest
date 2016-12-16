@@ -19,6 +19,7 @@ import io.fineo.schema.store.StoreClerk;
 import io.fineo.spark.rule.LocalSparkRule;
 import io.fineo.test.rule.TestOutput;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.spark.sql.Column;
@@ -269,6 +270,18 @@ public class ITAvroReadWriteSpark {
     LOG.info("Spark output: " + opts.completed());
     LOG.info("Completed files: " + opts.archiveDir());
     return opts;
+  }
+
+
+  private void verifyETLOutput(Pair<E2ETestState, ETLOptions> ran,
+    List<Map<String, Object>> events)
+    throws Exception {
+    // copy over into an array
+    Map[] array = new Map[events.size()];
+    for (int i = 0; i < events.size(); i++) {
+      array[i] = events.get(i);
+    }
+    verifyETLOutput(ran, array);
   }
 
   private void verifyETLOutput(Pair<E2ETestState, ETLOptions> ran,

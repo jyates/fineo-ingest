@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.stream.Stream;
 
 import static io.fineo.etl.FineoProperties.RAW_PREFIX;
 import static io.fineo.etl.FineoProperties.STAGED_PREFIX;
@@ -160,7 +161,7 @@ public class ResourceManager implements IResourceManager {
   }
 
   @Override
-  public void verifyDynamoWrites(RecordMetadata metadata, Map<String, Object> json) {
+  public void verifyDynamoWrites(Stream<RecordMetadata> metadata, List<Map<String, Object>> json) {
     dynamo.verify(metadata, json);
   }
 

@@ -89,7 +89,7 @@ public class LocalLambdaRemoteKinesisConnector extends LambdaKinesisConnector<In
       // do a pass through the lambdas to see if there is any data to handleEvent
       for (Map.Entry<String, List<IngestUtil.Lambda>> stream : mapping.entrySet()) {
         String streamName = stream.getKey();
-        LOG.debug("Reading from stream -> " + streamName);
+        LOG.trace("Reading from stream -> {} ", streamName);
         BlockingQueue<List<ByteBuffer>> queue = streams.get(streamName);
         // no more data for this stream, go onto the next on
         List<ByteBuffer> data = queue.poll();

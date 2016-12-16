@@ -8,6 +8,7 @@ import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
+import java.util.stream.Stream;
 
 /**
  *
@@ -25,7 +26,7 @@ public interface IResourceManager {
 
   SchemaStore getStore();
 
-  void verifyDynamoWrites(RecordMetadata metadata, Map<String, Object> json);
+  void verifyDynamoWrites(Stream<RecordMetadata> metadata, List<Map<String, Object>> json);
 
   void cleanupDynamoClient();
 }

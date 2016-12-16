@@ -14,6 +14,8 @@ import io.fineo.stream.processing.e2e.options.FirehoseOutput;
 import io.fineo.stream.processing.e2e.options.JsonArgument;
 import io.fineo.stream.processing.e2e.options.LocalOptions;
 import io.fineo.stream.processing.e2e.options.SkipValidation;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +23,9 @@ import java.util.Map;
 import java.util.Properties;
 
 public class EndToEndWrapper {
+
+
+  private static final Logger LOG = LoggerFactory.getLogger(EndToEndWrapper.class);
 
   public static void main(String[] args) throws Exception {
     SkipValidation validate = new SkipValidation();
@@ -33,6 +38,7 @@ public class EndToEndWrapper {
     jc.parse(args);
 
     List<Map<String, Object>> events = json.get();
+    LOG.debug("Writing events: {}", events);
     List<Module> schemaStore = getSchemaStoreModules(local);
 
     String cmd = jc.getParsedCommand();
