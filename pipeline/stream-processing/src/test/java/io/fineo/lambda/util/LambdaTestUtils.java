@@ -63,7 +63,6 @@ public class LambdaTestUtils {
   }
 
   public static Map<String, Object>[] createRecords(int count, int fieldCount) {
-    Map[] records = new Map[count];
     BiFunction<Integer, String, Object> valueGen = new BiFunction<Integer, String, Object>() {
       private boolean previous = false;
 
@@ -76,21 +75,25 @@ public class LambdaTestUtils {
     };
     Map<String, Object>[] ret = new Map[0];
     for (int i = 0; i < count; i++) {
-      ret = (Map<String, Object>[]) ArrayUtils.addAll(ret, createRecordsForSingleTenant(1,
+      ret = (Map<String, Object>[]) ArrayUtils.addAll(ret, createRecordsForSingleTenant(1, i,
         fieldCount, valueGen));
     }
     return ret;
   }
 
   public static Map<String, Object>[] createRecordsForSingleTenant(int recordCount, int fieldCount,
-    BiFunction<Integer, String, Object> fieldGenerator) {
+    BiFunction<Integer, String, Object> fieldGenerator){
+    return createRecordsForSingleTenant(recordCount, fieldCount, 0, fieldGenerator);
+  }
+  public static Map<String, Object>[] createRecordsForSingleTenant(int recordCount, int
+    fieldCount, int tenantId, BiFunction<Integer, String, Object> fieldGenerator) {
     Map[] records = new Map[recordCount];
     String uuid = UUID.randomUUID().toString();
     LOG.debug("Using UUID - " + uuid);
     long ts = System.currentTimeMillis();
     for (int i = 0; i < recordCount; i++) {
       Map<String, Object> map =
-        SchemaTestUtils.getBaseFields("org" + "_" + uuid, "mt" + "_" + uuid, ts++);
+        SchemaTestUtils.getBaseFields("org" + "_" + tenantId+"_"+uuid, "mt" + "_" + uuid, ts++);
       // set the field values
       for (int j = 0; j < fieldCount; j++) {
         String name = "a" + j;

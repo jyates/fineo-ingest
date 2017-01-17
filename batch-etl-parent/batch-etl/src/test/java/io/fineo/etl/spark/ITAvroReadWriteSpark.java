@@ -137,7 +137,7 @@ public class ITAvroReadWriteSpark {
 
     verifyETLOutput(new ImmutablePair<>(state, opts), records);
 
-    // drill read verification happens in the drill-testi, which we cannot do here b/c of
+    // drill read verification happens in the drill-test, which we cannot do here b/c of
     // jvm conflicts however, we do write the expected output so we can verify it later
     List<Map<String, Object>> events = new ArrayList<>();
     for (Map<String, Object> event : records) {
