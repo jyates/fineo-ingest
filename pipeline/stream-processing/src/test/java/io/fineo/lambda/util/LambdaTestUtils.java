@@ -75,8 +75,8 @@ public class LambdaTestUtils {
     };
     Map<String, Object>[] ret = new Map[0];
     for (int i = 0; i < count; i++) {
-      ret = (Map<String, Object>[]) ArrayUtils.addAll(ret, createRecordsForSingleTenant(1, i,
-        fieldCount, valueGen));
+      ret = (Map<String, Object>[]) ArrayUtils.addAll(ret, createRecordsForSingleTenant(1,
+        fieldCount, i, valueGen));
     }
     return ret;
   }

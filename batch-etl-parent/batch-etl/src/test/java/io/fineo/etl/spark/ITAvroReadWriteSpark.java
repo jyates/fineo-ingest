@@ -214,7 +214,10 @@ public class ITAvroReadWriteSpark {
       JavaConversions.asScalaBuffer(newArrayList(ORG_ID_KEY, ORG_METRIC_TYPE_KEY, TIMESTAMP_KEY)));
     String canonicalField =
       translated.keySet().stream().filter(IS_BASE_FIELD.negate()).findFirst()
-                .get();
+                .orElseThrow(() ->
+                  new IllegalStateException(
+                    "No canonical field found in translation from original JSON! Did you actually"
+                    + " send a field in :" + json));
     rows = select(both, ORG_ID_KEY, ORG_METRIC_TYPE_KEY, TIMESTAMP_KEY, fieldKey, canonicalField)
       .collectAsList();
     expected.put(unknownFieldName, "1");
@@ -448,22 +451,47 @@ public class ITAvroReadWriteSpark {
       Pair<PartitionKey, Row> pair = flatRows.get(i);
       PartitionKey partition = pair.getKey();
       // check the org/metric
-      assertEquals("Got mismatch for org id!", fields.get(ORG_ID_KEY), partition.getOrg());
-      assertEquals("Got mismatch for metric type!", fields.get(ORG_METRIC_TYPE_KEY),
-        partition.getMetricId());
+      String rowInfo = printRows(flatRows);
+      assertEquals("Got mismatch for org id! Got rows:\n " + rowInfo, fields.get(ORG_ID_KEY),
+        partition.getOrg());
+      assertEquals("Got mismatch for metric type! Got rows: \n" + rowInfo,
+        fields.get(ORG_METRIC_TYPE_KEY), partition.getMetricId());
 
       Row row = pair.getRight();
-      scala.collection.Map<String, Object> rowFields =
-        row.getValuesMap(JavaConversions.asScalaBuffer(newArrayList(fields.keySet())));
+      Map<String, Object> rowFields = translateRow(row);
+
       // number of fields - partition fields
       assertEquals(fields.size(), rowFields.size());
       for (String field : fields.keySet()) {
         Object value = fields.get(field);
         assertEquals("Mismatch for " + field + ". \nEvent: " + fields + "\nRow: " + row,
           value,
-          rowFields.get(field).get());
+          rowFields.get(field));
       }
     }
+  }
+
+  private String printRows(List<Pair<PartitionKey, Row>> flatRows){
+    return flatRows.stream().map(pair ->{
+      PartitionKey key = pair.getKey();
+      StringBuffer sb = new StringBuffer(key.getOrg());
+      sb.append(" : ");
+      sb.append(key.getMetricId());
+      sb.append("\n\t");
+      for(Map.Entry<String, Object> entry: translateRow(pair.getRight()).entrySet()){
+          sb.append(entry.getKey()+":"+entry.getValue()+",");
+      }
+      return sb.toString();
+    }).collect(Collectors.toList()).toString();
+  }
+
+  private Map<String, Object> translateRow(Row row){
+    String[] names = row.schema().fieldNames();
+    Map<String, Object> result = new HashMap<>();
+    for(String name: names){
+      result.put(name, row.getAs(name));
+    }
+    return result;
   }
 
   public E2ETestState runWithRecordsAndWriteToFile(File outputDir,
