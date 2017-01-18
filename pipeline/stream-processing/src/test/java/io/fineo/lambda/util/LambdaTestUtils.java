@@ -77,14 +77,23 @@ public class LambdaTestUtils {
     for (int i = 0; i < count; i++) {
       ret = (Map<String, Object>[]) ArrayUtils.addAll(ret, createRecordsForSingleTenant(1,
         fieldCount, i, valueGen));
+      // sleep to ensure we get a new timestamp if we are doing multiple counts
+      if (count > 1) {
+        try {
+          Thread.sleep(5);
+        } catch (InterruptedException e) {
+          throw new RuntimeException(e);
+        }
+      }
     }
     return ret;
   }
 
   public static Map<String, Object>[] createRecordsForSingleTenant(int recordCount, int fieldCount,
-    BiFunction<Integer, String, Object> fieldGenerator){
+    BiFunction<Integer, String, Object> fieldGenerator) {
     return createRecordsForSingleTenant(recordCount, fieldCount, 0, fieldGenerator);
   }
+
   public static Map<String, Object>[] createRecordsForSingleTenant(int recordCount, int
     fieldCount, int tenantId, BiFunction<Integer, String, Object> fieldGenerator) {
     Map[] records = new Map[recordCount];
@@ -93,7 +102,7 @@ public class LambdaTestUtils {
     long ts = System.currentTimeMillis();
     for (int i = 0; i < recordCount; i++) {
       Map<String, Object> map =
-        SchemaTestUtils.getBaseFields("org" + "_" + tenantId+"_"+uuid, "mt" + "_" + uuid, ts++);
+        SchemaTestUtils.getBaseFields("org" + "_" + tenantId + "_" + uuid, "mt" + "_" + uuid, ts++);
       // set the field values
       for (int j = 0; j < fieldCount; j++) {
         String name = "a" + j;
