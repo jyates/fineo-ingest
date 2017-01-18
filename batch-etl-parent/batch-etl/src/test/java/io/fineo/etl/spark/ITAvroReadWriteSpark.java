@@ -59,6 +59,7 @@ import static io.fineo.schema.store.AvroSchemaProperties.ORG_ID_KEY;
 import static io.fineo.schema.store.AvroSchemaProperties.ORG_METRIC_TYPE_KEY;
 import static io.fineo.schema.store.AvroSchemaProperties.TIMESTAMP_KEY;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 /**
  * Simple test class that ensures we can read/write avro files from spark
@@ -220,6 +221,7 @@ public class ITAvroReadWriteSpark {
                     + " send a field in :" + json));
     rows = select(both, ORG_ID_KEY, ORG_METRIC_TYPE_KEY, TIMESTAMP_KEY, fieldKey, canonicalField)
       .collectAsList();
+    expected.put(TIMESTAMP_KEY, translated.get(TIMESTAMP_KEY));
     expected.put(unknownFieldName, "1");
     expected.put(canonicalField, translated.get(canonicalField));
     verifyMappedEvents(asRows(rows, pair), expected);
@@ -445,13 +447,16 @@ public class ITAvroReadWriteSpark {
           })
           .collect(Collectors.toList());
     assertEquals("Got unexpected number of rows: " + rows, mappedEvents.length, flatRows.size());
+    String rowInfo = printRows(flatRows);
+    System.out.println("Rows: "+rowInfo);
+    System.out.println("Expected: "+Arrays.toString(mappedEvents));
     for (int i = 0; i < mappedEvents.length; i++) {
       Map<String, Object> fields = mappedEvents[i];
 
       Pair<PartitionKey, Row> pair = flatRows.get(i);
       PartitionKey partition = pair.getKey();
+
       // check the org/metric
-      String rowInfo = printRows(flatRows);
       assertEquals("Got mismatch for org id! Got rows:\n " + rowInfo, fields.get(ORG_ID_KEY),
         partition.getOrg());
       assertEquals("Got mismatch for metric type! Got rows: \n" + rowInfo,
@@ -460,29 +465,38 @@ public class ITAvroReadWriteSpark {
       Row row = pair.getRight();
       Map<String, Object> rowFields = translateRow(row);
 
-      // number of fields - partition fields
-      assertEquals(fields.size(), rowFields.size());
+      // check all the expected fields against the ones recieved
       for (String field : fields.keySet()) {
         Object value = fields.get(field);
         assertEquals("Mismatch for " + field + ". \nEvent: " + fields + "\nRow: " + row,
           value,
           rowFields.get(field));
       }
+
+      // we might have received more, but they should be null
+      Collection<String> remaining = new ArrayList<>(rowFields.keySet());
+      remaining.removeAll(fields.keySet());
+      for(String field: remaining){
+        assertNull("Should be a null for 'extra' field : "+field+" in row: "+printRow(pair),
+          rowFields.get(field));
+      }
     }
   }
 
   private String printRows(List<Pair<PartitionKey, Row>> flatRows){
-    return flatRows.stream().map(pair ->{
-      PartitionKey key = pair.getKey();
-      StringBuffer sb = new StringBuffer(key.getOrg());
-      sb.append(" : ");
-      sb.append(key.getMetricId());
-      sb.append("\n\t");
-      for(Map.Entry<String, Object> entry: translateRow(pair.getRight()).entrySet()){
-          sb.append(entry.getKey()+":"+entry.getValue()+",");
-      }
-      return sb.toString();
-    }).collect(Collectors.toList()).toString();
+    return flatRows.stream().map(this::printRow).collect(Collectors.toList()).toString();
+  }
+
+  private String printRow(Pair<PartitionKey, Row> pair){
+    PartitionKey key = pair.getKey();
+    StringBuffer sb = new StringBuffer(key.getOrg());
+    sb.append(" : ");
+    sb.append(key.getMetricId());
+    for(Map.Entry<String, Object> entry: translateRow(pair.getRight()).entrySet()){
+      sb.append("\n\t"+entry.getKey()+":"+entry.getValue()+",");
+    }
+    sb.append("\n-------\n");
+    return sb.toString();
   }
 
   private Map<String, Object> translateRow(Row row){
