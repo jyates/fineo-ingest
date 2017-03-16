@@ -9,6 +9,7 @@ import com.google.inject.Provider;
 import com.google.inject.Provides;
 import com.google.inject.name.Names;
 import io.fineo.etl.FineoProperties;
+import io.fineo.lambda.HandlerSetupUtils;
 import io.fineo.lambda.configure.PropertiesModule;
 import io.fineo.lambda.configure.firehose.FirehoseModule;
 import io.fineo.lambda.configure.StreamType;
@@ -29,6 +30,7 @@ import io.fineo.lambda.e2e.state.EndToEndTestRunner;
 import io.fineo.lambda.e2e.util.IngestUtil;
 import io.fineo.lambda.firehose.IFirehoseBatchWriter;
 import io.fineo.lambda.handle.LambdaWrapper;
+import io.fineo.lambda.handle.MalformedEventToJson;
 import io.fineo.lambda.handle.raw.RawRecordToAvroHandler;
 import io.fineo.lambda.handle.raw.RawStageWrapper;
 import io.fineo.lambda.handle.staged.AvroToStorageHandler;
@@ -296,7 +298,9 @@ public class ITEndToEndLambdaLocal {
     return newArrayList(new PropertiesModule(props),
       new SingleInstanceModule<>(dynamo, IDynamoResource.class),
       new SingleInstanceModule<>(streams, IKinesisStreams.class),
-      new LazyMockComponents());
+      new LazyMockComponents(),
+      HandlerSetupUtils.clockModule(),
+      MalformedEventToJson.getModule());
   }
 
   private static class LazyMockComponents extends AbstractModule {

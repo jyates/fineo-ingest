@@ -3,6 +3,7 @@ package io.fineo.lambda.handle.raw;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import io.fineo.lambda.aws.MultiWriteFailures;
+import io.fineo.lambda.handle.TenantBoundFineoException;
 import io.fineo.lambda.kinesis.IKinesisProducer;
 import io.fineo.schema.MapRecord;
 import io.fineo.schema.store.AvroSchemaEncoder;
@@ -46,15 +47,22 @@ public class RawJsonToRecordHandler {
     String orgId = record.getStringByField(AvroSchemaProperties.ORG_ID_KEY);
     // sometimes this throws illegal argument, e.g. record not valid, so we fall back on the
     // error handler
-    AvroSchemaEncoder bridge = AvroSchemaEncoder.create(store, record);
-    LOG.trace("Got the encoder");
+    try {
+      AvroSchemaEncoder bridge = AvroSchemaEncoder.create(store, record);
+      LOG.trace("Got the encoder");
 
-    // write the record to a ByteBuffer
-    GenericRecord outRecord = bridge.encode();
-    LOG.trace("Encoded the record {}", outRecord);
-    // add the record
-    this.convertedRecords.add(stream, orgId, outRecord);
-    LOG.trace("Wrote the record");
+      // write the record to a ByteBuffer
+      GenericRecord outRecord = bridge.encode();
+      LOG.trace("Encoded the record {}", outRecord);
+      // add the record
+      this.convertedRecords.add(stream, orgId, outRecord);
+      LOG.trace("Wrote the record");
+    } catch (Exception e) {
+      if (orgId == null) {
+        throw new RuntimeException("No org id found!", e);
+      }
+      throw new TenantBoundFineoException("Failed to apply schema for record", e, orgId, -1);
+    }
   }
 
   public MultiWriteFailures<GenericRecord, ?> commit() {

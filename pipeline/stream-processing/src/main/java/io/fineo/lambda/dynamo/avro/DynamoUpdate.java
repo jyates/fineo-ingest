@@ -106,7 +106,8 @@ public class DynamoUpdate {
   }
 
   /**
-   * Generate a unique Id for the current record
+   * Generate a unique Id for the current record. Its unique enough to separate it from other
+   * requests, but the same enough to allow duplication validation when records are retried
    */
   private String getId() throws NoSuchAlgorithmException, UnsupportedEncodingException {
     StringBuffer sb = new StringBuffer(fields.getTimestamp().toString());

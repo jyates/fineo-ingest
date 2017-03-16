@@ -9,12 +9,14 @@ import com.google.inject.name.Named;
 import io.fineo.lambda.JsonParser;
 import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.lambda.firehose.IFirehoseBatchWriter;
+import io.fineo.lambda.handle.AvroEventHandler;
 import io.fineo.lambda.handle.KinesisHandler;
 import org.apache.avro.generic.GenericRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.time.Clock;
 import java.util.Map;
 
 import static io.fineo.lambda.configure.firehose.FirehoseModule.FIREHOSE_ARCHIVE_STREAM;
@@ -48,8 +50,8 @@ public class RawRecordToAvroHandler extends KinesisHandler {
     @Named(FIREHOSE_MALFORMED_RECORDS_STREAM) Provider<IFirehoseBatchWriter> processErrors,
     @Named(FIREHOSE_COMMIT_ERROR_STREAM) Provider<IFirehoseBatchWriter> commitFailures,
     RawJsonToRecordHandler jsonHandler,
-    JsonParser parser) {
-    super(archive, processErrors, commitFailures);
+    JsonParser parser, Clock clock, AvroEventHandler errorHandler) {
+    super(archive, processErrors, commitFailures, clock, errorHandler);
     this.parser = parser;
     this.jsonHandler = jsonHandler;
   }

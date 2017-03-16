@@ -6,9 +6,11 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.Module;
 import io.fineo.lambda.JsonParser;
 import io.fineo.lambda.configure.KinesisModule;
+import io.fineo.lambda.configure.firehose.FirehoseFunctions;
 import io.fineo.lambda.configure.firehose.FirehoseModule;
 import io.fineo.lambda.configure.util.PropertiesLoaderUtil;
 import io.fineo.lambda.handle.LambdaWrapper;
+import io.fineo.lambda.handle.MalformedEventToJson;
 import io.fineo.lambda.handle.StreamLambdaUtils;
 import io.fineo.lambda.handle.schema.inject.SchemaStoreModule;
 
@@ -56,7 +58,8 @@ public class RawStageWrapper extends LambdaWrapper<KinesisEvent, RawRecordToAvro
     // writing to firehoses
     modules.add(new FirehosePropertyBridge());
     modules.add(new FirehoseModule());
-    modules.add(new FirehoseToMalformedInstanceFunctionModule());
+    modules.add(new FirehoseFunctions());
+    modules.add(MalformedEventToJson.getModule());
     return modules;
   }
 }

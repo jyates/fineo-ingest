@@ -206,7 +206,7 @@ public class SparkETL {
     addBaseFields(fields);
     parsed.getUserVisibleFields().stream()
           .forEach(field -> {
-            fields.add(createStructField(field.getCname(), getSparkType(field.getType()), true));
+            fields.add(createStructField(field.getCname(), AvroSparkUtils.getSimpleSparkType(field.getType()), true));
           });
     return createStructType(fields);
   }

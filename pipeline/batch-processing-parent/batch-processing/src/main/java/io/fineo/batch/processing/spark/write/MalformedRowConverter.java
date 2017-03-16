@@ -1,8 +1,10 @@
 package io.fineo.batch.processing.spark.write;
 
 import io.fineo.internal.customer.Malformed;
+import io.fineo.spark.avro.AvroSparkUtils;
 import io.fineo.spark.avro.RowConverter;
 import org.apache.avro.Schema;
+import org.apache.spark.sql.types.DataType;
 import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.sql.types.StructField;
 
@@ -18,7 +20,7 @@ import static org.apache.spark.sql.types.DataTypes.createStructField;
  */
 public class MalformedRowConverter extends RowConverter {
 
-  public static final String RECORD_CONTENT = "recordContent";
+  public static final String RECORD_CONTENT = "event";
 
   public MalformedRowConverter() {
     super(Malformed.getClassSchema());
@@ -33,11 +35,6 @@ public class MalformedRowConverter extends RowConverter {
       return new String(data);
     }
     return super.getValue(name, field);
-  }
-
-  @Override
-  protected StructField handleRecordField(Schema.Field field, Schema fieldSchema) {
-    throw new UnsupportedOperationException("Malformed records should not have RECORD fields!");
   }
 
   @Override

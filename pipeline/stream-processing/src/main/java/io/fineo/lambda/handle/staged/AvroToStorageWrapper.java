@@ -8,6 +8,7 @@ import io.fineo.lambda.configure.firehose.FirehoseFunctions;
 import io.fineo.lambda.configure.firehose.FirehoseModule;
 import io.fineo.lambda.configure.util.PropertiesLoaderUtil;
 import io.fineo.lambda.handle.LambdaWrapper;
+import io.fineo.lambda.handle.MalformedEventToJson;
 import io.fineo.lambda.handle.StreamLambdaUtils;
 
 import java.io.IOException;
@@ -38,6 +39,8 @@ public class AvroToStorageWrapper extends LambdaWrapper<KinesisEvent, AvroToStor
     modules.add(new FirehoseModule());
     modules.add(new FirehosePropertyBridge().withAllBindings());
     modules.add(new FirehoseFunctions());
+    modules.add(MalformedEventToJson.getModule());
+
     return modules;
   }
 

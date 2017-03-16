@@ -4,6 +4,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.fineo.batch.processing.spark.options.BatchOptions;
 import io.fineo.internal.customer.Malformed;
+import io.fineo.lambda.handle.MalformedEventToJson;
+import io.fineo.lambda.handle.TenantBoundFineoException;
 import io.fineo.lambda.handle.raw.RawJsonToRecordHandler;
 import io.fineo.schema.OldSchemaException;
 import io.fineo.schema.store.AvroSchemaProperties;
@@ -18,8 +20,12 @@ import scala.Tuple2;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
+import java.time.Clock;
 import java.util.HashMap;
 import java.util.Map;
+
+import static io.fineo.lambda.handle.KinesisHandler.FINEO_INTERNAL_ERROR_API_KEY;
+import static io.fineo.lambda.handle.KinesisHandler.toThrown;
 
 /**
  * Convert raw json events into avro typed records. This makes a large amount of database calls,
@@ -29,11 +35,13 @@ public class RecordConverter
   implements PairFunction<Row, ReadResult, GenericRecord>, Serializable {
 
   private static final Logger LOG = LoggerFactory.getLogger(RecordConverter.class);
-  private transient ObjectMapper mapper;
-  private final BatchOptions options;
-  private transient RawJsonToRecordHandler handler;
-  private LocalQueueKinesisProducer queue;
 
+  private transient ObjectMapper mapper;
+  private transient RawJsonToRecordHandler handler;
+
+  private final BatchOptions options;
+  private LocalQueueKinesisProducer queue;
+  private transient Clock clock;
   private final String orgId;
 
   public RecordConverter(String orgId, BatchOptions options) {
@@ -44,19 +52,44 @@ public class RecordConverter
   @Override
   public Tuple2<ReadResult, GenericRecord> call(Row obj) throws Exception {
     RawJsonToRecordHandler handler = getHandler();
+    Malformed mal;
     try {
       handler.handle(transform(obj));
       return new Tuple2<>(new ReadResult(ReadResult.Outcome.SUCCESS, orgId),
         queue.getRecords().remove());
-    } catch (Exception e) {
-      LOG.error("Found malformed record: {}", obj, e);
-      Malformed mal = Malformed.newBuilder()
-                               .setRecordContent(ByteBuffer.wrap(rowBackToJson(obj).getBytes()))
-                               .setOrg(orgId)
-                               .setMessage(e.getMessage())
-                               .build();
-      return new Tuple2<>(new ReadResult(ReadResult.Outcome.FAILURE, orgId), mal);
+    } catch (TenantBoundFineoException e) {
+      mal = addErrorRecord(obj, e.getApikey(), e.getWriteTime(), e);
+    } catch (RuntimeException e) {
+      mal = addErrorRecord(obj, e);
     }
+    LOG.error("Found malformed record: {}", obj);
+    return new Tuple2<>(new ReadResult(ReadResult.Outcome.FAILURE, orgId), mal);
+  }
+
+
+  private Malformed addErrorRecord(Row rec, RuntimeException e)
+    throws IOException {
+    return addErrorRecord(rec, null, -1, e);
+  }
+
+  private Malformed addErrorRecord(Row rec, String apiKey, long
+    writeTime, Exception thrown)
+    throws IOException {
+    if (apiKey == null) {
+      apiKey = FINEO_INTERNAL_ERROR_API_KEY;
+    }
+    if (writeTime < 0) {
+      writeTime = getClock().millis();
+    }
+    ByteBuffer data = ByteBuffer.wrap(rowBackToJson(rec).getBytes());
+    return new Malformed(apiKey, thrown.getMessage(), data, writeTime, toThrown(thrown));
+  }
+
+  private Clock getClock() {
+    if(this.clock == null){
+      this.clock = Clock.systemUTC();
+    }
+    return this.clock;
   }
 
   private String rowBackToJson(Row row) throws JsonProcessingException {

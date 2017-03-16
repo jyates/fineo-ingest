@@ -7,10 +7,24 @@
 @namespace("io.fineo.internal.customer")
 protocol Lambda{
 
+  record StackTraceElement{
+    string declaringClass;
+    string methodName;
+    string fileName;
+    int lineNumber;
+  }
+
+  record Thrown{
+    string message;
+    array<StackTraceElement> stackTrace;
+  }
+
   // A malformed record instance
   record Malformed {
-    string org;
+    string apikey;
     string message;
-    bytes recordContent;
+    bytes event;
+    long handled_timestamp;
+    array<Thrown> causes;
   }
 }

@@ -1,18 +1,20 @@
 package io.fineo.lambda;
 
 import com.amazonaws.services.lambda.runtime.events.KinesisEvent;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.util.concurrent.Futures;
 import com.google.inject.AbstractModule;
+import com.google.inject.Module;
 import com.google.inject.Provider;
 import com.google.inject.util.Providers;
 import io.fineo.etl.FineoProperties;
+import io.fineo.lambda.avro.FirehoseRecordReader;
+import io.fineo.lambda.avro.FirehoseRecordWriter;
 import io.fineo.lambda.aws.MultiWriteFailures;
 import io.fineo.lambda.configure.MockOnNullInstanceModule;
-import io.fineo.lambda.configure.NullableNamedInstanceModule;
 import io.fineo.lambda.configure.PropertiesModule;
-import io.fineo.lambda.configure.firehose.FirehoseModule;
 import io.fineo.lambda.e2e.state.EndToEndTestRunner;
-import io.fineo.lambda.firehose.IFirehoseBatchWriter;
+import io.fineo.lambda.handle.KinesisHandler;
 import io.fineo.lambda.handle.LambdaWrapper;
 import io.fineo.lambda.handle.raw.RawRecordToAvroHandler;
 import io.fineo.lambda.handle.raw.RawStageWrapper;
@@ -22,8 +24,6 @@ import io.fineo.lambda.util.LambdaTestUtils;
 import io.fineo.schema.avro.TestRecordMetadata;
 import io.fineo.schema.store.AvroSchemaProperties;
 import io.fineo.schema.store.SchemaStore;
-import io.fineo.lambda.avro.FirehoseRecordReader;
-import io.fineo.lambda.avro.FirehoseRecordWriter;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -139,7 +139,8 @@ public class TestLambdaRawToAvroWithLocalSchemaStore {
 
   /**
    * Ensure that malformed records are handled by an internal 'malformed' handler, rather than
-   * failing the entire event
+   * failing the entire event. The "malformed-ness" of the event is enabled by an always-failing
+   * schema store.
    */
   @Test
   public void testMalformedRecords() throws Exception {
@@ -164,9 +165,28 @@ public class TestLambdaRawToAvroWithLocalSchemaStore {
     assertEquals(recordCount, malformed.size());
     byte[] data =
       combineRecords(malformed.stream().peek(buff -> assertTrue(buff.hasRemaining())));
-    byte[] expected =
-      combineRecords(event.getRecords().stream().map(e -> e.getKinesis().getData()));
-    assertArrayEquals(expected, data);
+    ObjectMapper mapper = new ObjectMapper();
+    String result = new String(data);
+    List<Map<String, Object>> malformedEvents = new ArrayList<>();
+    for (String row : result.split("\n")) {
+      if (row.trim().length() == 0) {
+        continue;
+      }
+      malformedEvents.add(mapper.readValue(row, Map.class));
+    }
+
+    for (int i = 0; i < records.length; i++) {
+      Map<String, Object> record = records[i];
+      Map<String, Object> error = malformedEvents.get(i);
+      assertEquals(mapper.writeValueAsString(record), error.get("event"));
+      String expectedKey = (String) record.get(AvroSchemaProperties.ORG_ID_KEY);
+      String actualKey = (String) error.get("apikey");
+      if (expectedKey == null) {
+        expectedKey = KinesisHandler.FINEO_INTERNAL_ERROR_API_KEY;
+      }
+      assertEquals("Mismatch api key for event:\n" + record + "\nError:\n" + error, expectedKey,
+        actualKey);
+    }
 
     // verify the mocks
     Mockito.verify(out.process(), Mockito.times(2)).addToBatch(Mockito.any());
@@ -255,21 +275,17 @@ public class TestLambdaRawToAvroWithLocalSchemaStore {
   private LambdaWrapper<KinesisEvent, RawRecordToAvroHandler> getLambda(Properties props,
     OutputFirehoseManager firehoses,
     IKinesisProducer producer, Provider<SchemaStore> store) {
-    return new RawStageWrapper(newArrayList(
-      new AbstractModule() {
-        @Override
-        protected void configure() {
-          bind(SchemaStore.class).toProvider(store);
-        }
-      },
-      new NullableNamedInstanceModule<>(FirehoseModule.FIREHOSE_ARCHIVE_STREAM, firehoses.archive(),
-        IFirehoseBatchWriter.class),
-      new NullableNamedInstanceModule<>(FirehoseModule.FIREHOSE_COMMIT_ERROR_STREAM,
-        firehoses.commit(), IFirehoseBatchWriter.class),
-      new NullableNamedInstanceModule<>(FirehoseModule.FIREHOSE_MALFORMED_RECORDS_STREAM,
-        firehoses.process(), IFirehoseBatchWriter.class),
-      new MockOnNullInstanceModule<>(producer, IKinesisProducer.class),
-      new PropertiesModule(props)));
+    List<Module> modules = HandlerSetupUtils.getBasicTestModules(firehoses.archive(), firehoses
+      .process(), firehoses.commit());
+    modules.add(new AbstractModule() {
+      @Override
+      protected void configure() {
+        bind(SchemaStore.class).toProvider(store);
+      }
+    });
+    modules.add(new MockOnNullInstanceModule<>(producer, IKinesisProducer.class));
+    modules.add(new PropertiesModule(props));
+    return new RawStageWrapper(modules);
   }
 
   private class KinesisRequest {

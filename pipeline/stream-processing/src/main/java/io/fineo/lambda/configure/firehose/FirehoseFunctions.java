@@ -8,6 +8,8 @@ import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.function.Function;
 
+import static java.util.function.Function.identity;
+
 /**
  * Functions used by the {@link io.fineo.lambda.firehose.FirehoseBatchWriter} when copying bytes
  * to the output streams
@@ -17,8 +19,9 @@ public class FirehoseFunctions extends AbstractModule implements Serializable {
   private static final Function<ByteBuffer, ByteBuffer> COPY = ByteBuffer::duplicate;
 
   private Function archive = COPY;
-  private Function malformed = COPY;
-  private Function commit = COPY;
+  // these are populated in the stream processor with the 'correct' data
+  private Function malformed = identity();
+  private Function commit = identity();
 
   @Override
   protected void configure() {

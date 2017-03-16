@@ -18,6 +18,7 @@ import io.fineo.batch.processing.dynamo.FailedIngestFile;
 import io.fineo.batch.processing.dynamo.IngestManifest;
 import io.fineo.lambda.dynamo.rule.AwsDynamoResource;
 import io.fineo.lambda.dynamo.rule.AwsDynamoTablesResource;
+import io.fineo.lambda.handle.KinesisHandler;
 import io.fineo.lambda.handle.schema.SchemaStoreModuleForTesting;
 import io.fineo.lambda.handle.schema.inject.DynamoDBRepositoryProvider;
 import io.fineo.schema.store.AvroSchemaProperties;
@@ -142,12 +143,34 @@ public class TestBatchProcessor {
     Map<String, Object> error =
       mapper.readValue(oe.getErrors().get(0), new TypeReference<Map<String, Object>>() {
       });
+
+    String cosmeticCause = "Failed to apply schema for record";
+    String rootCause = "No metric type found in record for metric type keys: [] or standard "
+                           + "type key 'metrictype'";
+    List<Map<String, Object>> causes = new ArrayList<>();
+    causes.add(getErrorCause(cosmeticCause));
+    causes.add(getErrorCause(rootCause));
     Map<String, Object> expected = new HashMap<>();
-    expected.put("org", org);
-    expected.put("message", "No metric type found in record for metric type keys: [] or standard "
-                            + "type key 'metrictype'");
-    expected.put("recordContent", mapper.writeValueAsString(event));
-    assertEquals(expected, error);
+    expected.put("apikey", org);
+    expected.put("message", cosmeticCause);
+    expected.put("event", mapper.writeValueAsString(event));
+
+    assertEquals(expected.get("apikey"), error.get("apikey"));
+    assertEquals(expected.get("message"), error.get("message"));
+    List<Object> actualCauses = (List<Object>) error.get("causes");
+    assertEquals("Wrong call stack height!\nExpected causes:" + causes + "\nActual "
+                 + "Causes:" + actualCauses, causes.size(), actualCauses.size());
+    for (int i = 0; i < causes.size(); i++) {
+      assertEquals("Mismatch for cause at depth: " + i,
+        causes.get(i).get("message"),
+        ((Map<String, Object>) actualCauses.get(i)).get("message"));
+    }
+  }
+
+  private Map<String, Object> getErrorCause(String message) {
+    Map<String, Object> cause = new HashMap<>();
+    cause.put("message", message);
+    return cause;
   }
 
   private String csv(boolean zip) throws IOException {

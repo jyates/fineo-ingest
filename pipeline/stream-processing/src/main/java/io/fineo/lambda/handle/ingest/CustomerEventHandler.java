@@ -137,7 +137,11 @@ public class CustomerEventHandler extends ExternalFacingRequestHandler<CustomerE
   private byte[] encode(Context context, CustomerEventRequest event, Map<String, Object> object)
     throws JsonProcessingException {
     Map<String, Object> outEvent = newHashMap(object);
-    outEvent.put(AvroSchemaProperties.ORG_ID_KEY, event.getCustomerKey());
+    String key = event.getCustomerKey();
+    if(key == null){
+      throw ExternalErrorsUtil.get500(context, "Got a request but it was not bound to an API Key!");
+    }
+    outEvent.put(AvroSchemaProperties.ORG_ID_KEY, key);
     try {
       return mapper.writeValueAsBytes(outEvent);
     } catch (JsonProcessingException e) {
