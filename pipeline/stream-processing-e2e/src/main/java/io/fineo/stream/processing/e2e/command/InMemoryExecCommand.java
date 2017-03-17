@@ -11,6 +11,7 @@ import com.google.inject.Module;
 import com.google.inject.Provides;
 import com.google.inject.ProvisionException;
 import io.fineo.lambda.configure.PropertiesModule;
+import io.fineo.lambda.configure.UtcClockModule;
 import io.fineo.lambda.configure.dynamo.AvroToDynamoModule;
 import io.fineo.lambda.configure.util.SingleInstanceModule;
 import io.fineo.lambda.e2e.aws.dynamo.DelegateAwsDynamoResource;
@@ -26,6 +27,7 @@ import io.fineo.lambda.e2e.state.EndToEndTestBuilder;
 import io.fineo.lambda.e2e.state.EndToEndTestRunner;
 import io.fineo.lambda.e2e.util.IngestUtil;
 import io.fineo.lambda.handle.LambdaWrapper;
+import io.fineo.lambda.handle.MalformedEventToJson;
 import io.fineo.lambda.handle.raw.RawRecordToAvroHandler;
 import io.fineo.lambda.handle.raw.RawStageWrapper;
 import io.fineo.lambda.handle.staged.AvroToStorageHandler;
@@ -162,6 +164,8 @@ public class InMemoryExecCommand extends BaseCommand {
     baseModules.add(new SingleInstanceModule<>(streams, IKinesisStreams.class));
     baseModules.add(new PropertiesModule(props));
     baseModules.add(new AvroToDynamoModule());
+    baseModules.add(new UtcClockModule());
+    baseModules.add(MalformedEventToJson.getModule());
     // lazy binding - this only called after the streams have been initialized in the test runner
     baseModules.add(new Module() {
       @Override
