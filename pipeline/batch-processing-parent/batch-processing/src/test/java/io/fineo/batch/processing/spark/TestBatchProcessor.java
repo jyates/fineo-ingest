@@ -9,10 +9,12 @@ import com.amazonaws.util.json.Jackson;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
 import com.google.inject.Guice;
 import com.google.inject.Module;
+
 import io.fineo.aws.AwsDependentTests;
 import io.fineo.batch.processing.dynamo.FailedIngestFile;
 import io.fineo.batch.processing.dynamo.IngestManifest;
@@ -27,8 +29,10 @@ import io.fineo.schema.store.StoreManager;
 import io.fineo.spark.avro.AvroSparkUtils;
 import io.fineo.spark.rule.LocalSparkRule;
 import io.fineo.test.rule.TestOutput;
+
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
+
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
@@ -72,7 +76,7 @@ public class TestBatchProcessor {
   public AwsDynamoTablesResource tables = new AwsDynamoTablesResource(dynamo);
   @ClassRule
   public static LocalSparkRule spark = new LocalSparkRule(
-    conf -> AvroSparkUtils.setKyroAvroSerialization(conf));
+      conf -> AvroSparkUtils.setKyroAvroSerialization(conf));
   @Rule
   public TestOutput output = new TestOutput(false);
 
@@ -114,7 +118,7 @@ public class TestBatchProcessor {
     assertTrue("Manifest not empty, still has: " + manifest.files(), manifest.files().isEmpty());
     Multimap<String, FailedIngestFile> failures = ArrayListMultimap.create();
     FailedIngestFile fail =
-      new FailedIngestFile(org, "file://" + file, "File /a/file.json does not exist");
+        new FailedIngestFile(org, "file://" + file, "File /a/file.json does not exist");
     failures.put(org, fail);
     assertEquals(failures, manifest.failures(false));
   }
@@ -141,12 +145,12 @@ public class TestBatchProcessor {
     assertEquals("Wrong number of errors for org under " + base, 1, oe.getErrors().size());
     ObjectMapper mapper = new ObjectMapper();
     Map<String, Object> error =
-      mapper.readValue(oe.getErrors().get(0), new TypeReference<Map<String, Object>>() {
-      });
+        mapper.readValue(oe.getErrors().get(0), new TypeReference<Map<String, Object>>() {
+        });
 
     String cosmeticCause = "Failed to apply schema for record";
     String rootCause = "No metric type found in record for metric type keys: [] or standard "
-                           + "type key 'metrictype'";
+                       + "type key 'metrictype'";
     List<Map<String, Object>> causes = new ArrayList<>();
     causes.add(getErrorCause(cosmeticCause));
     causes.add(getErrorCause(rootCause));
@@ -156,14 +160,22 @@ public class TestBatchProcessor {
     expected.put("event", mapper.writeValueAsString(event));
 
     assertEquals(expected.get("apikey"), error.get("apikey"));
-    assertEquals(expected.get("message"), error.get("message"));
+    assertTrue(((String) error.get("message")).startsWith((String) expected.get("message")));
     List<Object> actualCauses = (List<Object>) error.get("causes");
     assertEquals("Wrong call stack height!\nExpected causes:" + causes + "\nActual "
                  + "Causes:" + actualCauses, causes.size(), actualCauses.size());
     for (int i = 0; i < causes.size(); i++) {
+      if (i == 0) {
+        // top message should just be prefix of the real message
+        String cause = (String) causes.get(i).get("message");
+        cause += ": "+causes.get(1).get("message");
+        assertEquals("Mismatch for cause at depth: " + i, cause,
+            ((Map<String, Object>) actualCauses.get(i)).get("message"));
+        continue;
+      }
       assertEquals("Mismatch for cause at depth: " + i,
-        causes.get(i).get("message"),
-        ((Map<String, Object>) actualCauses.get(i)).get("message"));
+          causes.get(i).get("message"),
+          ((Map<String, Object>) actualCauses.get(i)).get("message"));
     }
   }
 
@@ -223,12 +235,12 @@ public class TestBatchProcessor {
   }
 
   private LocalSparkOptions processFiles(int numRows, Pair<String, String>... files)
-    throws Exception {
+      throws Exception {
     return processFiles(numRows, false, files);
   }
 
   private LocalSparkOptions processFiles(int numRows, boolean expectErrors,
-    Pair<String, String>... files) throws Exception {
+      Pair<String, String>... files) throws Exception {
     int uuid = new Random().nextInt(100000);
     String dataTablePrefix = uuid + "-test-storage";
     String schemaStoreTable = uuid + "-test-schemaStore";
@@ -252,7 +264,7 @@ public class TestBatchProcessor {
           });
 
     LocalSparkOptions options =
-      new LocalSparkOptions(dynamo.getUtil().getUrl(), dataTablePrefix, schemaStoreTable);
+        new LocalSparkOptions(dynamo.getUtil().getUrl(), dataTablePrefix, schemaStoreTable);
     withInput(options, files);
     Properties props = new Properties();
     File errors = output.newFolder();
@@ -285,13 +297,13 @@ public class TestBatchProcessor {
     }
 
     assertEquals("Found errors files: " + Arrays.toString(errors.list()),
-      expectErrors, errors.list().length > 0);
+        expectErrors, errors.list().length > 0);
 
     return options;
   }
 
   private void withInput(LocalSparkOptions options,
-    Pair<String, String>... fileInTestResources) {
+      Pair<String, String>... fileInTestResources) {
     for (int i = 0; i < fileInTestResources.length; i++) {
       fileInTestResources[i].setValue("file://" + fileInTestResources[i].getValue());
     }

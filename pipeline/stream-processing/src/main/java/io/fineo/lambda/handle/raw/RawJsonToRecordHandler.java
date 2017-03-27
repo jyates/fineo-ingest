@@ -59,9 +59,10 @@ public class RawJsonToRecordHandler {
       LOG.trace("Wrote the record");
     } catch (Exception e) {
       if (orgId == null) {
-        throw new RuntimeException("No org id found!", e);
+        throw new RuntimeException("No tenant id (API Key) found!", e);
       }
-      throw new TenantBoundFineoException("Failed to apply schema for record", e, orgId, -1);
+      throw new TenantBoundFineoException("Failed to apply schema for record: " + e.getMessage(), e,
+          orgId, -1);
     }
   }
 
