@@ -1,31 +1,31 @@
 package io.fineo.batch.processing.spark.convert;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import io.fineo.batch.processing.spark.options.BatchOptions;
-import io.fineo.internal.customer.Malformed;
-import io.fineo.lambda.handle.MalformedEventToJson;
-import io.fineo.lambda.handle.TenantBoundFineoException;
-import io.fineo.lambda.handle.raw.RawJsonToRecordHandler;
-import io.fineo.schema.OldSchemaException;
-import io.fineo.schema.store.AvroSchemaProperties;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.spark.api.java.function.PairFunction;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.types.StructType;
+
+import io.fineo.batch.processing.spark.options.BatchOptions;
+import io.fineo.internal.customer.Malformed;
+import io.fineo.lambda.handle.TenantBoundFineoException;
+import io.fineo.lambda.handle.raw.RawJsonToRecordHandler;
+import io.fineo.schema.OldSchemaException;
+import io.fineo.schema.store.AvroSchemaProperties;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import scala.Tuple2;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.time.Clock;
 import java.util.HashMap;
 import java.util.Map;
+import scala.Tuple2;
 
 import static io.fineo.lambda.handle.KinesisHandler.FINEO_INTERNAL_ERROR_API_KEY;
-import static io.fineo.lambda.handle.KinesisHandler.toThrown;
 
 /**
  * Convert raw json events into avro typed records. This makes a large amount of database calls,
@@ -82,7 +82,7 @@ public class RecordConverter
       writeTime = getClock().millis();
     }
     ByteBuffer data = ByteBuffer.wrap(rowBackToJson(rec).getBytes());
-    return new Malformed(apiKey, thrown.getMessage(), data, writeTime, toThrown(thrown));
+    return new Malformed(apiKey, thrown.getMessage(), data, writeTime/*, toThrown(thrown)*/);
   }
 
   private Clock getClock() {

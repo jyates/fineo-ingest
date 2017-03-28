@@ -97,7 +97,8 @@ public abstract class KinesisHandler implements LambdaHandler<KinesisEvent> {
     }
     ByteBuffer data = rec.getKinesis().getData();
     data.reset();
-    Malformed mal = new Malformed(apiKey, thrown.getMessage(), data, writeTime, toThrown(thrown));
+    Malformed mal =
+        new Malformed(apiKey, thrown.getMessage(), data, writeTime/*, toThrown (thrown)*/);
     ByteBuffer buff = this.errorHandler.write(mal);
     buff.mark();
     processErrors.get().addToBatch(buff);
