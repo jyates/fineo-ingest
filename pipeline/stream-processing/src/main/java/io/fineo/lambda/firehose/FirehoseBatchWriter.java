@@ -57,6 +57,8 @@ public class FirehoseBatchWriter implements IFirehoseBatchWriter {
     }
     this.currentPendingBytes = 0;
     writeBatch(this.batch);
+    // reset the batch so we don't keep flushing bad records
+    this.batch = null;
   }
 
   /**

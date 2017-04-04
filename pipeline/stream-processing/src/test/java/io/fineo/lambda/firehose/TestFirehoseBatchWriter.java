@@ -47,7 +47,8 @@ public class TestFirehoseBatchWriter {
     return data;
   }
 
-  private void writeReadRecordsOneBatch(ByteBuffer... data) throws IOException {
+  private Pair<FirehoseBatchWriter, AmazonKinesisFirehoseClient> writeReadRecordsOneBatch(
+    ByteBuffer... data) throws IOException {
     String stream = "streamname";
     AmazonKinesisFirehoseClient client = getMockActiveClient();
     FirehoseBatchWriter writer = new FirehoseBatchWriter(stream, client, ByteBuffer::duplicate);
@@ -70,6 +71,7 @@ public class TestFirehoseBatchWriter {
     assertEquals(stream, requests.get(0).getDeliveryStreamName());
     List<Record> records = requests.get(0).getRecords();
     verifyRecordsMatchData(data, records);
+    return new ImmutablePair<>(writer, client);
   }
 
   @Test
@@ -154,7 +156,7 @@ public class TestFirehoseBatchWriter {
            .then(invocation -> {
              PutRecordBatchRequest request = (PutRecordBatchRequest) invocation.getArguments()[0];
              List<Record> records1 = Lists.newArrayList(request.getRecords());
-             requests.add(new ImmutablePair<> (request, records1));
+             requests.add(new ImmutablePair<>(request, records1));
              return results.remove(0);
            });
 
@@ -173,6 +175,16 @@ public class TestFirehoseBatchWriter {
     List<Record> records = requests.get(0).getValue();
     verifyRecordsMatchData(data, records);
     verifyRecordsMatchData(new ByteBuffer[]{data[1], data[4]}, requests.get(1).getValue());
+  }
+
+  @Test
+  public void testClearBatchOnFlush() throws Exception {
+    ByteBuffer[] data = createData(1);
+    Pair<FirehoseBatchWriter, AmazonKinesisFirehoseClient> writers = writeReadRecordsOneBatch(data);
+    AmazonKinesisFirehoseClient mock = writers.getRight();
+    FirehoseBatchWriter writer = writers.getKey();
+    writer.flush();
+    Mockito.verifyNoMoreInteractions(mock);
   }
 
   private void verifyRecordsMatchData(ByteBuffer[] data, List<Record> records) {
